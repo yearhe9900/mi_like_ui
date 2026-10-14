@@ -1,0 +1,173 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+/// The 4 nav icons redrawn 1:1 from the reference video.
+///
+/// Each painter draws inside a normalized coordinate system that is
+/// 100 units tall; the natural width follows the measured pixel aspect
+/// ratio so every icon keeps its exact silhouette:
+///   roller 53x71 px, grid+sparkle 65x65 px, cards+star 68x72 px,
+///   smiley+beret 68x76 px.
+void _fit(Canvas canvas, Size size, double naturalW) {
+  final s = size.height / 100;
+  canvas.save();
+  canvas.translate((size.width - naturalW * s) / 2, 0);
+  canvas.scale(s);
+}
+
+/// Concave 4-point "sparkle" star (✦) with points up/down/left/right.
+Path _sparkle(Offset c, double r) {
+  final k = r * 0.14;
+  return Path()
+    ..moveTo(c.dx, c.dy - r)
+    ..quadraticBezierTo(c.dx + k, c.dy - k, c.dx + r, c.dy)
+    ..quadraticBezierTo(c.dx + k, c.dy + k, c.dx, c.dy + r)
+    ..quadraticBezierTo(c.dx - k, c.dy + k, c.dx - r, c.dy)
+    ..quadraticBezierTo(c.dx - k, c.dy - k, c.dx, c.dy - r)
+    ..close();
+}
+
+/// 首页 — paint roller (roller sleeve on top, stem, hanging paint drip).
+class RollerIconPainter extends CustomPainter {
+  RollerIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _fit(canvas, size, 74.6);
+    final p = Paint()..color = color;
+
+    // thin cap strip on top of the roller
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(12.7, 0, 74.6, 11), const Radius.circular(5.5)),
+      p,
+    );
+    // roller sleeve
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(12.7, 15, 74.6, 25), const Radius.circular(9)),
+      p,
+    );
+    // handle stem
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(44.5, 37, 11, 24), const Radius.circular(3)),
+      p,
+    );
+    // paint drip (teardrop)
+    final drop = Path()
+      ..moveTo(50, 56)
+      ..cubicTo(55, 69, 63, 75, 63, 86)
+      ..arcToPoint(const Offset(37, 86),
+          radius: const Radius.circular(13), rotation: 0, largeArc: true, clockwise: true)
+      ..cubicTo(37, 75, 45, 69, 50, 56)
+      ..close();
+    canvas.drawPath(drop, p);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant RollerIconPainter old) => old.color != color;
+}
+
+/// 分类 — 2x2 grid where the top-right cell is a sparkle.
+class GridSparkleIconPainter extends CustomPainter {
+  GridSparkleIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _fit(canvas, size, 100);
+    final p = Paint()..color = color;
+    const side = 41.5;
+    const radius = Radius.circular(12.3);
+    for (final o in const [Offset(0, 0), Offset(0, 58.5), Offset(58.5, 58.5)]) {
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(o.dx, o.dy, side, side), radius), p);
+    }
+    canvas.drawPath(_sparkle(const Offset(79.25, 20.75), 23), p);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant GridSparkleIconPainter old) => old.color != color;
+}
+
+/// 每日精选 — two overlapping tilted cards, front card has a star cutout.
+class CardsStarIconPainter extends CustomPainter {
+  CardsStarIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _fit(canvas, size, 94.4);
+    final p = Paint()..color = color;
+
+    // back card, tilted clockwise, peeks out on the right
+    canvas.save();
+    canvas.translate(62, 48);
+    canvas.rotate(15 * math.pi / 180);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-27, -34, 54, 68), const Radius.circular(15)),
+      p,
+    );
+    canvas.restore();
+
+    // front card, tilted counter-clockwise, star hole via xor
+    final card = Path()
+      ..addRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(-28, -35, 56, 70), const Radius.circular(16)));
+    final front = Path.combine(PathOperation.xor, card, _sparkle(Offset.zero, 17));
+    canvas.save();
+    canvas.translate(42, 52);
+    canvas.rotate(-12 * math.pi / 180);
+    canvas.drawPath(front, p);
+    canvas.restore();
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CardsStarIconPainter old) => old.color != color;
+}
+
+/// 我的 — round smiley face wearing a tilted beret.
+class SmileyBeretIconPainter extends CustomPainter {
+  SmileyBeretIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    _fit(canvas, size, 89.5);
+    final p = Paint()..color = color;
+
+    // face: circle with eyes + open smile punched out
+    final face = Path()..addOval(Rect.fromCircle(center: const Offset(45, 62), radius: 36));
+    final eyes = Path()
+      ..addOval(Rect.fromCircle(center: const Offset(32, 55), radius: 6.5))
+      ..addOval(Rect.fromCircle(center: const Offset(58, 55), radius: 6.5));
+    final mouth = Path()
+      ..moveTo(28, 70)
+      ..quadraticBezierTo(45, 92, 62, 70)
+      ..close();
+    var facePath = Path.combine(PathOperation.difference, face, eyes);
+    facePath = Path.combine(PathOperation.difference, facePath, mouth);
+    canvas.drawPath(facePath, p);
+
+    // beret: tilted stadium across the top of the head
+    canvas.save();
+    canvas.translate(46, 22);
+    canvas.rotate(-18 * math.pi / 180);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(-31, -15, 62, 30), const Radius.circular(15)),
+      p,
+    );
+    canvas.restore();
+    // beret nub
+    canvas.drawCircle(const Offset(72, 9), 5.5, p);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant SmileyBeretIconPainter old) => old.color != color;
+}
