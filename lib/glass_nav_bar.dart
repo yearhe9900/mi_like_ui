@@ -13,8 +13,8 @@ import 'package:flutter/material.dart';
 /// | bar size                 | 1062 x 172      | 342 x 55.4 |
 /// | bar side margin          | 79              | 25.5    |
 /// | tab cell width           | 255             | 82.1    |
-/// | pill (settled)           | 282 x 153       | 90.8 x 49.3 |
-/// | pill / cell width ratio  | 282/255 = 1.106 | -       |
+/// | pill (settled)           | 277 x 153       | 89.3 x 49.3 |
+/// | pill / cell width ratio  | 277/255 = 1.086 | -       |
 /// | pill vertical inset      | ~10             | 3.05    |
 /// | icon box                 | ~68 x 72        | 21.9 x 23.2 |
 /// | label font (CJK glyph h) | 31              | 10.5    |
@@ -37,8 +37,16 @@ class GlassNavMetrics {
   static const double barMarginH = 25.5;
   static const double barHeight = 55.4;
   static const double barInnerPad = 6.6;
-  static const double pillWidthOverCell = 282 / 255;
   static const double pillInsetV = 3.05;
+
+  /// Pill width from the equidistance constraint: settled on an end tab the
+  /// pill's cap must stay CONCENTRIC with the bar's cap (both cap centers on
+  /// x = barHeight/2), so the pill-to-bar gap is exactly [pillInsetV] all
+  /// around the rounded end — tip included — instead of varying 2.25..3.05.
+  /// At the reference grid: 82.2 + 2*(6.6-3.05) = 89.3 dp (ratio 1.086).
+  /// (Raw video measure 282 px included the 1 px stroke halo; the geometric
+  /// equidistant width 277 px falls within that halo uncertainty.)
+  static double pillWidth(double cellW) => cellW + 2 * (barInnerPad - pillInsetV);
   static const double iconHeight = 23.2;
   static const double iconLabelGap = 5.5;
   static const double labelFontSize = 10.5;
@@ -121,8 +129,8 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
           builder: (context, constraints) {
             final barW = constraints.maxWidth;
             final cellW = (barW - 2 * GlassNavMetrics.barInnerPad) / widget.items.length;
-            final pillW = cellW * GlassNavMetrics.pillWidthOverCell;
-            final pillH = GlassNavMetrics.barHeight - 2 * GlassNavMetrics.pillInsetV;
+            final pillW = GlassNavMetrics.pillWidth(cellW);
+            const pillH = GlassNavMetrics.barHeight - 2 * GlassNavMetrics.pillInsetV;
 
             return ClipRRect(
               borderRadius: BorderRadius.circular(GlassNavMetrics.barHeight / 2),
