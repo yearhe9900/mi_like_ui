@@ -33,7 +33,6 @@ class _DemoHomeState extends State<DemoHome> {
   late final List<MiGlassNavItem> _items = [
     MiGlassNavItem(label: '首页', painter: RollerIconPainter(_iconColor)),
     MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(_iconColor)),
-    MiGlassNavItem(label: '每日精选', painter: CardsStarIconPainter(_iconColor)),
     MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(_iconColor)),
   ];
 
@@ -70,6 +69,21 @@ class _DemoHomeState extends State<DemoHome> {
                   items: _items,
                   selectedIndex: _index,
                   onTap: (i) => setState(() => _index = i),
+                  // 预留空位圆钮：仅选中「首页」时显示（切走收起）
+                  fab: MiGlassNavFab(
+                    tabIndex: 0,
+                    onTap: () =>
+                        ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('圆形按钮被点击'),
+                        duration: Duration(milliseconds: 800),
+                      ),
+                    ),
+                    child: CustomPaint(
+                      painter: GridDotsIconPainter(Colors.white),
+                      size: const Size.square(18.2),
+                    ),
+                  ),
                 ),
               ),
               // home indicator (phone chrome, not part of the nav bar)

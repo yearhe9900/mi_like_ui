@@ -17,6 +17,18 @@ import 'dart:math' as math;
 /// | label font (CJK glyph h) | 31              | 10.5    |
 /// | icon-label gap           | 17              | 5.5     |
 ///
+/// 圆钮视频（1220x2656，3 tab + 绿色圆钮）补充实测：
+///
+/// | item                     | video px        | dp      |
+/// |--------------------------|-----------------|---------|
+/// | tab cell width           | 252             | 81      |
+/// | fab diameter             | 171 (=bar 170)  | 55.1 ≈ barHeight |
+/// | bar -> fab gap           | 37              | 11.9    |
+///
+/// 两段视频共同点：格宽不随 tab 数变化（255/252px），栏体宽度=内容宽
+/// （n × 格宽 + 2 × barInnerPad），整体水平居中。tab 超过 4 个时格宽
+/// 收缩以塞进 [barMarginH] 的最大栏宽（与旧版固定 342 宽行为一致）。
+///
 /// Motion (tracked at 24.3 fps, pixel ground truth):
 ///  * flight phase: position curve ≈ Curves.easeOutSine (best fit),
 ///    duration = 260 ms + 20 ms per cell travelled (measured 260~340 ms)
@@ -43,6 +55,9 @@ class MiGlassNavMetrics {
   static const double barHeight = 55.4;
   static const double barInnerPad = 6.6;
   static const double pillInsetV = 3.05;
+
+  /// 标称 tab 格宽（视频 255px / 252px ≈ 82dp，不随 tab 数变化）。
+  static const double cellWidth = 82.2;
 
   /// Pill width from the equidistance constraint: settled on an end tab the
   /// pill's cap must stay CONCENTRIC with the bar's cap (both cap centers on
@@ -97,4 +112,21 @@ class MiGlassNavMetrics {
     final raw = math.sin(math.pi * math.pow(s, 0.6)) * math.exp(-1.2 * s);
     return raw / _settleWavePeak;
   }
+
+  // --- reserved circular button slot (预留空位圆钮，圆钮视频实测) ----------
+  // With the button shown, [bar, gap, button] forms a centred row: the bar
+  // centre sits exactly (fabDiameter + fabGap)/2 left of the screen centre and
+  // the button pops IN PLACE at W/2 + (barW+fabGap)/2 (measured cx = 1015 px
+  // on the 1220 px screen, constant through the whole pop). The button
+  // diameter matches the bar height (171 px vs 170 px bar).
+  //
+  // Motion (24.3 fps ground truth): button scale+alpha pop ≈ easeOutCubic
+  // over 165 ms (samples 0.60/0.88/0.98/1.00 at +1..4 frames), the close is
+  // the same curve reversed (1.00/0.88/0.58/0.00 — measured, time-mirrored).
+  // The bar shift runs alongside on easeOutQuad over 205 ms (samples
+  // 0.08/0.40/0.70/0.89/0.97/1.00), both starting on the tab-switch frame.
+  static const double fabGap = 11.9;
+  static const double fabDiameter = barHeight;
+  static const int fabPopMs = 165;
+  static const int fabShiftMs = 205;
 }

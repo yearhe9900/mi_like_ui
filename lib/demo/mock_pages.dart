@@ -15,8 +15,6 @@ class MockPage extends StatelessWidget {
         return const _MockPageShell(title: '首页', children: _homeItems);
       case 1:
         return const _MockPageShell(title: '分类', children: _categoryItems);
-      case 2:
-        return const _MockPageShell(title: '每日精选', children: _dailyItems);
       default:
         return const _MockPageShell(title: '我的', children: _mineItems);
     }
@@ -183,46 +181,6 @@ const List<Widget> _categoryItems = [
   ]),
   SizedBox(height: 12),
   _GradientCard(height: 90, colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '查看全部分类  ›'),
-];
-
-const List<Widget> _dailyItems = [
-  _GradientCard(
-    height: 150,
-    colors: [Color(0xFF141E30), Color(0xFF243B55)],
-    caption: '壁纸设计大赛  作品展',
-  ),
-  _SectionTitle('今日上新'),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFFCB356B), Color(0xFFBD3F32)], caption: '热门IP')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF614385), Color(0xFF516395)], caption: '每日推荐')),
-  ]),
-  SizedBox(height: 12),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF0F2027), Color(0xFF2C5364)], caption: '精选合集')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF834D9B), Color(0xFFD04ED6)], caption: '限时免费')),
-  ]),
-  _SectionTitle('编辑精选'),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF373B44), Color(0xFF4286F4)], caption: '蓝色科技')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFFB24592), Color(0xFFF15F79)], caption: '暖色时光')),
-  ]),
-  SizedBox(height: 12),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF0F3443), Color(0xFF34E89E)], caption: '春日限定')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF7F00FF), Color(0xFFE100FF)], caption: '紫罗兰')),
-  ]),
-  _SectionTitle('专题企划'),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFFDA22FF), Color(0xFF9733EE)], caption: '像素艺术')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF134E5E), Color(0xFF71B280)], caption: '城市夜景')),
-  ]),
-  SizedBox(height: 12),
-  _GradientCard(height: 90, colors: [Color(0xFFCB356B), Color(0xFFBD3F32)], caption: '查看全部精选  ›'),
 ];
 
 const List<Widget> _mineItems = [

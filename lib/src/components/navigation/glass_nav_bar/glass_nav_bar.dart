@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
@@ -18,12 +19,40 @@ class MiGlassNavItem {
   final CustomPainter painter;
 }
 
+/// 预留空位的圆形按钮（参考视频中的绿色圆钮）。
+///
+/// 仅当 [MiGlassNavBar.items] ≤ 3 个时支持（超过 3 个 tab 传入 [fab]
+/// 会触发组件断言）。选中 [tabIndex] 对应 tab 时按钮以缩放+淡入弹出、
+/// 栏体平移让出空位；切到其它 tab 时镜像收起、栏体回中。
+class MiGlassNavFab {
+  const MiGlassNavFab({
+    required this.tabIndex,
+    required this.child,
+    this.color = MiColors.fabGreen,
+    this.onTap,
+  });
+
+  /// 显示圆钮的 tab 下标；选中其它 tab 时圆钮不显示。
+  final int tabIndex;
+
+  /// 圆钮内容（图标等），居中绘制在圆内。
+  final Widget child;
+
+  /// 圆钮底色（视频实测 rgb(37,191,67)）。
+  final Color color;
+
+  /// 点按回调。
+  final VoidCallback? onTap;
+}
+
 /// 小米主题商店风格的深色玻璃悬浮底部导航栏（可复用组件）。
 ///
 /// 交互（均为视频逐帧实测）：
 ///  * 点按切换：胶囊果冻飞行 + 弹簧沉降（参数见 [MiGlassNavMetrics]）；
 ///  * 按压缩圈：胶囊宽 -3% / 高 -7.5%，被按 tab 瞬时变暗 55%；
-///  * 拖拽切换：胶囊 1:1 跟手 + 速度拉伸，松手吸附最近 tab。
+///  * 拖拽切换：胶囊 1:1 跟手 + 速度拉伸，松手吸附最近 tab；
+///  * 预留空位圆钮（可选 [fab]）：配置的 tab 选中时弹出、切走收起，
+///    栏体同步平移让位（仅支持 ≤3 个 tab）。
 ///
 /// 玻璃材质配方见 `theme/glass_tokens.dart`。
 class MiGlassNavBar extends StatefulWidget {
@@ -32,11 +61,20 @@ class MiGlassNavBar extends StatefulWidget {
     required this.items,
     required this.selectedIndex,
     required this.onTap,
-  });
+    this.fab,
+  })  : assert(items.length > 0),
+        assert(
+          fab == null || items.length <= 3,
+          '预留空位圆形按钮仅支持 3 个及以下 tab',
+        );
+  // fab.tabIndex 的取值范围校验见 initState（const 断言不支持参数字段访问）
 
   final List<MiGlassNavItem> items;
   final int selectedIndex;
   final ValueChanged<int> onTap;
+
+  /// 预留空位圆形按钮；null = 不启用。
+  final MiGlassNavFab? fab;
 
   @override
   State<MiGlassNavBar> createState() => _MiGlassNavBarState();
@@ -45,6 +83,8 @@ class MiGlassNavBar extends StatefulWidget {
 class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final AnimationController _pressCtrl;
+  late final AnimationController _fabCtrl;
+  late final AnimationController _shiftCtrl;
   double _from = 0;
   double _to = 0;
   double _travelCells = 0;
@@ -57,20 +97,52 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
   /// tab whose icon+label is dimmed (pressed / hovered during drag)
   int? _pressedIndex;
 
+  /// 预留空位圆钮是否应显示（fab 配置的 tab 被选中）。
+  bool get _showFab => widget.fab != null && widget.selectedIndex == widget.fab!.tabIndex;
+
   @override
   void initState() {
     super.initState();
+    final fab = widget.fab;
+    assert(
+      fab == null || (fab.tabIndex >= 0 && fab.tabIndex < widget.items.length),
+      'fab.tabIndex 必须落在 items 范围内',
+    );
     _from = _to = widget.selectedIndex.toDouble();
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _pressCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: MiGlassNavMetrics.pressMs),
     );
+    _fabCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: MiGlassNavMetrics.fabPopMs),
+    );
+    _shiftCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: MiGlassNavMetrics.fabShiftMs),
+    );
+    // 首帧即处于稳态（配置的 tab 已选中则直接显示，无入场动画）
+    final show = _showFab;
+    _fabCtrl.value = show ? 1 : 0;
+    _shiftCtrl.value = show ? 1 : 0;
   }
 
   @override
   void didUpdateWidget(covariant MiGlassNavBar old) {
     super.didUpdateWidget(old);
+    final wasShown = old.fab != null && old.selectedIndex == old.fab!.tabIndex;
+    if (wasShown != _showFab) {
+      // 显示：缩放+淡入弹出 / 栏体左移让位；收起：同曲线 reverse 时间镜像。
+      // forward/reverse 从当前值继续，快速连点 tab 不跳变。
+      if (_showFab) {
+        _fabCtrl.forward();
+        _shiftCtrl.forward();
+      } else {
+        _fabCtrl.reverse();
+        _shiftCtrl.reverse();
+      }
+    }
     if (old.selectedIndex != widget.selectedIndex) {
       // start from wherever the pill currently is, so rapid taps can
       // retarget mid-flight without jumps
@@ -178,154 +250,227 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
   void dispose() {
     _stretchDecay?.cancel();
     _pressCtrl.dispose();
+    _shiftCtrl.dispose();
+    _fabCtrl.dispose();
     _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: MiGlassNavMetrics.barMarginH),
-      child: SizedBox(
-        height: MiGlassNavMetrics.barHeight,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final barW = constraints.maxWidth;
-            final cellW = (barW - 2 * MiGlassNavMetrics.barInnerPad) / widget.items.length;
-            final pillW = MiGlassNavMetrics.pillWidth(cellW);
-            const pillH = MiGlassNavMetrics.barHeight - 2 * MiGlassNavMetrics.pillInsetV;
+    return SizedBox(
+      height: MiGlassNavMetrics.barHeight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final n = widget.items.length;
+          final screenW = constraints.maxWidth;
+          // 栏体宽度=内容宽（n × 标称格宽），上限为 [barMarginH] 的最大栏宽；
+          // ≥4 tab 时格宽收缩，与旧版固定 342 宽行为一致。
+          final maxBarW = screenW - 2 * MiGlassNavMetrics.barMarginH;
+          final cellW = math.min(
+            MiGlassNavMetrics.cellWidth,
+            (maxBarW - 2 * MiGlassNavMetrics.barInnerPad) / n,
+          );
+          final barW = 2 * MiGlassNavMetrics.barInnerPad + n * cellW;
+          final pillW = MiGlassNavMetrics.pillWidth(cellW);
+          const pillH = MiGlassNavMetrics.barHeight - 2 * MiGlassNavMetrics.pillInsetV;
 
-            int indexAt(double dx) => cellIndexAt(
-                  dx: dx,
-                  leadingInset: MiGlassNavMetrics.barInnerPad,
-                  cellWidth: cellW,
-                  count: widget.items.length,
-                );
+          int indexAt(double dx) => cellIndexAt(
+                dx: dx,
+                leadingInset: MiGlassNavMetrics.barInnerPad,
+                cellWidth: cellW,
+                count: n,
+              );
 
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragStart: (_) => _dragStart(cellW),
-              onHorizontalDragUpdate: (d) => _dragUpdate(d.primaryDelta ?? 0, cellW),
-              onHorizontalDragEnd: (_) => _dragEnd(),
-              onHorizontalDragCancel: _dragCancel,
-              child: Listener(
-                onPointerDown: (e) => _pressDown(indexAt(e.localPosition.dx)),
-                onPointerUp: (_) => _pressUp(),
-                onPointerCancel: (_) => _pressUp(),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: MiGlassTokens.blurSigma,
-                      sigmaY: MiGlassTokens.blurSigma,
-                    ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // The blur above tints this transparent layer with the
-                        // backdrop; everything below paints on top of it.
-                        const SizedBox.expand(),
-                        AnimatedBuilder(
-                          animation: Listenable.merge([_ctrl, _pressCtrl]),
-                          builder: (context, _) {
-                            final t = _ctrl.value;
-                            final ff = _flightFraction;
-                            // width/height scale deltas; >0 stretch = wider/shorter
-                            double stretch;
-                            double squash;
-                            if (_dragPos != null) {
-                              // drag: velocity jelly (wider+shorter, as flight)
-                              stretch = _dragStretch;
-                              squash = MiGlassNavMetrics.settleSquashRatio * _dragStretch;
-                            } else if (t <= ff) {
-                              // flight: bell-shaped jelly squash & stretch
-                              final p = t / ff;
-                              final bell = math.sin(math.pi * math.pow(p, 0.8).toDouble());
-                              final distF =
-                                  (_travelCells / MiGlassNavMetrics.maxJellyCells).clamp(0.0, 1.0);
-                              stretch = MiGlassNavMetrics.jellyStretch * distF * bell;
-                              squash = MiGlassNavMetrics.jellySquash * distF * bell;
-                            } else {
-                              // settle tail: position overshoot + width undershoot
-                              final f = MiGlassNavMetrics.settleWave((t - ff) / (1 - ff));
-                              stretch = -MiGlassNavMetrics.settleSquash * f;
-                              squash = -MiGlassNavMetrics.settleSquash *
-                                  MiGlassNavMetrics.settleSquashRatio *
-                                  f;
-                            }
+          final bar = GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (_) => _dragStart(cellW),
+            onHorizontalDragUpdate: (d) => _dragUpdate(d.primaryDelta ?? 0, cellW),
+            onHorizontalDragEnd: (_) => _dragEnd(),
+            onHorizontalDragCancel: _dragCancel,
+            child: Listener(
+              onPointerDown: (e) => _pressDown(indexAt(e.localPosition.dx)),
+              onPointerUp: (_) => _pressUp(),
+              onPointerCancel: (_) => _pressUp(),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: MiGlassTokens.blurSigma,
+                    sigmaY: MiGlassTokens.blurSigma,
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // The blur above tints this transparent layer with the
+                      // backdrop; everything below paints on top of it.
+                      const SizedBox.expand(),
+                      AnimatedBuilder(
+                        animation: Listenable.merge([_ctrl, _pressCtrl]),
+                        builder: (context, _) {
+                          final t = _ctrl.value;
+                          final ff = _flightFraction;
+                          // width/height scale deltas; >0 stretch = wider/shorter
+                          double stretch;
+                          double squash;
+                          if (_dragPos != null) {
+                            // drag: velocity jelly (wider+shorter, as flight)
+                            stretch = _dragStretch;
+                            squash = MiGlassNavMetrics.settleSquashRatio * _dragStretch;
+                          } else if (t <= ff) {
+                            // flight: bell-shaped jelly squash & stretch
+                            final p = t / ff;
+                            final bell = math.sin(math.pi * math.pow(p, 0.8).toDouble());
+                            final distF =
+                                (_travelCells / MiGlassNavMetrics.maxJellyCells).clamp(0.0, 1.0);
+                            stretch = MiGlassNavMetrics.jellyStretch * distF * bell;
+                            squash = MiGlassNavMetrics.jellySquash * distF * bell;
+                          } else {
+                            // settle tail: position overshoot + width undershoot
+                            final f = MiGlassNavMetrics.settleWave((t - ff) / (1 - ff));
+                            stretch = -MiGlassNavMetrics.settleSquash * f;
+                            squash = -MiGlassNavMetrics.settleSquash *
+                                MiGlassNavMetrics.settleSquashRatio *
+                                f;
+                          }
 
-                            // press squeeze ("缩圈"): the pill shrinks while a
-                            // finger is down, on top of any flight/drag shape.
-                            final press = _pressCtrl.value;
-                            stretch -= MiGlassNavMetrics.pressSquashW * press;
-                            squash += MiGlassNavMetrics.pressSquashH * press;
+                          // press squeeze ("缩圈"): the pill shrinks while a
+                          // finger is down, on top of any flight/drag shape.
+                          final press = _pressCtrl.value;
+                          stretch -= MiGlassNavMetrics.pressSquashW * press;
+                          squash += MiGlassNavMetrics.pressSquashH * press;
 
-                            var w = pillW * (1 + stretch);
-                            final h = pillH * (1 - squash);
-                            var cx = MiGlassNavMetrics.barInnerPad +
-                                cellW * ((_dragPos ?? _posAt(t)) + 0.5);
+                          var w = pillW * (1 + stretch);
+                          final h = pillH * (1 - squash);
+                          var cx = MiGlassNavMetrics.barInnerPad +
+                              cellW * ((_dragPos ?? _posAt(t)) + 0.5);
 
-                            // Clamp the pill rect to the equidistant gap bounds.
-                            // At the end tabs the overshoot/flight-stretch hits
-                            // this wall and renders as width compression
-                            // (measured -5.8% vs -2.2% mid-bar).
-                            var left = cx - w / 2;
-                            var right = cx + w / 2;
-                            const minLeft = MiGlassNavMetrics.pillInsetV;
-                            final maxRight = barW - MiGlassNavMetrics.pillInsetV;
-                            if (left < minLeft) left = minLeft;
-                            if (right > maxRight) right = maxRight;
-                            w = right - left;
-                            cx = (left + right) / 2;
+                          // Clamp the pill rect to the equidistant gap bounds.
+                          // At the end tabs the overshoot/flight-stretch hits
+                          // this wall and renders as width compression
+                          // (measured -5.8% vs -2.2% mid-bar).
+                          var left = cx - w / 2;
+                          var right = cx + w / 2;
+                          const minLeft = MiGlassNavMetrics.pillInsetV;
+                          final maxRight = barW - MiGlassNavMetrics.pillInsetV;
+                          if (left < minLeft) left = minLeft;
+                          if (right > maxRight) right = maxRight;
+                          w = right - left;
+                          cx = (left + right) / 2;
 
-                            return CustomPaint(
-                              painter: GlassBarPainter(
-                                pillCenterX: cx,
-                                pillWidth: w,
-                                pillHeight: h,
-                              ),
-                            );
-                          },
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: MiGlassNavMetrics.barInnerPad),
-                          child: Row(
-                            children: [
-                              for (var i = 0; i < widget.items.length; i++)
-                                Expanded(
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onTap: () => widget.onTap(i),
-                                    child: Opacity(
-                                      // pressed tab content dims (measured ~55%)
-                                      opacity: _pressedIndex == i
-                                          ? MiGlassNavMetrics.pressDimOpacity
-                                          : 1.0,
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          CustomPaint(
-                                            painter: widget.items[i].painter,
-                                            size: const Size(24, MiGlassNavMetrics.iconHeight),
-                                          ),
-                                          const SizedBox(height: MiGlassNavMetrics.iconLabelGap),
-                                          Text(widget.items[i].label, style: MiTypography.navLabel),
-                                        ],
-                                      ),
+                          return CustomPaint(
+                            painter: GlassBarPainter(
+                              pillCenterX: cx,
+                              pillWidth: w,
+                              pillHeight: h,
+                            ),
+                          );
+                        },
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: MiGlassNavMetrics.barInnerPad),
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < widget.items.length; i++)
+                              Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () => widget.onTap(i),
+                                  child: Opacity(
+                                    // pressed tab content dims (measured ~55%)
+                                    opacity: _pressedIndex == i
+                                        ? MiGlassNavMetrics.pressDimOpacity
+                                        : 1.0,
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        CustomPaint(
+                                          painter: widget.items[i].painter,
+                                          size: const Size(24, MiGlassNavMetrics.iconHeight),
+                                        ),
+                                        const SizedBox(height: MiGlassNavMetrics.iconLabelGap),
+                                        Text(widget.items[i].label, style: MiTypography.navLabel),
+                                      ],
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+
+          // 预留空位圆钮：[栏体, 间隙, 圆钮] 行整体居中 —— 圆钮弹出时栏体
+          // 中心左移 (fabDiameter+fabGap)/2，圆钮原位弹出（实测 cx 恒定）。
+          final fab = widget.fab;
+          const fabD = MiGlassNavMetrics.fabDiameter;
+          const shiftDx = -(fabD + MiGlassNavMetrics.fabGap) / 2;
+          final fabCx = screenW / 2 + (barW + MiGlassNavMetrics.fabGap) / 2;
+
+          // 无 fab 时栏体原样铺设（不经过 Transform，保证像素零变化）
+          final barHost = fab == null
+              ? bar
+              : AnimatedBuilder(
+                  animation: _shiftCtrl,
+                  child: bar,
+                  builder: (context, child) => Transform.translate(
+                    offset: Offset(
+                      shiftDx * Curves.easeOutQuad.transform(_shiftCtrl.value),
+                      0,
+                    ),
+                    child: child,
+                  ),
+                );
+
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                left: screenW / 2 - barW / 2,
+                top: 0,
+                width: barW,
+                height: MiGlassNavMetrics.barHeight,
+                child: barHost,
+              ),
+              if (fab != null)
+                Positioned(
+                  left: fabCx - fabD / 2,
+                  top: 0,
+                  width: fabD,
+                  height: fabD,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: fab.onTap,
+                    child: AnimatedBuilder(
+                      animation: _fabCtrl,
+                      child: Container(
+                        decoration: BoxDecoration(color: fab.color, shape: BoxShape.circle),
+                        alignment: Alignment.center,
+                        child: fab.child,
+                      ),
+                      builder: (context, child) {
+                        // 显示：缩放+淡入（easeOutCubic）；收起：同曲线
+                        // reverse 时间镜像，与视频实测剖面一致。
+                        final t = Curves.easeOutCubic.transform(_fabCtrl.value);
+                        return IgnorePointer(
+                          ignoring: t == 0,
+                          child: Opacity(
+                            opacity: t,
+                            child: Transform.scale(scale: t, child: child),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

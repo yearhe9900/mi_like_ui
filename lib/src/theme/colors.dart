@@ -8,4 +8,7 @@ class MiColors {
 
   /// 前景主色：图标、标签等近白内容色（视频实测 #F5F5F5）。
   static const Color foreground = Color(0xFFF5F5F5);
+
+  /// 强调绿：预留空位圆形按钮底色（视频实测 rgb(37,191,67)）。
+  static const Color fabGreen = Color(0xFF25BF43);
 }

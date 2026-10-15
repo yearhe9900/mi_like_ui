@@ -138,6 +138,34 @@ class CardsStarIconPainter extends CustomPainter {
   bool shouldRepaint(covariant CardsStarIconPainter old) => old.color != color;
 }
 
+/// 圆形按钮 — 3x3 dot matrix (九宫格)，1:1 复刻自圆形按钮视频。
+///
+/// 实测（1220px 屏，圆钮 ⌀171px）：墨迹 56x56px、点径 12px、点距 22.3px，
+/// 归一到 100 单位高即点径 21、点距 39.1，墨迹正方形恰好铺满 100 单位。
+class GridDotsIconPainter extends CustomPainter {
+  GridDotsIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ink bbox is exactly the 100x100 unit square -> center 50
+    _fit(canvas, size, 50);
+    final p = Paint()..color = color;
+    const r = 10.5;
+    const step = 39.1;
+    for (final dy in const [-step, 0.0, step]) {
+      for (final dx in const [-step, 0.0, step]) {
+        canvas.drawCircle(Offset(50 + dx, 50 + dy), r, p);
+      }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant GridDotsIconPainter old) => old.color != color;
+}
+
 /// 我的 — round smiley face wearing a tilted beret.
 class SmileyBeretIconPainter extends CustomPainter {
   SmileyBeretIconPainter(this.color);
