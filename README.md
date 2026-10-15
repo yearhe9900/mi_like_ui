@@ -6,6 +6,19 @@
 当前已落地首个组件 `MiGlassNavBar`（玻璃悬浮底部导航栏）；
 按钮、弹窗、表单等组件按同一组织方式逐步扩充。
 
+## 效果
+
+### 深色
+
+<img src="doc/preview/demo_dark.png" width="240" alt="深色模式 demo 整页" /> <img src="doc/preview/nav_dark.png" width="360" alt="深色模式导航栏特写" />
+
+### 浅色
+
+<img src="doc/preview/demo_light.png" width="240" alt="浅色模式 demo 整页" /> <img src="doc/preview/nav_light.png" width="360" alt="浅色模式导航栏特写" />
+
+> 预览图由 `test/preview_capture_test.dart` 生成，样式变更后重新执行
+> `flutter test --update-goldens test/preview_capture_test.dart` 刷新。
+
 ## 设计原则
 
 - **实测优先** — 视觉与动效参数以像素测量值为准，黄金图回归锁行为
