@@ -3,8 +3,8 @@
 小米风格可扩展 UI 组件框架（Flutter）。
 
 以像素级实测还原小米系视觉与动效，沉淀为分层清晰、可持续扩充的组件库。
-当前已落地首个组件 `MiGlassNavBar`（玻璃悬浮底部导航栏）；
-按钮、弹窗、表单等组件按同一组织方式逐步扩充。
+当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）与 `MiPillTabBar`
+（胶囊分类标签行）；按钮、弹窗、表单等组件按同一组织方式逐步扩充。
 
 ## 效果
 
@@ -15,6 +15,14 @@
 ### 浅色
 
 <img src="doc/preview/demo_light.png" width="240" alt="浅色模式 demo 整页" /> <img src="doc/preview/nav_light.png" width="360" alt="浅色模式导航栏特写" />
+
+### 组件：胶囊分类标签行
+
+<img src="doc/preview/pill_light.png" width="360" alt="浅色胶囊分类标签行" /> <img src="doc/preview/pill_dark.png" width="360" alt="深色胶囊分类标签行" />
+
+「分类」tab 为组件展示页（logo / 名称为示例占位）：
+
+<img src="doc/preview/showcase_light.png" width="200" alt="浅色组件展示页" /> <img src="doc/preview/showcase_dark.png" width="200" alt="深色组件展示页" />
 
 > 预览图由 `test/preview_capture_test.dart` 生成，样式变更后重新执行
 > `flutter test --update-goldens test/preview_capture_test.dart` 刷新。
@@ -36,7 +44,9 @@ lib/
 └── src/
     ├── theme/               # 样式/主题层（颜色·文字·间距·材质 token，明暗双配方）
     ├── components/          # 组件层（类别/组件名/ 两级目录）
-    │   └── navigation/glass_nav_bar/
+    │   └── navigation/
+    │       ├── glass_nav_bar/
+    │       └── pill_tab_bar/
     ├── icons/               # 图标 painter 集
     └── utils/               # 工具函数层（纯函数）
 
@@ -76,6 +86,7 @@ flutter test     # 回归测试
 ## 路线图
 
 - [x] `MiGlassNavBar` — 玻璃悬浮底部导航栏
+- [x] `MiPillTabBar` — 胶囊分类标签行
 - [ ] `MiButton` — 按钮
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单

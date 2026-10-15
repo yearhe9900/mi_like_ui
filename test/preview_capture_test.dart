@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 // 框架 API 走公共 barrel；demo 层直接引示例代码。
 import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/demo_app.dart';
+import 'package:mi_like_ui/demo/mock_pages.dart';
 
 /// README 预览图生成器（不是回归测试）。
 ///
@@ -134,5 +135,67 @@ void main() {
       find.byType(DemoHome),
       matchesGoldenFile('../doc/preview/demo_light.png'),
     );
+  });
+
+  testWidgets('README preview: pill tab closeups (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 96 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 胶囊条特写（页底 = 分类页实测底色）
+    Widget strip(MiThemeMode mode) => MaterialApp(
+          home: Scaffold(
+            backgroundColor: mode == MiThemeMode.light
+                ? const Color(0xFFF3F3F3)
+                : const Color(0xFF000000),
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: MiPillTabBar(
+                labels: const ['示例一', '示例二', '示例三', '示例四'],
+                selectedIndex: 0,
+                onTap: (_) {},
+                themeMode: mode,
+              ),
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(strip(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byType(MiPillTabBar),
+      matchesGoldenFile('../doc/preview/pill_light.png'),
+    );
+
+    await tester.pumpWidget(strip(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byType(MiPillTabBar),
+      matchesGoldenFile('../doc/preview/pill_dark.png'),
+    );
+  });
+
+  testWidgets('README preview: showcase page (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    Future<void> capture(MiThemeMode mode, String file) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: mode == MiThemeMode.dark
+              ? ThemeData.dark(useMaterial3: true)
+              : ThemeData.light(useMaterial3: true),
+          home: Scaffold(body: MockPage(1, themeMode: mode)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await expectLater(find.byType(MockPage), matchesGoldenFile(file));
+    }
+
+    await capture(MiThemeMode.light, '../doc/preview/showcase_light.png');
+    await capture(MiThemeMode.dark, '../doc/preview/showcase_dark.png');
   });
 }
