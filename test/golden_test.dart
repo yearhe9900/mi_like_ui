@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:bottom_nav_demo/glass_nav_bar.dart';
-import 'package:bottom_nav_demo/nav_bar_icons.dart';
+// tests consume the public barrel only — if an export is missing it shows up
+// right here
+import 'package:mi_like_ui/mi_like_ui.dart';
 
-List<GlassNavItem> items() => [
-      GlassNavItem(label: '首页', painter: RollerIconPainter(const Color(0xFFF5F5F5))),
-      GlassNavItem(label: '分类', painter: GridSparkleIconPainter(const Color(0xFFF5F5F5))),
-      GlassNavItem(label: '每日精选', painter: CardsStarIconPainter(const Color(0xFFF5F5F5))),
-      GlassNavItem(label: '我的', painter: SmileyBeretIconPainter(const Color(0xFFF5F5F5))),
+List<MiGlassNavItem> items() => [
+      MiGlassNavItem(label: '首页', painter: RollerIconPainter(const Color(0xFFF5F5F5))),
+      MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(const Color(0xFFF5F5F5))),
+      MiGlassNavItem(label: '每日精选', painter: CardsStarIconPainter(const Color(0xFFF5F5F5))),
+      MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(const Color(0xFFF5F5F5))),
     ];
 
 Widget frame(int selected, ValueChanged<int> onTap) {
@@ -31,7 +32,7 @@ Widget frame(int selected, ValueChanged<int> onTap) {
             left: 0,
             right: 0,
             bottom: 24.2,
-            child: GlassNavBar(items: items(), selectedIndex: selected, onTap: onTap),
+            child: MiGlassNavBar(items: items(), selectedIndex: selected, onTap: onTap),
           ),
         ],
       ),
@@ -47,7 +48,7 @@ void main() {
 
     await tester.pumpWidget(frame(0, (_) {}));
     await tester.pump(const Duration(milliseconds: 400));
-    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/settled_tab1.png'));
+    await expectLater(find.byType(MiGlassNavBar), matchesGoldenFile('goldens/settled_tab1.png'));
   });
 
   testWidgets('settled pill on tab4', (tester) async {
@@ -57,7 +58,7 @@ void main() {
 
     await tester.pumpWidget(frame(3, (_) {}));
     await tester.pump(const Duration(milliseconds: 400));
-    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/settled_tab4.png'));
+    await expectLater(find.byType(MiGlassNavBar), matchesGoldenFile('goldens/settled_tab4.png'));
   });
 
   testWidgets('mid-flight jelly stretch', (tester) async {
@@ -76,7 +77,7 @@ void main() {
     expect(selected, 3, reason: 'tap should have hit the 我的 tab');
     await tester.pump(); // rebuild: didUpdateWidget starts the controller ticker
     await tester.pump(const Duration(milliseconds: 110)); // advance clock -> t≈0.34 (peak jelly)
-    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/midflight.png'));
+    await expectLater(find.byType(MiGlassNavBar), matchesGoldenFile('goldens/midflight.png'));
     await tester.pumpAndSettle();
   });
 
@@ -92,7 +93,7 @@ void main() {
     // press easing runs 90 ms; by 200 ms the squeeze is fully applied:
     // pill -3% width / -7.5% height, pressed tab content dimmed to 55%
     await tester.pump(const Duration(milliseconds: 200));
-    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/press_tab1.png'));
+    await expectLater(find.byType(MiGlassNavBar), matchesGoldenFile('goldens/press_tab1.png'));
     await gesture.up();
     await tester.pumpAndSettle();
   });
@@ -119,7 +120,7 @@ void main() {
       await gesture.moveBy(Offset(dx / 12, 0));
       await tester.pump(const Duration(milliseconds: 16));
     }
-    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/drag_mid.png'));
+    await expectLater(find.byType(MiGlassNavBar), matchesGoldenFile('goldens/drag_mid.png'));
     await gesture.up();
     expect(selected, 2, reason: 'release over 每日精选 must select tab 2');
     await tester.pumpAndSettle(); // snap flight + settle tail
