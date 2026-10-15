@@ -9,10 +9,15 @@ import 'package:flutter/material.dart';
 /// ratio so every icon keeps its exact silhouette:
 ///   roller 53x71 px, grid+sparkle 65x65 px, cards+star 68x72 px,
 ///   smiley+beret 68x76 px.
-void _fit(Canvas canvas, Size size, double naturalW) {
+///
+/// [inkCenterX] passed to [_fit] is the horizontal center of the drawing's
+/// ink bbox in the normalized frame, so every icon lands dead-centre in its
+/// box — in the reference video each icon is exactly co-centered with its
+/// label (measured icon/label ink centers match within 0.5 px).
+void _fit(Canvas canvas, Size size, double inkCenterX) {
   final s = size.height / 100;
   canvas.save();
-  canvas.translate((size.width - naturalW * s) / 2, 0);
+  canvas.translate(size.width / 2 - inkCenterX * s, 0);
   canvas.scale(s);
 }
 
@@ -36,7 +41,8 @@ class RollerIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _fit(canvas, size, 74.6);
+    // ink bbox x: 12.7..87.3 (cap + sleeve span) -> center 50
+    _fit(canvas, size, 50);
     final p = Paint()..color = color;
 
     // thin cap strip on top of the roller
@@ -78,7 +84,8 @@ class GridSparkleIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _fit(canvas, size, 100);
+    // ink bbox x: 0..102.25 (grid cells + sparkle overshoot) -> center 51.125
+    _fit(canvas, size, 51.125);
     final p = Paint()..color = color;
     const side = 41.5;
     const radius = Radius.circular(12.3);
@@ -101,7 +108,8 @@ class CardsStarIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _fit(canvas, size, 94.4);
+    // ink bbox x: 10.31..93.51 (rotated rounded cards) -> center 51.91
+    _fit(canvas, size, 51.91);
     final p = Paint()..color = color;
 
     // back card, tilted clockwise, peeks out on the right
@@ -138,7 +146,8 @@ class SmileyBeretIconPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _fit(canvas, size, 89.5);
+    // ink bbox x: 9..81 (face circle; beret/nub inside) -> center 45
+    _fit(canvas, size, 45);
     final p = Paint()..color = color;
 
     // face: circle with eyes + open smile punched out
