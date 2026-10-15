@@ -18,6 +18,13 @@ class MiColors {
   static Color foregroundFor(MiThemeMode mode) =>
       mode == MiThemeMode.dark ? foreground : foregroundLight;
 
-  /// 强调绿：预留空位圆形按钮底色（视频实测 rgb(37,191,67)，明暗通用）。
+  /// 强调绿（深色）：预留空位圆形按钮底色（暗色视频实测 rgb(37,191,67)）。
   static const Color fabGreen = Color(0xFF25BF43);
+
+  /// 强调绿（浅色）：亮色参考图实测 #66CB61（1220×308 采样）。
+  static const Color fabGreenLight = Color(0xFF66CB61);
+
+  /// 按明暗模式取强调绿。
+  static Color fabGreenFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? fabGreen : fabGreenLight;
 }

@@ -29,7 +29,7 @@ class MiGlassNavFab {
   const MiGlassNavFab({
     required this.tabIndex,
     required this.child,
-    this.color = MiColors.fabGreen,
+    this.color,
     this.onTap,
   });
 
@@ -39,8 +39,9 @@ class MiGlassNavFab {
   /// 圆钮内容（图标等），居中绘制在圆内。
   final Widget child;
 
-  /// 圆钮底色（视频实测 rgb(37,191,67)）。
-  final Color color;
+  /// 圆钮底色；null = 按导航栏 [MiGlassNavBar.themeMode] 取
+  /// [MiColors.fabGreenFor]（深色 #25BF43 / 浅色 #66CB61，明暗分别实测）。
+  final Color? color;
 
   /// 点按回调。
   final VoidCallback? onTap;
@@ -471,7 +472,10 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                     child: AnimatedBuilder(
                       animation: _fabCtrl,
                       child: Container(
-                        decoration: BoxDecoration(color: fab.color, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: fab.color ?? MiColors.fabGreenFor(widget.themeMode),
+                          shape: BoxShape.circle,
+                        ),
                         alignment: Alignment.center,
                         child: fab.child,
                       ),

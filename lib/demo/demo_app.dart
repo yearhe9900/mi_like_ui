@@ -57,7 +57,7 @@ class _DemoHomeState extends State<DemoHome> {
     ];
 
     return Scaffold(
-      backgroundColor: light ? const Color(0xFFE4E4E6) : const Color(0xFF08080A),
+      backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
       body: Center(
         child: Container(
           // phone frame, aspect follows the reference screen (1220x2656)
@@ -65,7 +65,7 @@ class _DemoHomeState extends State<DemoHome> {
           height: 856,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: light ? const Color(0xFFF3F3F3) : const Color(0xFF0E0E11),
+            color: light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11),
             borderRadius: BorderRadius.circular(44),
             boxShadow: const [
               BoxShadow(color: Colors.black54, blurRadius: 40, offset: Offset(0, 16)),
@@ -120,7 +120,7 @@ class _DemoHomeState extends State<DemoHome> {
                     width: 138,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: light ? const Color(0xD9000000) : const Color(0xD9FFFFFF),
+                      color: light ? const Color(0xFF959595) : const Color(0xD9FFFFFF),
                       borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),

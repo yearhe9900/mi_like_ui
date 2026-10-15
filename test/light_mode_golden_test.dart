@@ -7,10 +7,10 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/demo_app.dart';
 
 // 亮色参考截图的三种典型背景（881×1920 实测色）：暗卡 / 灰白照片卡 / 蓝卡，
-// 页面底色 #F3F3F3 —— 玻璃透射差异靠这些背景读出来。
+// 页面底色 #F7F7F7（新参考图平坦底色实测）—— 玻璃透射差异靠这些背景读出来。
 Widget lightBackdrop() {
   return Container(
-    color: const Color(0xFFF3F3F3),
+    color: const Color(0xFFF7F7F7),
     padding: const EdgeInsets.fromLTRB(20, 120, 20, 0),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,7 +111,7 @@ void main() {
 
     // 切到浅色：底色与导航栏配方整体翻转
     scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-    expect(scaffold.backgroundColor, const Color(0xFFE4E4E6));
+    expect(scaffold.backgroundColor, const Color(0xFFFAFAFA));
     expect(
       tester.widget<MiGlassNavBar>(find.byType(MiGlassNavBar)).themeMode,
       MiThemeMode.light,

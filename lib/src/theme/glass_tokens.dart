@@ -7,11 +7,10 @@ import 'theme_mode.dart';
 /// 实测透射模型（深色）：遮罩 `scrim` 在干净列上满足 out = 0.37·in + 12.6；
 /// 高亮胶囊是"透镜"（在遮罩上开洞 + 暗化 + 白茶色），不是纯色块。
 ///
-/// 浅色实测（881×1920 亮色截图，2.24px/dp）：遮罩满足
-/// out = 0.18·in + 187.4（= rgba(228,228,228,0.82)，透射更低），
-/// 透镜同样"开洞 + 轻微暗化 + 暖白茶色"但仅比遮罩暗 2~5 级；
-/// 外缘是近实白 1px 高光（深色下仅 10% 白）；栏体带下投影
-/// （下缘 2px 处 ≈9% 黑，25px 内衰减完，上缘仅 ≈4%）。
+/// 浅色为"白玻璃"形态（亮色参考图 1220×308 实测）：栏体近实白
+/// #FDFDFD 平坦（压过背后内容）、选中胶囊是比栏体暗 ~16 级的灰实色
+/// 胶囊 #ECECEC~#EDEDED、外缘纯白 1~2px 高光、投影极浅（下缘仅比
+/// 底色暗 2~5 级、~15px 内衰减完）。明暗两套配方见 [MiGlassPalette]。
 class MiGlassTokens {
   MiGlassTokens._();
 
@@ -74,18 +73,22 @@ class MiGlassPalette {
     rim: MiGlassTokens.rim,
   );
 
-  /// 浅色配方（亮色截图实测）。
+  /// 浅色配方（亮色参考图实测 1220×308 采样）。
   ///
-  /// 透镜：开洞后 lensShade 黑 5% + 暖白茶 lensTint 78% ⇒
-  /// out = 0.209·in + (181,179,176)，实测点 in=100→202 / 158→214 / 243→230。
+  /// 白玻璃形态（区别于旧暖透镜配方）：
+  ///  * 栏体近实白 #FDFDFD 平坦（压过背后文字，scrim 0.98 近不透明）；
+  ///  * 选中胶囊是灰实色胶囊 #ECECEC~#EDEDED（比栏体暗 ~16 级），
+  ///    不是"开洞透镜"——lensTint 近不透明灰直接给出平坦灰胶囊；
+  ///  * 外缘纯白 #FFFFFF 1~2px 高光；
+  ///  * 投影极浅：下缘仅比底色暗 2~5 级、~15px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
-    scrim: Color.fromRGBO(228, 228, 228, 0.82),
+    scrim: Color.fromRGBO(253, 253, 253, 0.98),
     lensShade: Color.fromRGBO(0, 0, 0, 0.05),
-    lensTint: Color.fromRGBO(232, 230, 226, 0.78),
-    lensStroke: Color.fromRGBO(255, 255, 255, 0.55),
-    rim: Color.fromRGBO(255, 255, 255, 0.90),
+    lensTint: Color.fromRGBO(236, 236, 236, 0.98),
+    lensStroke: Color.fromRGBO(255, 255, 255, 0.30),
+    rim: Color.fromRGBO(255, 255, 255, 1.0),
     elevationShadow: [
-      BoxShadow(color: Color(0x2E000000), blurRadius: 18, offset: Offset(0, 6)),
+      BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
     ],
   );
 
