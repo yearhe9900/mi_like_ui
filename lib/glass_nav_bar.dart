@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -67,6 +68,20 @@ class GlassNavMetrics {
   static const double jellyStretch = 0.35;
   static const double jellySquash = 0.075;
 
+  // --- press feedback (measured on the grab frames of the video) -----------
+  // While a finger is down, the pill squashes ("缩圈": width -2~3%, height
+  // -7.5%) and the pressed tab's icon+label dims to ~55% opacity. The dim is
+  // instant (< 1 frame), the squeeze eases over ~90 ms.
+  static const double pressSquashW = 0.03;
+  static const double pressSquashH = 0.075;
+  static const double pressDimOpacity = 0.55;
+  static const int pressMs = 90;
+
+  // --- drag (measured) ----------------------------------------------------
+  // The pill follows the finger 1:1 and shows the same wider+shorter jelly as
+  // in flight, +5.6% width at fast drag, 0 when holding still.
+  static const double dragStretchMax = 0.056;
+
   // --- spring settle tail (see class doc) ---------------------------------
   static const double flightBaseMs = 260;
   static const double flightPerCellMs = 20;
@@ -118,17 +133,30 @@ class GlassNavBar extends StatefulWidget {
   State<GlassNavBar> createState() => _GlassNavBarState();
 }
 
-class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStateMixin {
+class _GlassNavBarState extends State<GlassNavBar> with TickerProviderStateMixin {
   late final AnimationController _ctrl;
+  late final AnimationController _pressCtrl;
   double _from = 0;
   double _to = 0;
   double _travelCells = 0;
+
+  /// continuous cell position while a finger is dragging the pill (null = idle)
+  double? _dragPos;
+  double _dragStretch = 0;
+  Timer? _stretchDecay;
+
+  /// tab whose icon+label is dimmed (pressed / hovered during drag)
+  int? _pressedIndex;
 
   @override
   void initState() {
     super.initState();
     _from = _to = widget.selectedIndex.toDouble();
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: GlassNavMetrics.pressMs),
+    );
   }
 
   @override
@@ -172,10 +200,75 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
         (_to - _from).sign * GlassNavMetrics.settleOvershoot * GlassNavMetrics.settleWave(s);
   }
 
-  double get _currentPos => _posAt(_ctrl.value);
+  double get _currentPos => _dragPos ?? _posAt(_ctrl.value);
+
+  void _pressDown(int index) {
+    setState(() => _pressedIndex = index);
+    _pressCtrl.forward();
+  }
+
+  void _pressUp() {
+    setState(() => _pressedIndex = null);
+    _pressCtrl.reverse();
+  }
+
+  void _dragStart(double cellW) {
+    _dragPos = _currentPos;
+  }
+
+  void _dragUpdate(double dx, double cellW) {
+    final n = widget.items.length;
+    final pos = (_dragPos! + dx / cellW).clamp(0.0, n - 1.0);
+    _dragPos = pos;
+    // velocity jelly: grows with per-event dx, decays when the finger pauses
+    _dragStretch = (_dragStretch + (dx.abs() / cellW) * 0.6)
+        .clamp(0.0, GlassNavMetrics.dragStretchMax);
+    _stretchDecay?.cancel();
+    _stretchDecay = Timer(const Duration(milliseconds: 80), () {
+      if (mounted) setState(() => _dragStretch = 0);
+    });
+    setState(() => _pressedIndex = pos.round().clamp(0, n - 1));
+  }
+
+  void _dragEnd() {
+    _stretchDecay?.cancel();
+    final n = widget.items.length;
+    final from = _dragPos!;
+    final target = from.round().clamp(0, n - 1);
+    _dragPos = null;
+    _dragStretch = 0;
+    // snap to the nearest tab with the usual flight+settle animation
+    _from = from;
+    _to = target.toDouble();
+    _travelCells = (_to - _from).abs();
+    _ctrl.duration = Duration(
+      milliseconds: (GlassNavMetrics.flightBaseMs +
+                  GlassNavMetrics.flightPerCellMs * _travelCells)
+              .round() +
+          GlassNavMetrics.settleMs.round(),
+    );
+    _ctrl.forward(from: 0);
+    if (target != widget.selectedIndex) widget.onTap(target);
+  }
+
+  void _dragCancel() {
+    // fires even for plain taps (the drag recognizer loses the arena without
+    // ever starting) — nothing to cancel unless a drag was actually live
+    if (_dragPos == null) return;
+    _stretchDecay?.cancel();
+    final from = _dragPos!;
+    _dragPos = null;
+    _dragStretch = 0;
+    _from = from;
+    _to = widget.selectedIndex.toDouble();
+    _travelCells = (_to - _from).abs();
+    _ctrl.forward(from: 0);
+  }
 
   @override
   void dispose() {
+    _stretchDecay?.cancel();
+    _pressCtrl.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -193,101 +286,133 @@ class _GlassNavBarState extends State<GlassNavBar> with SingleTickerProviderStat
             final pillW = GlassNavMetrics.pillWidth(cellW);
             const pillH = GlassNavMetrics.barHeight - 2 * GlassNavMetrics.pillInsetV;
 
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(GlassNavMetrics.barHeight / 2),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // The blur above tints this transparent layer with the
-                    // backdrop; everything below paints on top of it.
-                    const SizedBox.expand(),
-                    AnimatedBuilder(
-                      animation: _ctrl,
-                      builder: (context, _) {
-                        final t = _ctrl.value;
-                        final ff = _flightFraction;
+            int indexAt(double dx) =>
+                ((dx - GlassNavMetrics.barInnerPad) / cellW).floor().clamp(0, widget.items.length - 1);
 
-                        // width/height scale deltas; >0 stretch = wider/shorter
-                        double stretch;
-                        double squash;
-                        if (t <= ff) {
-                          // flight: bell-shaped jelly squash & stretch
-                          final p = t / ff;
-                          final bell = math.sin(math.pi * math.pow(p, 0.8).toDouble());
-                          final distF =
-                              (_travelCells / GlassNavMetrics.maxJellyCells).clamp(0.0, 1.0);
-                          stretch = GlassNavMetrics.jellyStretch * distF * bell;
-                          squash = GlassNavMetrics.jellySquash * distF * bell;
-                        } else {
-                          // settle tail: position overshoot + width undershoot
-                          final f = GlassNavMetrics.settleWave((t - ff) / (1 - ff));
-                          stretch = -GlassNavMetrics.settleSquash * f;
-                          squash =
-                              -GlassNavMetrics.settleSquash * GlassNavMetrics.settleSquashRatio * f;
-                        }
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => _dragStart(cellW),
+              onHorizontalDragUpdate: (d) => _dragUpdate(d.primaryDelta ?? 0, cellW),
+              onHorizontalDragEnd: (_) => _dragEnd(),
+              onHorizontalDragCancel: _dragCancel,
+              child: Listener(
+                onPointerDown: (e) => _pressDown(indexAt(e.localPosition.dx)),
+                onPointerUp: (_) => _pressUp(),
+                onPointerCancel: (_) => _pressUp(),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(GlassNavMetrics.barHeight / 2),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // The blur above tints this transparent layer with the
+                        // backdrop; everything below paints on top of it.
+                        const SizedBox.expand(),
+                        AnimatedBuilder(
+                          animation: Listenable.merge([_ctrl, _pressCtrl]),
+                          builder: (context, _) {
+                            final t = _ctrl.value;
+                            final ff = _flightFraction;
+                            // width/height scale deltas; >0 stretch = wider/shorter
+                            double stretch;
+                            double squash;
+                            if (_dragPos != null) {
+                              // drag: velocity jelly (wider+shorter, as flight)
+                              stretch = _dragStretch;
+                              squash = GlassNavMetrics.settleSquashRatio * _dragStretch;
+                            } else if (t <= ff) {
+                              // flight: bell-shaped jelly squash & stretch
+                              final p = t / ff;
+                              final bell = math.sin(math.pi * math.pow(p, 0.8).toDouble());
+                              final distF =
+                                  (_travelCells / GlassNavMetrics.maxJellyCells).clamp(0.0, 1.0);
+                              stretch = GlassNavMetrics.jellyStretch * distF * bell;
+                              squash = GlassNavMetrics.jellySquash * distF * bell;
+                            } else {
+                              // settle tail: position overshoot + width undershoot
+                              final f = GlassNavMetrics.settleWave((t - ff) / (1 - ff));
+                              stretch = -GlassNavMetrics.settleSquash * f;
+                              squash = -GlassNavMetrics.settleSquash *
+                                  GlassNavMetrics.settleSquashRatio *
+                                  f;
+                            }
 
-                        var w = pillW * (1 + stretch);
-                        final h = pillH * (1 - squash);
-                        var cx = GlassNavMetrics.barInnerPad + cellW * (_posAt(t) + 0.5);
+                            // press squeeze ("缩圈"): the pill shrinks while a
+                            // finger is down, on top of any flight/drag shape.
+                            final press = _pressCtrl.value;
+                            stretch -= GlassNavMetrics.pressSquashW * press;
+                            squash += GlassNavMetrics.pressSquashH * press;
 
-                        // Clamp the pill rect to the equidistant gap bounds.
-                        // At the end tabs the overshoot/flight-stretch hits
-                        // this wall and renders as width compression
-                        // (measured -5.8% vs -2.2% mid-bar).
-                        var left = cx - w / 2;
-                        var right = cx + w / 2;
-                        const minLeft = GlassNavMetrics.pillInsetV;
-                        final maxRight = barW - GlassNavMetrics.pillInsetV;
-                        if (left < minLeft) left = minLeft;
-                        if (right > maxRight) right = maxRight;
-                        w = right - left;
-                        cx = (left + right) / 2;
+                            var w = pillW * (1 + stretch);
+                            final h = pillH * (1 - squash);
+                            var cx = GlassNavMetrics.barInnerPad +
+                                cellW * ((_dragPos ?? _posAt(t)) + 0.5);
 
-                        return CustomPaint(
-                          painter: _GlassBarPainter(
-                            pillCenterX: cx,
-                            pillWidth: w,
-                            pillHeight: h,
-                          ),
-                        );
-                      },
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: GlassNavMetrics.barInnerPad),
-                      child: Row(
-                        children: [
-                          for (var i = 0; i < widget.items.length; i++)
-                            Expanded(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
-                                onTap: () => widget.onTap(i),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CustomPaint(
-                                      painter: widget.items[i].painter,
-                                      size: const Size(24, GlassNavMetrics.iconHeight),
-                                    ),
-                                    const SizedBox(height: GlassNavMetrics.iconLabelGap),
-                                    Text(
-                                      widget.items[i].label,
-                                      style: const TextStyle(
-                                        color: GlassNavMetrics.iconColor,
-                                        fontSize: GlassNavMetrics.labelFontSize,
-                                        height: 1.0,
-                                        fontWeight: FontWeight.w500,
+                            // Clamp the pill rect to the equidistant gap bounds.
+                            // At the end tabs the overshoot/flight-stretch hits
+                            // this wall and renders as width compression
+                            // (measured -5.8% vs -2.2% mid-bar).
+                            var left = cx - w / 2;
+                            var right = cx + w / 2;
+                            const minLeft = GlassNavMetrics.pillInsetV;
+                            final maxRight = barW - GlassNavMetrics.pillInsetV;
+                            if (left < minLeft) left = minLeft;
+                            if (right > maxRight) right = maxRight;
+                            w = right - left;
+                            cx = (left + right) / 2;
+
+                            return CustomPaint(
+                              painter: _GlassBarPainter(
+                                pillCenterX: cx,
+                                pillWidth: w,
+                                pillHeight: h,
+                              ),
+                            );
+                          },
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: GlassNavMetrics.barInnerPad),
+                          child: Row(
+                            children: [
+                              for (var i = 0; i < widget.items.length; i++)
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => widget.onTap(i),
+                                    child: Opacity(
+                                      // pressed tab content dims (measured ~55%)
+                                      opacity: _pressedIndex == i
+                                          ? GlassNavMetrics.pressDimOpacity
+                                          : 1.0,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          CustomPaint(
+                                            painter: widget.items[i].painter,
+                                            size: const Size(24, GlassNavMetrics.iconHeight),
+                                          ),
+                                          const SizedBox(height: GlassNavMetrics.iconLabelGap),
+                                          Text(
+                                            widget.items[i].label,
+                                            style: const TextStyle(
+                                              color: GlassNavMetrics.iconColor,
+                                              fontSize: GlassNavMetrics.labelFontSize,
+                                              height: 1.0,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                        ],
-                      ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             );

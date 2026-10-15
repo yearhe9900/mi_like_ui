@@ -79,4 +79,49 @@ void main() {
     await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/midflight.png'));
     await tester.pumpAndSettle();
   });
+
+  testWidgets('press squeeze + dim on tab1', (tester) async {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.physicalSize = const Size(393 * 3, 160 * 3);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(frame(0, (_) {}));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text('首页')));
+    // press easing runs 90 ms; by 200 ms the squeeze is fully applied:
+    // pill -3% width / -7.5% height, pressed tab content dimmed to 55%
+    await tester.pump(const Duration(milliseconds: 200));
+    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/press_tab1.png'));
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('drag follows finger and snaps to nearest tab', (tester) async {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.physicalSize = const Size(393 * 3, 160 * 3);
+    addTearDown(tester.view.reset);
+
+    var selected = 0;
+    await tester.pumpWidget(StatefulBuilder(
+      builder: (context, setState) => frame(selected, (i) => setState(() => selected = i)),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final c0 = tester.getCenter(find.text('首页'));
+    final c2 = tester.getCenter(find.text('每日精选'));
+    // travel two cells + the ~18 px drag slop the recognizer eats before it
+    // accepts; split into small steps so the dropped pending delta can never
+    // change which tab we snap to (delivered pos stays in 1.5..2.5 cells)
+    final dx = c2.dx - c0.dx + 18.0;
+    final gesture = await tester.startGesture(c0);
+    for (var i = 0; i < 12; i++) {
+      await gesture.moveBy(Offset(dx / 12, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await expectLater(find.byType(GlassNavBar), matchesGoldenFile('goldens/drag_mid.png'));
+    await gesture.up();
+    expect(selected, 2, reason: 'release over 每日精选 must select tab 2');
+    await tester.pumpAndSettle(); // snap flight + settle tail
+  });
 }

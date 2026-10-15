@@ -31,8 +31,11 @@ class _MockPageShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Bottom padding stays small on purpose: the content must scroll BEHIND
+    // the glass bar (y ≈ 776..832 of the 856-tall frame) or the frosted
+    // transmission has nothing to show.
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 56, 20, 140),
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
       children: children,
     );
   }
@@ -124,6 +127,20 @@ const List<Widget> _homeItems = [
     SizedBox(width: 12),
     Expanded(child: _GradientCard(colors: [Color(0xFFFF8177), Color(0xFFB24592)], caption: '插画合集')),
   ]),
+  SizedBox(height: 12),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFF4568DC), Color(0xFFB06AB3)], caption: '设计师专区')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFF11998E), Color(0xFF38EF7D)], caption: '清新绿意')),
+  ]),
+  _SectionTitle('更多'),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFFFF512F), Color(0xFF242424)], caption: '暖橙日落')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '海盐汽水')),
+  ]),
+  SizedBox(height: 12),
+  _GradientCard(height: 90, colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '查看全部主题  ›'),
 ];
 
 const List<Widget> _categoryItems = [
@@ -152,6 +169,20 @@ const List<Widget> _categoryItems = [
     SizedBox(width: 12),
     Expanded(child: _GradientCard(height: 90, colors: [Color(0xFF0072FF), Color(0xFF00C6FF)], caption: '蓝色渐变')),
   ]),
+  SizedBox(height: 12),
+  Row(children: [
+    Expanded(child: _GradientCard(height: 90, colors: [Color(0xFFED213A), Color(0xFF93291E)], caption: '红色烈焰')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(height: 90, colors: [Color(0xFF004677), Color(0xFFA5CC82)], caption: '森林秘境')),
+  ]),
+  _SectionTitle('风格合集'),
+  Row(children: [
+    Expanded(child: _GradientCard(height: 90, colors: [Color(0xFF606C88), Color(0xFF3F4C6B)], caption: '极简主义')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(height: 90, colors: [Color(0xFFF2994A), Color(0xFFF2C94C)], caption: '活力橙黄')),
+  ]),
+  SizedBox(height: 12),
+  _GradientCard(height: 90, colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '查看全部分类  ›'),
 ];
 
 const List<Widget> _dailyItems = [
@@ -178,6 +209,20 @@ const List<Widget> _dailyItems = [
     SizedBox(width: 12),
     Expanded(child: _GradientCard(colors: [Color(0xFFB24592), Color(0xFFF15F79)], caption: '暖色时光')),
   ]),
+  SizedBox(height: 12),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFF0F3443), Color(0xFF34E89E)], caption: '春日限定')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFF7F00FF), Color(0xFFE100FF)], caption: '紫罗兰')),
+  ]),
+  _SectionTitle('专题企划'),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFFDA22FF), Color(0xFF9733EE)], caption: '像素艺术')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFF134E5E), Color(0xFF71B280)], caption: '城市夜景')),
+  ]),
+  SizedBox(height: 12),
+  _GradientCard(height: 90, colors: [Color(0xFFCB356B), Color(0xFFBD3F32)], caption: '查看全部精选  ›'),
 ];
 
 const List<Widget> _mineItems = [
@@ -202,4 +247,17 @@ const List<Widget> _mineItems = [
   _GradientCard(height: 56, colors: [Color(0xFF1F1F22), Color(0xFF2A2A2E)], caption: '主题圈子 / 混搭搭配'),
   SizedBox(height: 12),
   _GradientCard(height: 56, colors: [Color(0xFF1F1F22), Color(0xFF2A2A2E)], caption: '设置 / 关于'),
+  SizedBox(height: 12),
+  _SectionTitle('我的作品'),
+  Row(children: [
+    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '混搭')),
+    SizedBox(width: 10),
+    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFFED213A), Color(0xFF93291E)], caption: '收藏')),
+    SizedBox(width: 10),
+    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFFF2994A), Color(0xFFF2C94C)], caption: '下载')),
+    SizedBox(width: 10),
+    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF606C88), Color(0xFF3F4C6B)], caption: '投稿')),
+  ]),
+  SizedBox(height: 12),
+  _GradientCard(height: 90, colors: [Color(0xFF0F3443), Color(0xFF34E89E)], caption: '会员中心 / 客服与反馈  ›'),
 ];
