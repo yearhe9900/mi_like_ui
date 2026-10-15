@@ -14,6 +14,7 @@ library mi_like_ui;
 
 // ── 样式/主题层 ────────────────────────────────────────────────────────────
 export 'src/theme/colors.dart';
+export 'src/theme/theme_mode.dart';
 export 'src/theme/typography.dart';
 export 'src/theme/dimens.dart';
 export 'src/theme/glass_tokens.dart';

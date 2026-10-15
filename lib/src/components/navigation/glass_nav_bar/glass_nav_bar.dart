@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
+import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import 'glass_nav_bar_metrics.dart';
@@ -45,7 +46,7 @@ class MiGlassNavFab {
   final VoidCallback? onTap;
 }
 
-/// 小米主题商店风格的深色玻璃悬浮底部导航栏（可复用组件）。
+/// 小米主题商店风格的玻璃悬浮底部导航栏（可复用组件，深/浅色双模式）。
 ///
 /// 交互（均为视频逐帧实测）：
 ///  * 点按切换：胶囊果冻飞行 + 弹簧沉降（参数见 [MiGlassNavMetrics]）；
@@ -54,7 +55,8 @@ class MiGlassNavFab {
 ///  * 预留空位圆钮（可选 [fab]）：配置的 tab 选中时弹出、切走收起，
 ///    栏体同步平移让位（仅支持 ≤3 个 tab）。
 ///
-/// 玻璃材质配方见 `theme/glass_tokens.dart`。
+/// 玻璃材质配方见 `theme/glass_tokens.dart`（按 [themeMode] 取明/暗配方）；
+/// 图标颜色由调用方传入 painter，需与 [MiColors.foregroundFor] 保持一致。
 class MiGlassNavBar extends StatefulWidget {
   const MiGlassNavBar({
     super.key,
@@ -62,6 +64,7 @@ class MiGlassNavBar extends StatefulWidget {
     required this.selectedIndex,
     required this.onTap,
     this.fab,
+    this.themeMode = MiThemeMode.dark,
   })  : assert(items.length > 0),
         assert(
           fab == null || items.length <= 3,
@@ -75,6 +78,9 @@ class MiGlassNavBar extends StatefulWidget {
 
   /// 预留空位圆形按钮；null = 不启用。
   final MiGlassNavFab? fab;
+
+  /// 明暗模式：决定玻璃材质配方与标签墨色（默认深色）。
+  final MiThemeMode themeMode;
 
   @override
   State<MiGlassNavBar> createState() => _MiGlassNavBarState();
@@ -258,6 +264,8 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final palette = MiGlassPalette.of(widget.themeMode);
+    final labelStyle = MiTypography.navLabelFor(widget.themeMode);
     return SizedBox(
       height: MiGlassNavMetrics.barHeight,
       child: LayoutBuilder(
@@ -282,19 +290,10 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                 count: n,
               );
 
-          final bar = GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: (_) => _dragStart(cellW),
-            onHorizontalDragUpdate: (d) => _dragUpdate(d.primaryDelta ?? 0, cellW),
-            onHorizontalDragEnd: (_) => _dragEnd(),
-            onHorizontalDragCancel: _dragCancel,
-            child: Listener(
-              onPointerDown: (e) => _pressDown(indexAt(e.localPosition.dx)),
-              onPointerUp: (_) => _pressUp(),
-              onPointerCancel: (_) => _pressUp(),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
-                child: BackdropFilter(
+          // 浅色下玻璃体带投影；深色配方投影为空，不包任何额外层（黄金图零变化）。
+          Widget glass = ClipRRect(
+            borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
+            child: BackdropFilter(
                   filter: ImageFilter.blur(
                     sigmaX: MiGlassTokens.blurSigma,
                     sigmaY: MiGlassTokens.blurSigma,
@@ -363,6 +362,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                               pillCenterX: cx,
                               pillWidth: w,
                               pillHeight: h,
+                              palette: palette,
                             ),
                           );
                         },
@@ -389,7 +389,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                                           size: const Size(24, MiGlassNavMetrics.iconHeight),
                                         ),
                                         const SizedBox(height: MiGlassNavMetrics.iconLabelGap),
-                                        Text(widget.items[i].label, style: MiTypography.navLabel),
+                                        Text(widget.items[i].label, style: labelStyle),
                                       ],
                                     ),
                                   ),
@@ -401,7 +401,29 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                     ],
                   ),
                 ),
+              );
+
+          if (palette.elevationShadow.isNotEmpty) {
+            glass = DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
+                boxShadow: palette.elevationShadow,
               ),
+              child: glass,
+            );
+          }
+
+          final bar = GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (_) => _dragStart(cellW),
+            onHorizontalDragUpdate: (d) => _dragUpdate(d.primaryDelta ?? 0, cellW),
+            onHorizontalDragEnd: (_) => _dragEnd(),
+            onHorizontalDragCancel: _dragCancel,
+            child: Listener(
+              onPointerDown: (e) => _pressDown(indexAt(e.localPosition.dx)),
+              onPointerUp: (_) => _pressUp(),
+              onPointerCancel: (_) => _pressUp(),
+              child: glass,
             ),
           );
 

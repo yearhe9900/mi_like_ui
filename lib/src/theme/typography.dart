@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import 'colors.dart';
+import 'theme_mode.dart';
 
 /// 全局文字样式 token。
 ///
@@ -15,4 +16,8 @@ class MiTypography {
     height: 1.0,
     fontWeight: FontWeight.w500,
   );
+
+  /// 按明暗模式取导航栏标签样式（字面量模式下与 [navLabel] 一致）。
+  static TextStyle navLabelFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? navLabel : navLabel.copyWith(color: MiColors.foregroundLight);
 }

@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:mi_like_ui/mi_like_ui.dart';
 
-/// Simple dark mock pages (theme-store style) so the glass bar has
+/// Simple mock pages (theme-store style) so the glass bar has
 /// colorful content behind it — the pages themselves are not the
-/// deliverable, the nav bar is.
+/// deliverable, the nav bar is. Dark & light variants follow the
+/// reference shots; page colors read [Theme.of] brightness, which the
+/// demo app switches with the theme mode.
 class MockPage extends StatelessWidget {
-  const MockPage(this.index, {super.key});
+  const MockPage(
+    this.index, {
+    super.key,
+    this.themeMode = MiThemeMode.dark,
+    this.onThemeModeChanged,
+  });
 
   final int index;
+  final MiThemeMode themeMode;
+  final ValueChanged<MiThemeMode>? onThemeModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +26,50 @@ class MockPage extends StatelessWidget {
       case 1:
         return const _MockPageShell(title: '分类', children: _categoryItems);
       default:
-        return const _MockPageShell(title: '我的', children: _mineItems);
+        return _MockPageShell(title: '我的', children: [
+          // 模式切换入口（demo 功能，放在「我的」里）
+          if (onThemeModeChanged != null)
+            _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
+          if (onThemeModeChanged != null) const SizedBox(height: 12),
+          ..._mineItems,
+        ]);
     }
+  }
+}
+
+/// 深/浅色模式切换卡片（demo 功能项，非框架组件）。
+class _ThemeModeSwitch extends StatelessWidget {
+  const _ThemeModeSwitch({required this.mode, required this.onChanged});
+
+  final MiThemeMode mode;
+  final ValueChanged<MiThemeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = mode == MiThemeMode.light;
+    final fg = Theme.of(context).colorScheme.onSurface;
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: light ? const Color(0xFFE7E7E7) : const Color(0xFF1F1F22),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          Text('外观模式',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
+          const Spacer(),
+          Text(light ? '浅色' : '深色',
+              style: TextStyle(fontSize: 12, color: fg.withValues(alpha: 0.6))),
+          const SizedBox(width: 8),
+          Switch(
+            value: !light,
+            onChanged: (v) => onChanged(v ? MiThemeMode.dark : MiThemeMode.light),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -46,11 +98,12 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = Theme.of(context).colorScheme.onSurface;
     return Padding(
       padding: const EdgeInsets.only(top: 22, bottom: 12),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white),
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: fg),
       ),
     );
   }
@@ -86,15 +139,22 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final light = Theme.of(context).brightness == Brightness.light;
     return Container(
       height: 38,
       decoration: BoxDecoration(
-        color: const Color(0xFF202024),
+        color: light ? const Color(0xFFE7E7E7) : const Color(0xFF202024),
         borderRadius: BorderRadius.circular(19),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.centerLeft,
-      child: const Text('搜索主题 / 壁纸 / 图标', style: TextStyle(fontSize: 12, color: Color(0xFF8A8A8F))),
+      child: Text(
+        '搜索主题 / 壁纸 / 图标',
+        style: TextStyle(
+          fontSize: 12,
+          color: light ? const Color(0xFF9A9A9E) : const Color(0xFF8A8A8F),
+        ),
+      ),
     );
   }
 }

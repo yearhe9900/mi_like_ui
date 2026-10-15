@@ -21,7 +21,7 @@ lib/
 ├── main.dart                # demo 引导
 ├── demo/                    # 示例层（演示 app）
 └── src/
-    ├── theme/               # 样式/主题层（颜色·文字·间距·材质 token）
+    ├── theme/               # 样式/主题层（颜色·文字·间距·材质 token，明暗双配方）
     ├── components/          # 组件层（类别/组件名/ 两级目录）
     │   └── navigation/glass_nav_bar/
     ├── icons/               # 图标 painter 集
