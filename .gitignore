@@ -10,3 +10,4 @@ build/
 
 # 逐帧抽帧原始产物（量大，仅归档分析拼图）
 .workbuddy/video_frames/drag_bug/
+.workbuddy/video_frames/light_glass/
