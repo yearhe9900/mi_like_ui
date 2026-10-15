@@ -98,7 +98,13 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
 
   /// continuous cell position while a finger is dragging the pill (null = idle)
   double? _dragPos;
-  double _dragStretch = 0;
+
+  /// Velocity jelly while dragging. Displayed value eases to 0 with
+  /// [_stretchCtrl] after a finger pause or at release — never a hard reset,
+  /// which read as a single-frame width jump on slow drags. `_stretchFrom` is
+  /// the tween's start value; live = from·(1-eased(t)).
+  double _stretchFrom = 0;
+  late final AnimationController _stretchCtrl;
   Timer? _stretchDecay;
 
   /// tab whose icon+label is dimmed (pressed / hovered during drag)
@@ -128,6 +134,10 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
     _shiftCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: MiGlassNavMetrics.fabShiftMs),
+    );
+    _stretchCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: MiGlassNavMetrics.dragStretchDecayMs),
     );
     // 首帧即处于稳态（配置的 tab 已选中则直接显示，无入场动画）
     final show = _showFab;
@@ -200,6 +210,20 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
     _pressCtrl.reverse();
   }
 
+  /// Current jelly amount (0..dragStretchMax); decays to 0 after the finger
+  /// pauses ([MiGlassNavMetrics.dragStretchHoldMs]) or releases.
+  double get _liveStretch =>
+      _stretchFrom * (1 - Curves.easeOutCubic.transform(_stretchCtrl.value));
+
+  /// Ease the jelly out over [MiGlassNavMetrics.dragStretchDecayMs], starting
+  /// from whatever is displayed right now so the width never pops.
+  void _bleedStretch() {
+    final live = _liveStretch;
+    if (live <= 0) return;
+    _stretchFrom = live;
+    _stretchCtrl.forward(from: 0);
+  }
+
   void _dragStart(double cellW) {
     _dragPos = _currentPos;
   }
@@ -209,12 +233,16 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
     final pos = (_dragPos! + dx / cellW).clamp(0.0, n - 1.0);
     _dragPos = pos;
     // velocity jelly: grows with per-event dx, decays when the finger pauses
-    _dragStretch = (_dragStretch + (dx.abs() / cellW) * 0.6)
-        .clamp(0.0, MiGlassNavMetrics.dragStretchMax);
+    final live = _liveStretch;
+    _stretchCtrl.stop();
+    _stretchCtrl.value = 0;
+    _stretchFrom =
+        (live + (dx.abs() / cellW) * 0.6).clamp(0.0, MiGlassNavMetrics.dragStretchMax);
     _stretchDecay?.cancel();
-    _stretchDecay = Timer(const Duration(milliseconds: 80), () {
-      if (mounted) setState(() => _dragStretch = 0);
-    });
+    _stretchDecay = Timer(
+      const Duration(milliseconds: MiGlassNavMetrics.dragStretchHoldMs),
+      _bleedStretch,
+    );
     setState(() => _pressedIndex = nearestCell(pos, n));
   }
 
@@ -224,7 +252,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
     final from = _dragPos!;
     final target = nearestCell(from, n);
     _dragPos = null;
-    _dragStretch = 0;
+    _bleedStretch(); // residual jelly eases out over the snap flight
     // snap to the nearest tab with the usual flight+settle animation
     _from = from;
     _to = target.toDouble();
@@ -246,7 +274,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
     _stretchDecay?.cancel();
     final from = _dragPos!;
     _dragPos = null;
-    _dragStretch = 0;
+    _bleedStretch();
     _from = from;
     _to = widget.selectedIndex.toDouble();
     _travelCells = (_to - _from).abs();
@@ -256,6 +284,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
   @override
   void dispose() {
     _stretchDecay?.cancel();
+    _stretchCtrl.dispose();
     _pressCtrl.dispose();
     _shiftCtrl.dispose();
     _fabCtrl.dispose();
@@ -306,17 +335,18 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                       // backdrop; everything below paints on top of it.
                       const SizedBox.expand(),
                       AnimatedBuilder(
-                        animation: Listenable.merge([_ctrl, _pressCtrl]),
+                        animation: Listenable.merge([_ctrl, _pressCtrl, _stretchCtrl]),
                         builder: (context, _) {
                           final t = _ctrl.value;
                           final ff = _flightFraction;
                           // width/height scale deltas; >0 stretch = wider/shorter
+                          final jelly = _liveStretch;
                           double stretch;
                           double squash;
                           if (_dragPos != null) {
                             // drag: velocity jelly (wider+shorter, as flight)
-                            stretch = _dragStretch;
-                            squash = MiGlassNavMetrics.settleSquashRatio * _dragStretch;
+                            stretch = jelly;
+                            squash = MiGlassNavMetrics.settleSquashRatio * jelly;
                           } else if (t <= ff) {
                             // flight: bell-shaped jelly squash & stretch
                             final p = t / ff;
@@ -325,6 +355,9 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                                 (_travelCells / MiGlassNavMetrics.maxJellyCells).clamp(0.0, 1.0);
                             stretch = MiGlassNavMetrics.jellyStretch * distF * bell;
                             squash = MiGlassNavMetrics.jellySquash * distF * bell;
+                            // residual finger jelly bleeding off after release
+                            stretch += jelly;
+                            squash += MiGlassNavMetrics.settleSquashRatio * jelly;
                           } else {
                             // settle tail: position overshoot + width undershoot
                             final f = MiGlassNavMetrics.settleWave((t - ff) / (1 - ff));
@@ -332,6 +365,8 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                             squash = -MiGlassNavMetrics.settleSquash *
                                 MiGlassNavMetrics.settleSquashRatio *
                                 f;
+                            stretch += jelly;
+                            squash += MiGlassNavMetrics.settleSquashRatio * jelly;
                           }
 
                           // press squeeze ("缩圈"): the pill shrinks while a

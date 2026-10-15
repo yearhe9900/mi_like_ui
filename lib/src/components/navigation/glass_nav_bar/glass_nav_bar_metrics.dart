@@ -85,8 +85,13 @@ class MiGlassNavMetrics {
 
   // --- drag (measured) ----------------------------------------------------
   // The pill follows the finger 1:1 and shows the same wider+shorter jelly as
-  // in flight, +5.6% width at fast drag, 0 when holding still.
+  // in flight, +5.6% width at fast drag, 0 when holding still. The release of
+  // that jelly must never be a single-frame snap (read as a visible width
+  // jump on slow drags): hold [dragStretchHoldMs] after the last movement
+  // event, then ease out over [dragStretchDecayMs].
   static const double dragStretchMax = 0.056;
+  static const int dragStretchHoldMs = 80;
+  static const int dragStretchDecayMs = 180;
 
   // --- spring settle tail (see class doc) ---------------------------------
   static const double flightBaseMs = 260;
