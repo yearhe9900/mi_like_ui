@@ -98,23 +98,28 @@ void main() {
   });
 
   testWidgets('fab unsupported with more than 3 tabs', (tester) async {
+    // items 数量校验在 initState 断言（const 构造断言不支持 .length 求值）
     final items = [
       for (var i = 0; i < 4; i++)
         MiGlassNavItem(label: 'tab$i', painter: RollerIconPainter(const Color(0xFFF5F5F5))),
     ];
-    expect(
-      () => MiGlassNavBar(
-        items: items,
-        selectedIndex: 0,
-        onTap: (_) {},
-        fab: demoFab(),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MiGlassNavBar(
+            items: items,
+            selectedIndex: 0,
+            onTap: (_) {},
+            fab: demoFab(),
+          ),
+        ),
       ),
-      throwsAssertionError,
     );
+    expect(tester.takeException(), isA<AssertionError>());
   });
 
   testWidgets('fab.tabIndex must be a valid tab', (tester) async {
-    // 范围校验在 initState 断言（const 构造器断言不支持参数字段访问）
+    // 范围校验在 initState 断言（const 构造断言不支持参数字段访问）
     await tester.pumpWidget(frame3(0, (_) {}, fab: demoFab(tabIndex: 3)));
     expect(tester.takeException(), isA<AssertionError>());
   });

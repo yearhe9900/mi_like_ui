@@ -66,12 +66,9 @@ class MiGlassNavBar extends StatefulWidget {
     required this.onTap,
     this.fab,
     this.themeMode = MiThemeMode.dark,
-  })  : assert(items.length > 0),
-        assert(
-          fab == null || items.length <= 3,
-          '预留空位圆形按钮仅支持 3 个及以下 tab',
-        );
-  // fab.tabIndex 的取值范围校验见 initState（const 断言不支持参数字段访问）
+  });
+  // items 数量、fab 适配与 fab.tabIndex 范围校验均在 initState：const 构造
+  // 断言不支持 .length / 参数字段求值（放构造器会封死 const 构造）
 
   final List<MiGlassNavItem> items;
   final int selectedIndex;
@@ -117,6 +114,11 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
   void initState() {
     super.initState();
     final fab = widget.fab;
+    assert(widget.items.isNotEmpty, 'items 不能为空');
+    assert(
+      fab == null || widget.items.length <= 3,
+      '预留空位圆形按钮仅支持 3 个及以下 tab',
+    );
     assert(
       fab == null || (fab.tabIndex >= 0 && fab.tabIndex < widget.items.length),
       'fab.tabIndex 必须落在 items 范围内',
