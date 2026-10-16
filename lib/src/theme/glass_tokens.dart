@@ -7,10 +7,11 @@ import 'theme_mode.dart';
 /// 实测透射模型（深色）：遮罩 `scrim` 在干净列上满足 out = 0.37·in + 12.6；
 /// 高亮胶囊是"透镜"（在遮罩上开洞 + 暗化 + 白茶色），不是纯色块。
 ///
-/// 浅色为"白玻璃"形态（亮色参考图 1220×308 实测）：栏体近实白
-/// #FDFDFD 平坦（压过背后内容）、选中胶囊是比栏体暗 ~16 级的灰实色
-/// 胶囊 #ECECEC~#EDEDED、外缘纯白 1~2px 高光、投影极浅（下缘仅比
-/// 底色暗 2~5 级、~15px 内衰减完）。明暗两套配方见 [MiGlassPalette]。
+/// 浅色同样是半透明真实玻璃（亮色录屏 1220×2656 实测）：遮罩带垂直
+/// 渐变（上更透、下更实），背后内容色彩透上来；选中胶囊是独立的暖灰
+/// 玻璃体。旧"白玻璃"参考图（近白底 #F7F7F7）实为同一配方在白底上的
+/// 表现（代入透射模型体部≈#FBFBFB、胶囊≈#EAEAEA，与旧采样吻合）。
+/// 明暗两套配方见 [MiGlassPalette]。
 class MiGlassTokens {
   MiGlassTokens._();
 
@@ -43,17 +44,26 @@ class MiGlassPalette {
     required this.lensTint,
     required this.lensStroke,
     required this.rim,
+    this.scrimGradient,
+    this.lensTintGradient,
     this.elevationShadow = const [],
   });
 
-  /// 玻璃体遮罩（在透镜处开洞）。
+  /// 玻璃体遮罩（在透镜处开洞）；[scrimGradient] 非空时改按渐变绘制。
   final Color scrim;
+
+  /// 玻璃体遮罩垂直渐变（可空 = 纯色 [scrim]；亮色实测上透下实）。
+  final Gradient? scrimGradient;
 
   /// 透镜暗化层（贴在开洞处的最底层）。
   final Color lensShade;
 
-  /// 透镜色调（叠在暗化层上，构成透镜玻璃体）。
+  /// 透镜色调（叠在暗化层上，构成透镜玻璃体）；
+  /// [lensTintGradient] 非空时改按渐变绘制。
   final Color lensTint;
+
+  /// 透镜色调垂直渐变（可空 = 纯色 [lensTint]）。
+  final Gradient? lensTintGradient;
 
   /// 透镜内描边。
   final Color lensStroke;
@@ -73,22 +83,43 @@ class MiGlassPalette {
     rim: MiGlassTokens.rim,
   );
 
-  /// 浅色配方（亮色参考图实测 1220×308 采样）。
+  /// 浅色配方（亮色录屏真实玻璃实测 1220×2656，采样密度≈3.07）。
   ///
-  /// 白玻璃形态（区别于旧暖透镜配方）：
-  ///  * 栏体近实白 #FDFDFD 平坦（压过背后文字，scrim 0.98 近不透明）；
-  ///  * 选中胶囊是灰实色胶囊 #ECECEC~#EDEDED（比栏体暗 ~16 级），
-  ///    不是"开洞透镜"——lensTint 近不透明灰直接给出平坦灰胶囊；
-  ///  * 外缘纯白 #FFFFFF 1~2px 高光；
-  ///  * 投影极浅：下缘仅比底色暗 2~5 级、~15px 内衰减完。
+  /// 真实玻璃形态（区别于旧"白玻璃"近实白读数——那是白底上的表现）：
+  ///  * 栏体半透明磨砂玻璃：垂直渐变遮罩 alpha 0.61→0.76→0.80（上→中→下），
+  ///    色 #FBFBFB，透射模型 out = a·C + (1-a)·blurB（背后内容色彩透上来）；
+  ///  * 选中胶囊是独立暖灰玻璃体（色 ≈#E6E6E7，alpha 0.66→0.78→0.82），
+  ///    比栏体暗 ~13 级；lensShade 置全透明（无额外暗化）；
+  ///  * 外缘纯白 #FFFFFF 高光（实测峰值 255）；
+  ///  * 投影：下缘近处约 -8 级、~50px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
-    scrim: Color.fromRGBO(253, 253, 253, 0.98),
-    lensShade: Color.fromRGBO(0, 0, 0, 0.05),
-    lensTint: Color.fromRGBO(236, 236, 236, 0.98),
+    scrim: Color.fromRGBO(251, 251, 251, 0.76),
+    scrimGradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: [0, 0.5, 1],
+      colors: [
+        Color.fromRGBO(251, 251, 251, 0.61),
+        Color.fromRGBO(251, 251, 251, 0.76),
+        Color.fromRGBO(251, 251, 251, 0.80),
+      ],
+    ),
+    lensShade: Color.fromRGBO(0, 0, 0, 0),
+    lensTint: Color.fromRGBO(230, 230, 231, 0.78),
+    lensTintGradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: [0, 0.5, 1],
+      colors: [
+        Color.fromRGBO(230, 230, 231, 0.66),
+        Color.fromRGBO(230, 230, 231, 0.78),
+        Color.fromRGBO(230, 230, 231, 0.82),
+      ],
+    ),
     lensStroke: Color.fromRGBO(255, 255, 255, 0.30),
     rim: Color.fromRGBO(255, 255, 255, 1.0),
     elevationShadow: [
-      BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
+      BoxShadow(color: Color(0x0F000000), blurRadius: 32, offset: Offset(0, 4)),
     ],
   );
 

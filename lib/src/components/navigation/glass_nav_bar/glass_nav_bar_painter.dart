@@ -22,6 +22,12 @@ class GlassBarPainter extends CustomPainter {
   final double pillHeight;
   final MiGlassPalette palette;
 
+  /// 玻璃层画笔：渐变配方（亮色）按栏体整体高度着色，纯色配方（深色）直取。
+  static Paint _layerPaint(Gradient? gradient, Color color, Size size) =>
+      gradient == null
+          ? (Paint()..color = color)
+          : (Paint()..shader = gradient.createShader(Offset.zero & size));
+
   @override
   void paint(Canvas canvas, Size size) {
     final barR = RRect.fromRectAndRadius(
@@ -45,12 +51,15 @@ class GlassBarPainter extends CustomPainter {
       Path()..addRRect(barR),
       Path()..addRRect(pillR),
     );
-    canvas.drawPath(scrim, Paint()..color = palette.scrim);
+    canvas.drawPath(scrim, _layerPaint(palette.scrimGradient, palette.scrim, size));
 
     // 2) pill lens: shade + tint over the hole (dark: ~60% content
-    //    transmission, light: lower transmission warm-white glass body)
+    //    transmission, light: gradient warm-gray glass body with no shade)
     canvas.drawRRect(pillR, Paint()..color = palette.lensShade);
-    canvas.drawRRect(pillR, Paint()..color = palette.lensTint);
+    canvas.drawRRect(
+      pillR,
+      _layerPaint(palette.lensTintGradient, palette.lensTint, size),
+    );
     canvas.drawRRect(
       pillR,
       Paint()
