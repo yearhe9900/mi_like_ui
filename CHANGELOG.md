@@ -22,12 +22,15 @@
 - **MiTopBar** 大标题折叠顶部导航栏（明暗双模式，1:1 逐帧实测自 HyperOS 设置页录屏 1220×2656@24.32fps）
   - **折叠动效为逐帧实测**：大标题**属于滚动内容** —— 质心位移与列表滚动位移逐帧相等（−6/−18/−28/−31/−37/−45px 对同一组滚动量），即随内容 1:1 上移、**不是**钉在栏上缩放；在此之上另有一条独立淡出曲线（`largeTitleFade`：0→19.97dp 归零，中段下降最快），紧凑标题在大标题归零**之后**才淡入（`compactTitleFade`：19.97→29.31dp），两段不重叠
   - **遮挡是纯色遮罩，不是磨砂玻璃**：实心段下沿 63.6dp + 1.5 次幂渐隐裙边至 128.9dp（拟合 `alpha(y)=1−clamp((y−63.6)/65.3,0,1)^1.5`，渐变为 8 等分采样）；实测依据 = 均匀色块在遮罩下出现亮度斜坡（排除 backdrop 模糊）+ 卡片硬边 3px 内完成跳变（无拖尾）。故刻意不复用 `MiGlassPalette`
-  - 几何实测：返回圆钮 ⌀44.1 / 左 11.9 / 垂心 76.0，箭头墨盒 11.68×21.31 / 笔宽 2.05 / 墨心左偏 1.3dp（光学偏置）；大标题 31.83dp（墨左 29.6 / 墨心 y 132.9）、紧凑标题 18.0dp（屏内心 / 墨心 y 75.9）；内容首行顶缘 183dp
+  - 几何实测：返回圆钮 ⌀44.1 / 左 11.9 / 垂心 76.0，箭头墨盒 11.68×21.31 / 笔宽 2.05 / 墨心左偏 1.3dp（光学偏置）；大标题 31.83dp（墨左 29.6 / 墨心 y 132.9）、紧凑标题 18.0dp（屏内心 / 墨心 y 75.9）
+  - **内容首行顶缘按实测分两档**：卡片类 `contentTopInset` 183dp（录屏「显示与亮度」卡片填充顶缘 568px 硬边）、搜索栏类 `searchBarTopInset` 168.5dp（参考截图「设置」首页搜索栏顶缘 523px）—— 两值都来自整机实测，故不强行归一
+  - **标题垂心由显式 strut 钉死基线**（`titleStrutAscent` 0.825 / `titleStrutDescent` 0.175 + `height: 1.0`）：墨心在基线上方 `k ≈ 0.355em` 在各中文字体间很稳，而基线在行盒内的位置 = 字体 `ascent/(ascent+descent)`，字体间可差 0.14em（参考录屏 MiSans ≈0.807、Android CJK 回退字体 ≈0.95）。不钉基线时实机大标题墨心比模型低 6.9dp（2026-10-16 实机实测）；钉死后行盒中心由「墨心 − (strut 基线比 − k)·em + em/2」反推（`largeTitleBoxCenterY` 133.9、`compactTitleBoxCenterY` 76.4）
   - 按压反馈实测：⌀44.1 圆盘、白 @9.4%、420ms easeOut 淡入 / 300ms 淡出（逐帧 0→25%→83%→100%）
+  - **返回圆钮默认不显示**（`showBack` 默认 `false` —— 顶层页无返回，如参考截图「设置」首页）：`showBack: true` 才绘制圆钮，其可点性由 `onBack` 决定（`null` = 只显示、不可点、无按压反馈）；`showBack` 同时决定紧凑标题的对称内缩（让开圆钮 / 用满整屏宽）
   - **受控组件**：`scrollOffset` 由宿主注入（与 `MiPillTabBar.selectedIndex` 同风格），组件不自带滚动；除返回圆钮外整体不参与手势。负位移 / NaN 构建期断言，+∞ 饱和为折叠完成态
   - `MiTopBarPalette` 配方入主题层（`theme/top_bar_tokens.dart`，**浅色配方为推导**：无亮色顶栏录屏，遮罩基色取实测页底 #F3F3F3）、`MiTopBarMetrics` 几何 + 折叠查找表入组件目录、返回箭头 `BackChevronIconPainter` 入 `icons/nav_icons.dart`
-- demo 首页 / 「我的」页接入 `MiTopBar`（页面壳改 `StatefulWidget`，用 `ValueNotifier` 承接 `ScrollController` 位移，只重建顶栏一层）
-- **顶栏 README 预览图** `doc/preview/top_bar_light|dark.png`（每格上=静止、下=滚动 105dp，内容穿进遮罩显形）
+- demo 首页 / 「我的」页接入 `MiTopBar`（页面壳改 `StatefulWidget`，用 `ValueNotifier` 承接 `ScrollController` 位移，只重建顶栏一层）：首页 = **顶层页形态**（默认 `showBack: false`，首行搜索栏 → `searchBarTopInset` 168.5）、「我的」= **次级页形态**（`showBack: true`，首行卡片 → 183）
+- **顶栏 README 预览图** `doc/preview/top_bar_light|dark.png`（每格分别是：顶层页默认形态无圆钮 / 次级页带圆钮 / 滚动 105dp 内容穿进遮罩显形）
 - **MiThemeCard** 竖向预览卡片（主题商店「精选主题」卡，明暗双模式）
   - 1:1 实测自首页截图（881×1920 等比副本，s = 393/881 = 0.4461）：预览图 259:472 定比（3 列 115.5×210.6dp）、圆角外缘拟合 R=44px ≈ 19.6dp（取 `MiDimens.radiusLg`）、标题 13.85dp Medium（pitch 31px）、较图左缘内缩 19.5px ≈ 8.8dp（三卡一致、与区块标题 x46 同列 —— 左对齐 + 内缩而非居中）、图→标题行盒 8dp、行距 15dp、列距/页边距 11.9dp
   - `MiTypography.cardTitle` 文字 token + `MiThemeCardMetrics` 几何参数表（含 ink→行盒换算脚注）；`themeMode` 为空跟随环境 Theme 亮度（与 `MiSearchBar` 同约定），`onTap` 为空不参与手势（参考图为静态截图、无按压实测）

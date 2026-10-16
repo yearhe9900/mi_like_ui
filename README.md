@@ -35,9 +35,16 @@ HyperOS 设置页顶栏实测复刻（1220×2656 录屏逐帧反解）：大标�
 （质心位移与列表滚动逐帧相等），并另沿一条独立曲线淡出；紧凑标题在其归零后
 （滚动 ≈20→27.4dp）才居中淡入，两段不重叠。顶部遮挡是**纯色遮罩**（实心段
 63.6dp + 1.5 次幂渐隐裙边至 128.9dp），实测**无 backdrop 模糊** —— 故刻意不复用
-磨砂语言。下图每格上=静止（内容首行顶缘 183dp）、下=滚动 105dp（内容穿进遮罩显形）：
+磨砂语言。标题垂心由显式 strut 钉死基线，落点不随字体族漂移。
 
-<img src="doc/preview/top_bar_light.png" width="240" alt="浅色顶栏两态对照" /> <img src="doc/preview/top_bar_dark.png" width="240" alt="深色顶栏两态对照" />
+返回圆钮**默认不显示**（顶层页无返回）：`showBack: true` 才绘制，其可点性再由
+`onBack` 决定（`null` = 只显示不可点）。内容首行顶缘按实测分两档：卡片类
+`contentTopInset` 183dp、搜索栏类 `searchBarTopInset` 168.5dp。
+
+下图每格分别是：① 顶层页默认形态（无圆钮、首行搜索栏 168.5dp）、② 次级页
+（带圆钮、首行卡片 183dp）、③ 滚动 105dp（内容穿进遮罩显形）：
+
+<img src="doc/preview/top_bar_light.png" width="240" alt="浅色顶栏三态对照" /> <img src="doc/preview/top_bar_dark.png" width="240" alt="深色顶栏三态对照" />
 
 ### 组件：主题卡片（MiThemeCard）
 

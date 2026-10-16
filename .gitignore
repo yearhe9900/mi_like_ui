@@ -12,6 +12,7 @@ build/
 .workbuddy/video_frames/drag_bug/
 .workbuddy/video_frames/light_glass/
 .workbuddy/video_frames/top_bar/
+.workbuddy/video_frames/top_bar2/
 
 # 黄金图测试失败诊断产物（master/test/diff 图，随时再生）
 test/failures/
