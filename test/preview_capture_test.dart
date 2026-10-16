@@ -314,6 +314,55 @@ void main() {
       matchesGoldenFile('../doc/preview/top_bar_dark.png'),
     );
   });
+
+  testWidgets('README preview: theme card closeups (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 264 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 主题卡特写（页底 = 首页实测底色；3 列实测壁纸主色渐变占位）
+    Widget frame(MiThemeMode mode) => MaterialApp(
+          theme: mode == MiThemeMode.light
+              ? ThemeData.light(useMaterial3: true)
+              : ThemeData.dark(useMaterial3: true),
+          home: Scaffold(
+            backgroundColor: mode == MiThemeMode.light
+                ? const Color(0xFFF3F3F3)
+                : const Color(0xFF000000),
+            body: Padding(
+              padding: const EdgeInsets.fromLTRB(11.9, 20, 11.9, 0),
+              child: Row(
+                key: const ValueKey('cardStrip'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < 3; i++) ...[
+                    if (i > 0)
+                      const SizedBox(width: MiThemeCardMetrics.columnGap),
+                    Expanded(child: _previewCard(i)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+
+    final strip = find.byKey(const ValueKey('cardStrip'));
+
+    await tester.pumpWidget(frame(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      strip,
+      matchesGoldenFile('../doc/preview/card_light.png'),
+    );
+
+    await tester.pumpWidget(frame(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      strip,
+      matchesGoldenFile('../doc/preview/card_dark.png'),
+    );
+  });
 }
 
 /// 顶栏预览的背景内容：设置页行卡（参考页配色），按 [shift] 上移模拟滚动。
@@ -359,3 +408,24 @@ Widget _topBarBackdrop(MiThemeMode mode, double shift) {
     ),
   );
 }
+
+/// 主题卡特写的 3 张占位卡（实测壁纸主色渐变 + 示例标题）。
+const List<String> _cardPreviewTitles = ['雾林晨光', '落日熔金', '云端暮色'];
+const List<List<Color>> _cardPreviewWallpapers = [
+  [Color(0xFF6A7A61), Color(0xFF587132)],
+  [Color(0xFF918D80), Color(0xFF746656)],
+  [Color(0xFFB6B9C4), Color(0xFF8E7377)],
+];
+
+Widget _previewCard(int i) => MiThemeCard(
+      title: _cardPreviewTitles[i],
+      preview: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: _cardPreviewWallpapers[i],
+          ),
+        ),
+      ),
+    );

@@ -5,8 +5,9 @@
 以像素级实测还原小米系视觉与动效，沉淀为分层清晰、可持续扩充的组件库。
 当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）、`MiPillTabBar`
 （胶囊分类标签行）、`MiButton`（胶囊按钮）、`MiSearchBar`（搜索栏，
-透明磨砂参数与导航栏同源）与 `MiTopBar`（大标题折叠顶部导航栏，
-纯色遮罩 + 逐帧实测折叠曲线）；弹窗、表单等组件按同一组织方式逐步扩充。
+透明磨砂参数与导航栏同源）、`MiTopBar`（大标题折叠顶部导航栏，
+纯色遮罩 + 逐帧实测折叠曲线）与 `MiThemeCard`（竖向预览卡片，
+主题商店精选卡）；弹窗、表单等组件按同一组织方式逐步扩充。
 
 ## 效果
 
@@ -38,6 +39,14 @@ HyperOS 设置页顶栏实测复刻（1220×2656 录屏逐帧反解）：大标�
 
 <img src="doc/preview/top_bar_light.png" width="240" alt="浅色顶栏两态对照" /> <img src="doc/preview/top_bar_dark.png" width="240" alt="深色顶栏两态对照" />
 
+### 组件：主题卡片（MiThemeCard）
+
+主题商店「精选主题」卡实测复刻（881×1920 首页截图）：预览图按 259:472 定比 +
+`radiusLg` 20dp 圆角（外缘拟合 R=44px），标题 13.85dp Medium、较图左缘内缩
+8.8dp 与区块标题同列起排；下图为 3 列实测壁纸主色渐变占位：
+
+<img src="doc/preview/card_light.png" width="360" alt="浅色主题卡片" /> <img src="doc/preview/card_dark.png" width="360" alt="深色主题卡片" />
+
 「分类」tab 为组件展示页（「Logo 展示」组前 6 位为 `nav_icons.dart` 全量 logo，「按钮展示」组陈列 `MiButton` 三态，其余为示例占位；标签行吸顶，滚动内容从半透明磨砂胶囊后方经过）：
 
 <img src="doc/preview/showcase_light.png" width="200" alt="浅色组件展示页" /> <img src="doc/preview/showcase_dark.png" width="200" alt="深色组件展示页" />
@@ -68,8 +77,10 @@ lib/
     │   │   └── top_bar/
     │   ├── buttons/
     │   │   └── button/
-    │   └── inputs/
-    │       └── search_bar/
+    │   ├── inputs/
+    │   │   └── search_bar/
+    │   └── cards/
+    │       └── theme_card/
     ├── icons/               # nav_icons.dart：导航栏 logo 合集（含加号 logo）
     └── utils/               # 工具函数层（纯函数）
 
@@ -113,6 +124,7 @@ flutter test     # 回归测试
 - [x] `MiButton` — 按钮
 - [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
 - [x] `MiTopBar` — 大标题折叠顶部导航栏（纯色遮罩，非磨砂）
+- [x] `MiThemeCard` — 竖向预览卡片（主题商店精选卡）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合

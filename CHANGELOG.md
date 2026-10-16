@@ -28,11 +28,17 @@
   - `MiTopBarPalette` 配方入主题层（`theme/top_bar_tokens.dart`，**浅色配方为推导**：无亮色顶栏录屏，遮罩基色取实测页底 #F3F3F3）、`MiTopBarMetrics` 几何 + 折叠查找表入组件目录、返回箭头 `BackChevronIconPainter` 入 `icons/nav_icons.dart`
 - demo 首页 / 「我的」页接入 `MiTopBar`（页面壳改 `StatefulWidget`，用 `ValueNotifier` 承接 `ScrollController` 位移，只重建顶栏一层）
 - **顶栏 README 预览图** `doc/preview/top_bar_light|dark.png`（每格上=静止、下=滚动 105dp，内容穿进遮罩显形）
+- **MiThemeCard** 竖向预览卡片（主题商店「精选主题」卡，明暗双模式）
+  - 1:1 实测自首页截图（881×1920 等比副本，s = 393/881 = 0.4461）：预览图 259:472 定比（3 列 115.5×210.6dp）、圆角外缘拟合 R=44px ≈ 19.6dp（取 `MiDimens.radiusLg`）、标题 13.85dp Medium（pitch 31px）、较图左缘内缩 19.5px ≈ 8.8dp（三卡一致、与区块标题 x46 同列 —— 左对齐 + 内缩而非居中）、图→标题行盒 8dp、行距 15dp、列距/页边距 11.9dp
+  - `MiTypography.cardTitle` 文字 token + `MiThemeCardMetrics` 几何参数表（含 ink→行盒换算脚注）；`themeMode` 为空跟随环境 Theme 亮度（与 `MiSearchBar` 同约定），`onTap` 为空不参与手势（参考图为静态截图、无按压实测）
+- demo 首页「精选主题」两行渐变占位替换为 3×2 `MiThemeCard` 网格（实测壁纸主色上→下渐变占位 + 示例标题）
+- **主题卡片 README 预览图** `doc/preview/card_light|dark.png`（3 列特写，由预览捕获测试生成）
 
 ### Changed
 
 - 组件展示页胶囊标签改名：`示例一` → **Logo 展示**、`示例二` → **按钮展示**（按分组内容命名，`示例三/四` 保持占位）
 - 吸顶行为测试改为在滚动网格内定位分组标题（避免与同名胶囊标签冲突）
+- demo 首页壳层左右页边距 20 → 11.9dp（实测搜索框 28 / 横幅 25 / 卡片 25~26 同量级），区块标题行经 `_SectionTitle.inset` 收进 ≈20.5dp 文本列（原 20 近似保留）；「我的」页与分类页不受影响
 
 ---
 

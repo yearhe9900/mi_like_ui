@@ -22,7 +22,20 @@ class MockPage extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (index) {
       case 0:
-        return const _MockPageShell(title: '首页', children: _homeItems);
+        // 首页页边距实测 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片
+        // 25~26 同量级，与分类页一致）；区块标题行经 _SectionTitle.inset
+        // 收进 ≈20.5dp 文本列（实测 x46），卡标题再由卡片自身 8.8dp
+        // 内缩与之同列起排。
+        return const _MockPageShell(
+          title: '首页',
+          padding: EdgeInsets.fromLTRB(
+            11.9,
+            MiTopBarMetrics.contentTopInset,
+            11.9,
+            20,
+          ),
+          children: _homeItems,
+        );
       case 1:
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
         return _ShowcasePage(themeMode: themeMode);
@@ -81,10 +94,23 @@ class _ThemeModeSwitch extends StatelessWidget {
 /// 页底取参考页实测色（亮 #F3F3F3 / 暗 #000000）——同时让顶栏遮罩
 /// 实心段与页底同色（遮罩基色即页底色）。
 class _MockPageShell extends StatefulWidget {
-  const _MockPageShell({required this.title, required this.children});
+  const _MockPageShell({
+    required this.title,
+    required this.children,
+    this.padding = const EdgeInsets.fromLTRB(
+      20,
+      MiTopBarMetrics.contentTopInset,
+      20,
+      20,
+    ),
+  });
 
   final String title;
   final List<Widget> children;
+
+  /// 滚动内容内边距：左右默认 20（「我的」页沿用原值）；首页按实测
+  /// 页边距 11.9dp 覆盖（见 `MockPage.build` 的 `case 0`）。
+  final EdgeInsetsGeometry padding;
 
   @override
   State<_MockPageShell> createState() => _MockPageShellState();
@@ -123,12 +149,7 @@ class _MockPageShellState extends State<_MockPageShell> {
           Positioned.fill(
             child: ListView(
               controller: _controller,
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                MiTopBarMetrics.contentTopInset,
-                20,
-                20,
-              ),
+              padding: widget.padding,
               children: widget.children,
             ),
           ),
@@ -163,15 +184,19 @@ class _MockPageShellState extends State<_MockPageShell> {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+  const _SectionTitle(this.text, {this.inset = 0});
 
   final String text;
+
+  /// 左内缩：首页区块标题行实测 x46 ≈ 20.5dp（页边距 11.9 + 8.6），
+  /// 较卡片图区多一档缩进、与卡标题缩进同源对齐；其余页面走默认 0。
+  final double inset;
 
   @override
   Widget build(BuildContext context) {
     final fg = Theme.of(context).colorScheme.onSurface;
     return Padding(
-      padding: const EdgeInsets.only(top: 22, bottom: 12),
+      padding: EdgeInsets.only(top: 22, bottom: 12, left: inset),
       child: Text(
         text,
         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: fg),
@@ -216,19 +241,9 @@ const List<Widget> _homeItems = [
     colors: [Color(0xFF2E3A8C), Color(0xFF7B4DBE), Color(0xFFD06A8A)],
     caption: '湾区升明月  肆好时光',
   ),
-  _SectionTitle('精选主题'),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF1B2735), Color(0xFF2E4A62)], caption: 'Retro Future')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF232526), Color(0xFF414345)], caption: 'LUMIÈRE')),
-  ]),
-  SizedBox(height: 12),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF134E5E), Color(0xFF71B280)], caption: '清爽夏日')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '星空物语')),
-  ]),
-  _SectionTitle('热门 IP'),
+  _SectionTitle('精选主题', inset: 8.6),
+  const _ThemeCardGrid(),
+  _SectionTitle('热门 IP', inset: 8.6),
   Row(children: [
     Expanded(child: _GradientCard(colors: [Color(0xFF00B4DB), Color(0xFF0083B0)], caption: '热门IP')),
     SizedBox(width: 12),
@@ -240,7 +255,7 @@ const List<Widget> _homeItems = [
     SizedBox(width: 12),
     Expanded(child: _GradientCard(colors: [Color(0xFF11998E), Color(0xFF38EF7D)], caption: '清新绿意')),
   ]),
-  _SectionTitle('更多'),
+  _SectionTitle('更多', inset: 8.6),
   Row(children: [
     Expanded(child: _GradientCard(colors: [Color(0xFFFF512F), Color(0xFF242424)], caption: '暖橙日落')),
     SizedBox(width: 12),
@@ -249,6 +264,69 @@ const List<Widget> _homeItems = [
   SizedBox(height: 12),
   _GradientCard(height: 90, colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '查看全部主题  ›'),
 ];
+
+/// 「精选主题」卡片网格（示例层）：3 列 x 2 行竖向预览卡 [MiThemeCard]。
+///
+/// 几何对齐参考截图实测：列距取 [MiThemeCardMetrics.columnGap]（11.9，
+/// 页边距同值）、行距取 [MiThemeCardMetrics.rowGap]（15）；标题经卡片
+/// 自身 8.8dp 内缩与区块标题「精选主题」（11.9 + 8.6 ≈ 20.5）同列起排。
+/// 预览图为实测 6 张卡壁纸主色上→下渐变占位（截图采样均值，顺序左→右、
+/// 上→下）；标题为示例命名（参考图卡名字迹不作字面复刻）。
+class _ThemeCardGrid extends StatelessWidget {
+  const _ThemeCardGrid();
+
+  static const List<List<Color>> _wallpapers = [
+    [Color(0xFF6A7A61), Color(0xFF587132)], // 绿林
+    [Color(0xFF918D80), Color(0xFF746656)], // 落日
+    [Color(0xFFB6B9C4), Color(0xFF8E7377)], // 天空粉
+    [Color(0xFF73726E), Color(0xFFCCCCCB)], // 灰调
+    [Color(0xFFB9C0CA), Color(0xFFCCCDCD)], // 淡蓝灰
+    [Color(0xFF99B3ED), Color(0xFFD3DAE9)], // 晴空蓝
+  ];
+
+  static const List<String> _titles = [
+    '雾林晨光',
+    '落日熔金',
+    '云端暮色',
+    '灰调都市',
+    '极地微光',
+    '晴空之旅',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var row = 0; row < 2; row++) ...[
+          if (row > 0) const SizedBox(height: MiThemeCardMetrics.rowGap),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var col = 0; col < 3; col++) ...[
+                if (col > 0)
+                  const SizedBox(width: MiThemeCardMetrics.columnGap),
+                Expanded(
+                  child: MiThemeCard(
+                    title: _titles[row * 3 + col],
+                    preview: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: _wallpapers[row * 3 + col],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
 
 /// 「分类」tab = 组件展示库（示例层）。
 ///

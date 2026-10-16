@@ -81,4 +81,15 @@ class MiTypography {
   static TextStyle topBarCompactTitleFor(MiThemeMode mode) => mode == MiThemeMode.dark
       ? topBarCompactTitle
       : topBarCompactTitle.copyWith(color: MiColors.foregroundLight);
+
+  /// 卡片标题：首页「精选主题」卡实测字符 pitch 31px → 13.85dp、Medium
+  /// （笔画核心 2~3px @31px em ≈ 0.07em，与胶囊标签同档同值）。
+  ///
+  /// 标题墨色随明暗模式变化，由 `theme_card` 经 `MiColors.foregroundFor`
+  /// 取色，故此样式不预置颜色。
+  static const TextStyle cardTitle = TextStyle(
+    fontSize: 13.85,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
 }

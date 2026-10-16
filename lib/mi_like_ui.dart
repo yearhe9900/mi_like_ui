@@ -35,6 +35,8 @@ export 'src/components/buttons/button/button.dart';
 export 'src/components/buttons/button/button_metrics.dart';
 export 'src/components/inputs/search_bar/search_bar.dart';
 export 'src/components/inputs/search_bar/search_bar_metrics.dart';
+export 'src/components/cards/theme_card/theme_card.dart';
+export 'src/components/cards/theme_card/theme_card_metrics.dart';
 
 // ── 图标 ──────────────────────────────────────────────────────────────────
 export 'src/icons/nav_icons.dart';
