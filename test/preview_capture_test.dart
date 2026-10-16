@@ -246,4 +246,109 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await expectLater(stripFinder, matchesGoldenFile('../doc/preview/button_dark.png'));
   });
+
+  testWidgets('README preview: top bar closeups (expanded & collapsed)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 480 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 顶栏两态对照（每格逻辑高 234）：
+    //  上 = 静止：大标题展开，内容首行顶缘 = 实测 183（遮罩之外，与参考页
+    //       静止态同构）；
+    //  下 = 滚动 105dp：大标题已随内容上移并归零、紧凑标题居中浮现，
+    //       内容穿到遮罩里 —— 直接看到「实心段 + 1.5 次幂渐隐裙边」，
+    //       并佐证它没有磨砂（卡片在裙边内是亮度斜坡 + 硬边，不是模糊拖尾）。
+    Widget frame(MiThemeMode mode) {
+      final light = mode == MiThemeMode.light;
+      Widget panel(double shift) => Stack(
+            children: [
+              Positioned.fill(child: _topBarBackdrop(mode, shift)),
+              MiTopBar(
+                title: '显示与亮度',
+                scrollOffset: shift,
+                themeMode: mode,
+                onBack: () {},
+              ),
+            ],
+          );
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor:
+              light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+          body: Column(
+            key: const ValueKey('topBarPreview'),
+            children: [
+              Expanded(child: panel(0)),
+              const SizedBox(height: 12),
+              Expanded(child: panel(105)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final preview = find.byKey(const ValueKey('topBarPreview'));
+
+    await tester.pumpWidget(frame(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      preview,
+      matchesGoldenFile('../doc/preview/top_bar_light.png'),
+    );
+
+    await tester.pumpWidget(frame(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      preview,
+      matchesGoldenFile('../doc/preview/top_bar_dark.png'),
+    );
+  });
+}
+
+/// 顶栏预览的背景内容：设置页行卡（参考页配色），按 [shift] 上移模拟滚动。
+///
+/// 行卡只是**预览用的 mock 内容**（非框架组件）：首行顶缘取实测
+/// [MiTopBarMetrics.contentTopInset]（静止态与参考页同构）、行距取参考页
+/// 实测 53.2dp、饱和蓝 #3B6BF5 最能显形遮罩的亮度斜坡。
+Widget _topBarBackdrop(MiThemeMode mode, double shift) {
+  final light = mode == MiThemeMode.light;
+  final neutral = light ? const Color(0xFFFFFFFF) : const Color(0xFF242424);
+  Widget row(Color color) => Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+      );
+  return ClipRect(
+    child: Transform.translate(
+      offset: Offset(0, -shift),
+      child: Padding(
+        // 左右 11.9 = 参考页实测内容边距
+        padding: const EdgeInsets.fromLTRB(
+          11.9,
+          MiTopBarMetrics.contentTopInset,
+          11.9,
+          0,
+        ),
+        child: Column(
+          children: [
+            row(const Color(0xFF3B6BF5)),
+            const SizedBox(height: 9.2), // 行距 53.2 实测
+            row(const Color(0xFF3B6BF5)),
+            const SizedBox(height: 9.2),
+            row(neutral),
+            const SizedBox(height: 9.2),
+            row(neutral),
+            const SizedBox(height: 9.2),
+            row(neutral),
+          ],
+        ),
+      ),
+    ),
+  );
 }

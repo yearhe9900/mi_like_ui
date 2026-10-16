@@ -74,20 +74,79 @@ class _ThemeModeSwitch extends StatelessWidget {
   }
 }
 
-class _MockPageShell extends StatelessWidget {
+/// 页面壳：滚动内容 + 顶部导航栏 [MiTopBar]（大标题 = 页面名）。
+///
+/// [MiTopBar] 是受控组件（不自带滚动），这里用 [ValueNotifier] 承接
+/// [ScrollController] 的位移，只重建顶栏一层而非整页 setState。
+/// 页底取参考页实测色（亮 #F3F3F3 / 暗 #000000）——同时让顶栏遮罩
+/// 实心段与页底同色（遮罩基色即页底色）。
+class _MockPageShell extends StatefulWidget {
   const _MockPageShell({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
 
   @override
+  State<_MockPageShell> createState() => _MockPageShellState();
+}
+
+class _MockPageShellState extends State<_MockPageShell> {
+  final ScrollController _controller = ScrollController();
+  final ValueNotifier<double> _offset = ValueNotifier<double>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_syncOffset);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_syncOffset);
+    _controller.dispose();
+    _offset.dispose();
+    super.dispose();
+  }
+
+  void _syncOffset() => _offset.value = _controller.offset;
+
+  @override
   Widget build(BuildContext context) {
-    // Bottom padding stays small on purpose: the content must scroll BEHIND
-    // the glass bar (y ≈ 776..832 of the 856-tall frame) or the frosted
-    // transmission has nothing to show.
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
-      children: children,
+    final light = Theme.of(context).brightness == Brightness.light;
+    return ColoredBox(
+      color: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+      child: Stack(
+        children: [
+          // Bottom padding stays small on purpose: the content must scroll
+          // BEHIND the glass bar (y ≈ 776..832 of the 856-tall frame) or the
+          // frosted transmission has nothing to show.
+          Positioned.fill(
+            child: ListView(
+              controller: _controller,
+              padding: const EdgeInsets.fromLTRB(
+                20,
+                MiTopBarMetrics.contentTopInset,
+                20,
+                20,
+              ),
+              children: widget.children,
+            ),
+          ),
+          ValueListenableBuilder<double>(
+            valueListenable: _offset,
+            builder: (context, offset, _) => MiTopBar(
+              title: widget.title,
+              scrollOffset: offset,
+              onBack: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('返回圆钮被点击'),
+                  duration: Duration(milliseconds: 800),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
