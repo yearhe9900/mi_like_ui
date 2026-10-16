@@ -24,7 +24,7 @@
   - **遮挡是纯色遮罩，不是磨砂玻璃**：实心段下沿 63.6dp + 1.5 次幂渐隐裙边至 128.9dp（拟合 `alpha(y)=1−clamp((y−63.6)/65.3,0,1)^1.5`，渐变为 8 等分采样）；实测依据 = 均匀色块在遮罩下出现亮度斜坡（排除 backdrop 模糊）+ 卡片硬边 3px 内完成跳变（无拖尾）。故刻意不复用 `MiGlassPalette`
   - 几何实测：返回圆钮 ⌀44.1 / 左 11.9 / 垂心 76.0，箭头墨盒 11.68×21.31 / 笔宽 2.05 / 墨心左偏 1.3dp（光学偏置）；大标题 31.83dp（墨左 29.6 / 墨心 y 132.9）、紧凑标题 18.0dp（屏内心 / 墨心 y 75.9）
   - **内容首行顶缘按实测分两档**：卡片类 `contentTopInset` 183dp（录屏「显示与亮度」卡片填充顶缘 568px 硬边）、搜索栏类 `searchBarTopInset` 168.5dp（参考截图「设置」首页搜索栏顶缘 523px）—— 两值都来自整机实测，故不强行归一
-  - **标题垂心由显式 strut 钉死基线**（`titleStrutAscent` 0.825 / `titleStrutDescent` 0.175 + `height: 1.0`）：墨心在基线上方 `k ≈ 0.355em` 在各中文字体间很稳，而基线在行盒内的位置 = 字体 `ascent/(ascent+descent)`，字体间可差 0.14em（参考录屏 MiSans ≈0.807、Android CJK 回退字体 ≈0.95）。不钉基线时实机大标题墨心比模型低 6.9dp（2026-10-16 实机实测）；钉死后行盒中心由「墨心 − (strut 基线比 − k)·em + em/2」反推（`largeTitleBoxCenterY` 133.9、`compactTitleBoxCenterY` 76.4）
+  - **标题墨心落点靠 `Baseline` 钉死**（`baselineType: alphabetic`，目标值 = 墨心 + 0.355em，见 `MiTopBarMetrics.titleBaselineY`）：墨心在**基线上方** `k ≈ 0.355em` 在各中文字体间很稳（simhei / msyh / simsun 实测 0.350~0.360），而基线在**行盒内**的位置只能由字体度量决定（`StrutStyle` 在本 SDK 上没有 ascent/descent 参数、`TextStyle.height` 只按比例缩放 ascent/descent 改不了二者之比），字体间可差 0.14em（参考录屏 MiSans ≈0.807、Android CJK 回退字体 ≈0.95）。不钉基线时实机大标题墨心比模型低 6.9dp（2026-10-16 实机实测）；`Baseline` 在布局期求解，故组件高度取「墨心 + 一整行」的定值即可（`componentHeight`，不随字体变化）
   - 按压反馈实测：⌀44.1 圆盘、白 @9.4%、420ms easeOut 淡入 / 300ms 淡出（逐帧 0→25%→83%→100%）
   - **返回圆钮默认不显示**（`showBack` 默认 `false` —— 顶层页无返回，如参考截图「设置」首页）：`showBack: true` 才绘制圆钮，其可点性由 `onBack` 决定（`null` = 只显示、不可点、无按压反馈）；`showBack` 同时决定紧凑标题的对称内缩（让开圆钮 / 用满整屏宽）
   - **受控组件**：`scrollOffset` 由宿主注入（与 `MiPillTabBar.selectedIndex` 同风格），组件不自带滚动；除返回圆钮外整体不参与手势。负位移 / NaN 构建期断言，+∞ 饱和为折叠完成态
