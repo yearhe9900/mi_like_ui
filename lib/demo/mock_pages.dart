@@ -256,7 +256,7 @@ const List<Widget> _homeItems = [
     caption: '湾区升明月  肆好时光',
   ),
   _SectionTitle('精选主题', inset: 8.6),
-  const _ThemeCardGrid(),
+  _ThemeCardGrid(),
   _SectionTitle('热门 IP', inset: 8.6),
   Row(children: [
     Expanded(child: _GradientCard(colors: [Color(0xFF00B4DB), Color(0xFF0083B0)], caption: '热门IP')),

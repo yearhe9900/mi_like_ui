@@ -36,14 +36,14 @@
 ///    11.68 x 21.31dp，与阈值实测 11.6 x 21.3dp 吻合（±0.08dp）；
 ///  * 返回箭头墨心比圆钮中心**左偏 1.3dp**（实测，光学偏置；非测量误差：
 ///    圆钮边缘在 x≈37.5/173.5px，中心 105.5px，箭头墨心 101.4px）；
-///  * 标题的**垂心落点由显式 strut 钉死**（见 [titleStrutAscent] /
-///    [titleStrutDescent]）：墨心相对基线的比例在各中文字体间很稳
-///    （本机 simhei / msyh / simsun 实测 0.35…0.36em，含 2 字与 5 字样本），
-///    而基线在行盒内的位置 = 字体 ascent/(ascent+descent)，字体间可差到
-///    0.14em（参考录屏 MiSans ≈0.807，Android CJK 回退字体 ≈0.95）。
-///    故用 strut 让基线可预期，[largeTitleBoxCenterY] / [compactTitleBoxCenterY]
-///    即由「墨心 − (strut 基线比 − k)·em + em/2」反推出的行盒中心
-///    （墨心本身仍是实测值，见 [largeTitleInkCenterY]）。
+///  * 标题的**垂心落点由 `Baseline` 在布局期钉死**（见 [titleBaselineY]）：
+///    墨心相对**基线**的比例在各中文字体间很稳（本机 simhei / msyh /
+///    simsun 实测 0.35…0.36em，含 2 字与 5 字样本），而基线在**行盒**内的
+///    位置只能由字体度量决定（本 SDK 的 `StrutStyle` 没有 ascent/descent
+///    参数，`height` 只按比例缩放 ascent/descent、改不了二者之比），
+///    字体间可差 0.14em（参考录屏 MiSans ≈0.807，Android CJK 回退
+///    字体 ≈0.95）—— 故不预设行盒内的基线位置，直接用 `Baseline` 把基线
+///    放到目标值（墨心仍是实测值，见 [largeTitleInkCenterY]）。
 ///
 /// 第二样本交叉验证：参考截图「设置」首页（同为 1220×2656）大标题墨心
 /// 133.50dp（模型 132.9，差 0.6dp）、墨盒 186×90px、墨左 29.64dp。
@@ -90,22 +90,10 @@ class MiTopBarMetrics {
   static const int pressFadeOutMs = 300;
 
   // ── 大标题 ────────────────────────────────────────────────────────────
-  /// 标题行盒的 strut：基线在行盒顶下方 [titleStrutAscent]·em 处（**与字体无关**）。
-  ///
-  /// 取 0.825 的依据：墨心在基线上方 `k ≈ 0.355em`、墨高 ≈ 0.94em（本机三
-  /// 种中文字体实测），故 0.825 − 0.355 − 0.47 ≈ 0 → 墨顶恰好贴住行盒顶、
-  /// 墨底留 0.06em 余量；同时墨心落在行盒顶下方 0.47em。
-  /// 两者之和 = 1.0，配 `height: 1.0` 即行盒 = 1em。
-  static const double titleStrutAscent = 0.825;
-
-  /// strut 的下沉比例（= 1 − [titleStrutAscent]）。
-  static const double titleStrutDescent = 0.175;
-
-  /// 墨心相对基线的比例（本机 simhei 0.360 / msyh 0.350 / simsun 0.355 实测）。
+  /// 墨心相对**基线**的比例（本机 simhei 0.360 / msyh 0.350 / simsun 0.355
+  /// 实测，含 2 字与 5 字样本）。CJK 方块字按字面设计，该比值跨中文字体
+  /// 很稳 —— 这是标题垂直落点唯一依赖的字体假设。
   static const double titleInkAboveBaseline = 0.355;
-
-  /// 墨心在行盒顶下方的比例（= [titleStrutAscent] − [titleInkAboveBaseline]）。
-  static const double titleInkCenterFromBoxTop = 0.470;
 
   /// 大标题墨心距屏顶（实测 412.5px = 132.88dp，静止态；第二样本「设置」页
   /// 复核 133.50dp）。
@@ -115,15 +103,25 @@ class MiTopBarMetrics {
   /// 「页边距 11.9 + 16」的复合估计一致，取实测值）。
   static const double largeTitleLeadingInset = 27.6;
 
-  /// 大标题行盒中心距屏顶（= [largeTitleInkCenterY] − [titleInkCenterFromBoxTop]
-  /// ·em + em/2 = 132.9 − 14.96 + 15.92）。
-  static const double largeTitleBoxCenterY = 133.9;
-
   /// 紧凑标题墨心距屏顶（实测 235.5px，与圆钮垂心相差 0.1dp）。
   static const double compactTitleInkCenterY = 75.9;
 
-  /// 紧凑标题行盒中心距屏顶（同上式，em = 18.0）。
-  static const double compactTitleBoxCenterY = 76.4;
+  /// 由墨心反推的**基线**目标值：`墨心 + [titleInkAboveBaseline]·em`。
+  ///
+  /// 标题的垂直落点交给 `Baseline(baselineType: alphabetic)` 在**布局期**
+  /// 求解 —— 它会把子级基线放到「距该 box 顶端 [titleBaselineY] 处」，与
+  /// 字体度量无关（本 SDK 的 `StrutStyle` 无 ascent/descent 参数，行盒内的
+  /// 基线位置只能由字体决定，故不能用 strut 钉）。[fontSize] 传对应标题的
+  /// 字号（`MiTypography.topBarLargeTitle` / `topBarCompactTitle`）。
+  static double titleBaselineY(double inkCenterY, double fontSize) =>
+      inkCenterY + titleInkAboveBaseline * fontSize;
+
+  /// 组件自身高度：大标题墨心 + 一整行 `em` —— 够高不裁标题。
+  ///
+  /// 基线的实际落点由 `Baseline` 在布局期求得（不同字体下标题盒的顶/底会
+  /// 差几个 dp），故高度取这个保守定值，不随字体变化。
+  static double componentHeight(double largeTitleFontSize) =>
+      largeTitleInkCenterY + largeTitleFontSize;
 
   // ── 顶栏遮罩 ──────────────────────────────────────────────────────────
   /// 遮罩纵向高度：全不透明段下沿 [scrimSolidBottom] ≈ 63.6dp，此后按

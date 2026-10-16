@@ -100,6 +100,24 @@ EdgeInsets _compactPadding(WidgetTester tester) => tester
     .first
     .padding as EdgeInsets;
 
+/// 文字盒内**基线**距盒顶的距离（标题垂直落点由 `Baseline` 组件按它求解，
+/// 故这是唯一与字体无关的可断言量：`rect.top + 该值` = 基线距屏顶）。
+double _baselineOf(WidgetTester tester, Finder finder) => tester
+    .renderObject<RenderBox>(finder)
+    .getDistanceToBaseline(TextBaseline.alphabetic)!;
+
+/// 大标题基线的实测目标值（= 墨心 132.9 + 0.355em）。
+double get _largeBaseline => MiTopBarMetrics.titleBaselineY(
+      MiTopBarMetrics.largeTitleInkCenterY,
+      MiTypography.topBarLargeTitle.fontSize!,
+    );
+
+/// 紧凑标题基线的实测目标值（= 墨心 75.9 + 0.355em）。
+double get _compactBaseline => MiTopBarMetrics.titleBaselineY(
+      MiTopBarMetrics.compactTitleInkCenterY,
+      MiTypography.topBarCompactTitle.fontSize!,
+    );
+
 void _size(WidgetTester tester, [Size size = const Size(393, 240)]) {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = size;
@@ -156,24 +174,37 @@ void main() {
   });
 
   group('几何（实测值）', () {
+    test('基线目标值 = 墨心 + 0.355em（字体无关的落点由 Baseline 求解）', () {
+      expect(_largeBaseline, closeTo(144.20, 0.01));
+      expect(_compactBaseline, closeTo(82.29, 0.01));
+      // 组件高度 = 大标题墨心 + 一整行
+      expect(
+        MiTopBarMetrics.componentHeight(31.83),
+        closeTo(164.73, 0.01),
+      );
+    });
+
     testWidgets('静止态：大标题行盒 / 紧凑标题隐形 / 遮罩 / 圆钮位置', (tester) async {
       _size(tester);
 
       await tester.pumpWidget(harness());
 
-      // 大标题：行盒左 27.6、行心 133.9（strut 钉基线 + height: 1.0 → 盒高 = 字号）
+      // 大标题：行盒左 27.6、基线钉在 144.2（= 墨心 132.9 + 0.355em）
       final large = tester.getRect(_large);
       expect(large.left, closeTo(MiTopBarMetrics.largeTitleLeadingInset, 0.01));
-      expect(large.center.dy, closeTo(MiTopBarMetrics.largeTitleBoxCenterY, 0.01));
       expect(large.height, closeTo(MiTypography.topBarLargeTitle.fontSize!, 0.01));
+      expect(
+        large.top + _baselineOf(tester, _large),
+        closeTo(_largeBaseline, 0.01),
+      );
       expect(_opacityOf(tester, _large), 1.0);
 
-      // 紧凑标题：屏内水平居中、行心 76.4、静止态全透明
+      // 紧凑标题：屏内水平居中、基线 82.29、静止态全透明
       final compact = tester.getRect(_compact);
       expect(compact.center.dx, closeTo(393 / 2, 0.01));
       expect(
-        compact.center.dy,
-        closeTo(MiTopBarMetrics.compactTitleBoxCenterY, 0.01),
+        compact.top + _baselineOf(tester, _compact),
+        closeTo(_compactBaseline, 0.01),
       );
       expect(_opacityOf(tester, _compact), 0.0);
 
@@ -205,12 +236,13 @@ void main() {
       );
       expect(chevron.center.dy, closeTo(MiTopBarMetrics.backCenterY, 0.01));
 
-      // 组件高度只到大标题行盒下沿
+      // 组件高度 = 大标题墨心 + 一整行（够高不裁标题，与基线落点无关）
       expect(
         tester.getRect(find.byType(MiTopBar)).height,
         closeTo(
-          MiTopBarMetrics.largeTitleBoxCenterY +
-              MiTypography.topBarLargeTitle.fontSize! / 2,
+          MiTopBarMetrics.componentHeight(
+            MiTypography.topBarLargeTitle.fontSize!,
+          ),
           0.01,
         ),
       );
@@ -221,16 +253,20 @@ void main() {
 
       await tester.pumpWidget(harness());
       final restTop = tester.getRect(_large).top;
+      final restCompactBaseline = _baselineOf(tester, _compact);
+      final restCompactCenterX = tester.getRect(_compact).center.dx;
 
       await tester.pumpWidget(harness(offset: 40));
       expect(tester.getRect(_large).top, closeTo(restTop - 40, 0.01));
       expect(_opacityOf(tester, _large), 0.0);
       expect(_opacityOf(tester, _compact), 1.0);
 
-      // 紧凑标题位置不随滚动变化
+      // 紧凑标题位置不随滚动变化（基线 + 屏心都不动）
+      expect(_baselineOf(tester, _compact), closeTo(restCompactBaseline, 0.01));
+      expect(_compactBaseline, closeTo(restCompactBaseline, 0.01));
       expect(
-        tester.getRect(_compact).center.dy,
-        closeTo(MiTopBarMetrics.compactTitleBoxCenterY, 0.01),
+        tester.getRect(_compact).center.dx,
+        closeTo(restCompactCenterX, 0.01),
       );
     });
 
@@ -275,13 +311,8 @@ void main() {
       expect(_opacityOf(tester, _large), 0.0);
       expect(_opacityOf(tester, _compact), 1.0);
       expect(
-        tester.getRect(_large).top,
-        closeTo(
-          MiTopBarMetrics.largeTitleBoxCenterY -
-              MiTopBarMetrics.collapsedOffset -
-              MiTypography.topBarLargeTitle.fontSize! / 2,
-          0.01,
-        ),
+        tester.getRect(_large).top + _baselineOf(tester, _large),
+        closeTo(_largeBaseline - MiTopBarMetrics.collapsedOffset, 0.01),
       );
     });
   });
@@ -419,7 +450,7 @@ void main() {
       await tester.pumpWidget(harness(showBack: true));
       expect(
         _compactPadding(tester),
-        EdgeInsets.symmetric(
+        const EdgeInsets.symmetric(
           horizontal: MiTopBarMetrics.backInset + MiTopBarMetrics.backDiameter,
         ),
       );
@@ -439,7 +470,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark(useMaterial3: true),
-          home: const Scaffold(body: AnimatedSwitcher(child: MockPage(2))),
+          home: const Scaffold(
+            body: AnimatedSwitcher(
+              duration: Duration(milliseconds: 200),
+              child: MockPage(2),
+            ),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -457,8 +493,9 @@ void main() {
       expect(
         bar.height,
         closeTo(
-          MiTopBarMetrics.largeTitleBoxCenterY +
-              MiTypography.topBarLargeTitle.fontSize! / 2,
+          MiTopBarMetrics.componentHeight(
+            MiTypography.topBarLargeTitle.fontSize!,
+          ),
           0.01,
         ),
       );

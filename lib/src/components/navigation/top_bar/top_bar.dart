@@ -54,8 +54,10 @@ import 'top_bar_metrics.dart';
 ///
 /// **返回圆钮默认不显示**（顶层页无返回，如参考截图「设置」首页）：需要时
 /// 传 `showBack: true`，其可点性再由 [onBack] 决定（null = 只显示、不可点）。
-/// 两条标题都用 [MiTopBarMetrics.titleStrutAscent] 的 strut 把**基线钉死**，
-/// 使墨心落点不随字体族的 ascent/descent 漂移（详见 metrics 类文档）。
+///
+/// 两条标题都用 `Baseline`（alphabetic）把**基线钉到实测反推的目标值**
+/// （见 [MiTopBarMetrics.titleBaselineY]），使墨心落点不随字体族的
+/// ascent/descent 漂移（详见 metrics 类文档）。
 class MiTopBar extends StatelessWidget {
   const MiTopBar({
     super.key,
@@ -82,17 +84,6 @@ class MiTopBar extends StatelessWidget {
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
 
-  /// 标题的 strut：把基线钉在行盒顶下方 `0.825em`（字体无关），
-  /// 使墨心稳定落在 [MiTopBarMetrics.largeTitleInkCenterY] 附近。
-  static StrutStyle _titleStrut(double fontSize) => StrutStyle(
-        fontSize: fontSize,
-        height: 1.0,
-        leading: 0,
-        ascent: MiTopBarMetrics.titleStrutAscent,
-        descent: MiTopBarMetrics.titleStrutDescent,
-        forceStrutHeight: true,
-      );
-
   @override
   Widget build(BuildContext context) {
     final mode = themeMode ??
@@ -109,10 +100,21 @@ class MiTopBar extends StatelessWidget {
             : MiTopBarMetrics.collapsedOffset);
     final largeSize = MiTypography.topBarLargeTitle.fontSize!;
     final compactSize = MiTypography.topBarCompactTitle.fontSize!;
+    // 基线落点：`Baseline` 会在布局期把标题基线放到「距组件顶端 N 处」，
+    // 与字体 ascent/descent 无关 —— 这是本组件对齐录屏的关键（用 `height`
+    // 或 strut 都做不到：前者按比例缩放、后者本 SDK 没有 ascent/descent）。
+    final largeTitleBaseline = MiTopBarMetrics.titleBaselineY(
+      MiTopBarMetrics.largeTitleInkCenterY,
+      largeSize,
+    );
+    final compactTitleBaseline = MiTopBarMetrics.titleBaselineY(
+      MiTopBarMetrics.compactTitleInkCenterY,
+      compactSize,
+    );
 
     return SizedBox(
-      // 只到大标题行盒下沿：够高不裁标题，遮罩之外的部分保持透明。
-      height: MiTopBarMetrics.largeTitleBoxCenterY + largeSize / 2,
+      // 只到大标题墨心 + 一整行：够高不裁标题，遮罩之外的部分保持透明。
+      height: MiTopBarMetrics.componentHeight(largeSize),
       width: double.infinity,
       child: Stack(
         children: [
@@ -128,19 +130,22 @@ class MiTopBar extends StatelessWidget {
               ),
             ),
           ),
-          // 2) 大标题：随滚动 1:1 上移 + 按实测表淡出
+          // 2) 大标题：随滚动 1:1 上移 + 按实测表淡出（钉基线 → top 恒为 0）
           Positioned(
             left: MiTopBarMetrics.largeTitleLeadingInset,
-            top: MiTopBarMetrics.largeTitleBoxCenterY - offset - largeSize / 2,
+            top: 0,
             child: IgnorePointer(
               child: Opacity(
                 opacity: MiTopBarMetrics.largeTitleOpacity(offset),
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  strutStyle: _titleStrut(largeSize),
-                  style: MiTypography.topBarLargeTitleFor(mode),
+                child: Baseline(
+                  baseline: largeTitleBaseline - offset,
+                  baselineType: TextBaseline.alphabetic,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MiTypography.topBarLargeTitleFor(mode),
+                  ),
                 ),
               ),
             ),
@@ -149,7 +154,7 @@ class MiTopBar extends StatelessWidget {
           Positioned(
             left: 0,
             right: 0,
-            top: MiTopBarMetrics.compactTitleBoxCenterY - compactSize / 2,
+            top: 0,
             child: IgnorePointer(
               child: Opacity(
                 opacity: MiTopBarMetrics.compactTitleOpacity(offset),
@@ -163,12 +168,15 @@ class MiTopBar extends StatelessWidget {
                         : 0,
                   ),
                   child: Center(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      strutStyle: _titleStrut(compactSize),
-                      style: MiTypography.topBarCompactTitleFor(mode),
+                    child: Baseline(
+                      baseline: compactTitleBaseline,
+                      baselineType: TextBaseline.alphabetic,
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: MiTypography.topBarCompactTitleFor(mode),
+                      ),
                     ),
                   ),
                 ),
