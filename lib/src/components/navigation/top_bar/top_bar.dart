@@ -30,9 +30,17 @@ import 'top_bar_metrics.dart';
 /// Stack(children: [
 ///   ListView(controller: _c, padding: const EdgeInsets.only(
 ///     top: MiTopBarMetrics.contentTopInset), children: [...]),
-///   MiTopBar(title: '显示与亮度', scrollOffset: _offset, onBack: ...),
+///   Positioned(top: 0, left: 0, right: 0,
+///     child: MiTopBar(title: '显示与亮度', scrollOffset: _offset, onBack: ...)),
 /// ])
 /// ```
+///
+/// ⚠️ **必须用 `Positioned` 钉在顶部**（或保证外层给出的是紧约束）。若把它
+/// 留作外层 `Stack` 的**非定位子级**，该 `Stack` 就会按它收缩成 393×152.8
+/// 而不是撑满，一旦再处于 loose 约束的上级里（如 `Center`、
+/// `AnimatedSwitcher` 内部那个 `alignment: center` 的 `Stack`），整页会被
+/// 居中到屏幕正中：顶栏跑到屏幕中间、页底与滚动内容只剩 152.8dp 高。
+/// 2026-10-16 实机截图实测该偏移 = (856 − 152.8) / 2 = 351.6dp。
 ///
 /// 组件自身高度只到大标题行盒下沿；遮罩只覆盖顶部
 /// [MiTopBarMetrics.scrimHeight]，其下内容照常透出。除返回圆钮外整体

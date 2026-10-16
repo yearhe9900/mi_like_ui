@@ -132,15 +132,26 @@ class _MockPageShellState extends State<_MockPageShell> {
               children: widget.children,
             ),
           ),
-          ValueListenableBuilder<double>(
-            valueListenable: _offset,
-            builder: (context, offset, _) => MiTopBar(
-              title: widget.title,
-              scrollOffset: offset,
-              onBack: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('返回圆钮被点击'),
-                  duration: Duration(milliseconds: 800),
+          // 顶栏必须用 Positioned 钉在顶部：本 Stack 若留下**非定位子级**，
+          // 它会按该子级尺寸收缩（= 顶栏自身的 152.8dp 高）而不是撑满父级，
+          // 于是整页在 loose 约束的上级（AnimatedSwitcher 内部是
+          // `alignment: center` 的 Stack）里被垂直居中 —— 顶栏会跑到屏幕正中，
+          // 页底黑与 ListView 只剩 152.8dp 高、内容全被裁掉。
+          // 2026-10-16 实机截图实测：整体下移 351.1dp =（856 − 152.8）/ 2。
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: ValueListenableBuilder<double>(
+              valueListenable: _offset,
+              builder: (context, offset, _) => MiTopBar(
+                title: widget.title,
+                scrollOffset: offset,
+                onBack: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('返回圆钮被点击'),
+                    duration: Duration(milliseconds: 800),
+                  ),
                 ),
               ),
             ),

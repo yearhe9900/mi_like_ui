@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 // 框架 API 走公共 barrel；若导出缺失会在这里暴露。
 import 'package:mi_like_ui/mi_like_ui.dart';
+import 'package:mi_like_ui/demo/mock_pages.dart';
 
 const String kTitle = '显示与亮度';
 
@@ -338,6 +339,43 @@ void main() {
       );
       await tester.pump();
       expect(background, 1);
+    });
+  });
+
+  group('demo 接入：页面壳必须撑满（实机截图回归）', () {
+    // 2026-10-16 实机截图：顶栏被摆到屏幕正中，偏移 351.1dp =
+    // (856 − 152.8) / 2 —— 页面壳的 Stack 里顶栏是非定位子级时，Stack 会
+    // 按它收缩成 393×152.8，再被 AnimatedSwitcher（内部 center 对齐的
+    // loose Stack）居中。这里锁住「撑满 + 顶栏贴屏幕顶端」。
+    testWidgets('loose 约束（AnimatedSwitcher）下整页撑满、顶栏 top = 0', (tester) async {
+      _size(tester, const Size(393, 856));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: const Scaffold(body: AnimatedSwitcher(child: MockPage(2))),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final page = tester.getRect(find.byType(MockPage));
+      expect(page.left, 0);
+      expect(page.top, 0);
+      expect(page.width, 393);
+      expect(page.height, 856);
+
+      final bar = tester.getRect(find.byType(MiTopBar));
+      expect(bar.top, 0);
+      expect(bar.left, 0);
+      expect(bar.width, 393);
+      expect(
+        bar.height,
+        closeTo(
+          MiTopBarMetrics.largeTitleBoxCenterY +
+              MiTypography.topBarLargeTitle.fontSize! / 2,
+          0.01,
+        ),
+      );
     });
   });
 

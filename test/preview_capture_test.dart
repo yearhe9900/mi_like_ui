@@ -264,11 +264,18 @@ void main() {
       Widget panel(double shift) => Stack(
             children: [
               Positioned.fill(child: _topBarBackdrop(mode, shift)),
-              MiTopBar(
-                title: '显示与亮度',
-                scrollOffset: shift,
-                themeMode: mode,
-                onBack: () {},
+              // 与 demo 同样用 Positioned 钉顶（顶栏若作非定位子级，外层
+              // Stack 会按它收缩而不是撑满）
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: MiTopBar(
+                  title: '显示与亮度',
+                  scrollOffset: shift,
+                  themeMode: mode,
+                  onBack: () {},
+                ),
               ),
             ],
           );
