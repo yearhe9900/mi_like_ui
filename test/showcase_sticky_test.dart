@@ -31,7 +31,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(find.byType(MiPillTabBar)).dy, pillTop);
-    expect(tester.getTopLeft(find.text('Logo 展示')).dy, lessThan(pillTop));
+    // 「Logo 展示」同时是胶囊标签与分组标题，这里取滚动网格里的分组标题
+    //（标签在吸顶头部内、不上滚）。
+    final sectionTitle = find.descendant(
+      of: find.byType(ListView),
+      matching: find.text('Logo 展示'),
+    );
+    expect(tester.getTopLeft(sectionTitle).dy, lessThan(pillTop));
 
     // 吸顶后标签仍可点（头部悬浮在滚动内容之上，命中测试不受影响）
     const dark = MiPillTabPalette.dark;

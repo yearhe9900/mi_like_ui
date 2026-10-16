@@ -30,4 +30,15 @@ class MiTypography {
     height: 1.0,
     fontWeight: FontWeight.w500,
   );
+
+  /// 按钮标签：「我的关注」页实测墨高 35px、em≈40px → 13dp、Medium
+  /// （笔画核心 3px ≈ 0.075em，与胶囊标签同档）。
+  ///
+  /// 标签色随形态 + 明暗模式变化，由 `button` 从
+  /// `theme/button_tokens.dart` 取色，故此样式不预置颜色。
+  static const TextStyle buttonLabel = TextStyle(
+    fontSize: 13,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
 }

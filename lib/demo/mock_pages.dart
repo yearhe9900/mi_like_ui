@@ -207,9 +207,10 @@ const List<Widget> _homeItems = [
 /// 「分类」tab = 组件展示库（示例层）。
 ///
 /// 顶部胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），
-/// 用来切分组件分组；下方网格是各组件的展示位 —— 「示例一」前 6 位
-/// 展示 `nav_icons.dart` 的全部 logo（真实框架 logo），其余铺占位补足
-/// 可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+/// 用来切分组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位
+/// 展示 `nav_icons.dart` 的全部 logo（真实框架 logo），「按钮展示」组先
+/// 陈列 `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位
+/// 补足可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
 ///
 /// 吸顶展示：搜索框 + 标签行悬浮吸顶，网格上滚时从胶囊后方经过，
 /// 借胶囊的半透明磨砂直观展示透明/透射效果。
@@ -228,14 +229,15 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   static const double _headerHeight =
       56 + 44.1 + 16 + MiPillTabMetrics.pillHeight;
 
-  /// 分类标签（示例名，对应截图 推荐/背屏/小部件/主题 的位置）。
-  static const List<String> _tabs = ['示例一', '示例二', '示例三', '示例四'];
+  /// 分类胶囊标签（对应截图 推荐/背屏/小部件/主题 的位置）：前两个按
+  /// 分组内容命名（Logo 展示 / 按钮展示），后两个仍是占位示例。
+  static const List<String> _tabs = ['Logo 展示', '按钮展示', '示例三', '示例四'];
 
   /// 每个分类下的展示位数量（示例内容）；取足够行数使网格溢出可滚，
   /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明/磨砂透射。
   static const List<int> _counts = [32, 32, 32, 32];
 
-  /// 「示例一」的 logo 名称（与 [_logos] 顺序一致）。
+  /// 「Logo 展示」组的 logo 名称（与 [_logos] 顺序一致）。
   static const List<String> _logoNames = [
     '滚筒刷',
     '网格闪光',
@@ -245,7 +247,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     '加号',
   ];
 
-  /// 「示例一」= `nav_icons.dart` 全量 logo 展示（真实框架 logo，非占位）。
+  /// 「Logo 展示」组 = `nav_icons.dart` 全量 logo 展示（真实框架 logo，非占位）。
   List<CustomPainter> _logos(Color ink) => [
         RollerIconPainter(ink),
         GridSparkleIconPainter(ink),
@@ -257,7 +259,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
 
   int _tab = 0;
 
-  /// 展示位：「示例一」前 6 位给真实 logo 全量展示位，其余铺占位展示位
+  /// 展示位：「Logo 展示」组前 6 位给真实 logo 全量展示位，其余铺占位展示位
   /// （补足可滚长度）；其余分组全给占位展示位。
   Widget _tileAt(int i, bool logoMode, List<CustomPainter> logos) {
     if (logoMode && i < _logoNames.length) {
@@ -267,7 +269,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
         name: _logoNames[i],
       );
     }
-    // 占位下标从头计（「示例一」的占位跟在 6 个 logo 之后，命名从一重排）
+    // 占位下标从头计（「Logo 展示」组的占位跟在 6 个 logo 之后，命名从一重排）
     final k = logoMode ? i - _logoNames.length : i;
     return _ShowcaseTile(
       colors: _tileGradients[(k + _tab * 2) % _tileGradients.length],
@@ -303,7 +305,13 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
+                    // 分组头：「按钮展示」组先陈列按钮本体，占位网格另起一节；
+                    // 其余组单节（Logo 组 / 占位组）。
+                    if (_tab == 1) ...[
+                      _ButtonShowcase(themeMode: widget.themeMode),
+                      const _SectionTitle('组件展示'),
+                    ] else
+                      _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
                     for (var row = 0; row * 4 < count; row++) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 18),
@@ -357,6 +365,106 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   }
 }
 
+/// 「按钮展示」分组内容（示例层）：复刻「我的关注」页的关注按钮本体。
+///
+/// 参考图 = 亮/暗两张完整截图（1220x2656）实测：按钮 59.9×28.3dp stadium、
+/// 填充 #4980F7 明暗同色、标签 13dp Medium 白字；行节奏沿用实测行距
+/// 56.1dp。三行分别是主按钮（点按在 关注 ↔ 已关注 间切换）、次级态、
+/// 禁用态；按钮直接陈列在分组页底上（亮 #F3F3F3 / 暗 #000000），
+/// 与参考图同底对照。
+class _ButtonShowcase extends StatefulWidget {
+  const _ButtonShowcase({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  State<_ButtonShowcase> createState() => _ButtonShowcaseState();
+}
+
+class _ButtonShowcaseState extends State<_ButtonShowcase> {
+  /// 关注态（demo 交互：点按主按钮切换 关注 ↔ 已关注）。
+  bool _followed = false;
+
+  /// 说明文字的次级墨色（随 Material 页明暗）。
+  TextStyle _subStyle(BuildContext context, double size) {
+    final sub =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
+    return TextStyle(fontSize: size, height: 1.5, color: sub);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('按钮展示'),
+        _specRow(
+          context,
+          caption: '主按钮 · 点按切换关注态',
+          button: MiButton(
+            label: _followed ? '已关注' : '关注',
+            variant: _followed ? MiButtonVariant.tonal : MiButtonVariant.filled,
+            themeMode: widget.themeMode,
+            onPressed: () => setState(() => _followed = !_followed),
+          ),
+        ),
+        _specRow(
+          context,
+          caption: '次级 · 已关注态（推导样式）',
+          button: MiButton(
+            label: '已关注',
+            variant: MiButtonVariant.tonal,
+            themeMode: widget.themeMode,
+            onPressed: () {},
+          ),
+        ),
+        _specRow(
+          context,
+          caption: '禁用态 · onPressed = null',
+          button: MiButton(
+            label: '关注',
+            themeMode: widget.themeMode,
+            onPressed: null,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            '实测自「我的关注」页 1220×2656：59.9×28.3dp stadium · '
+            '填充 #4980F7 明暗同色 · 标签 13dp/500 · 左右内边距 17dp',
+            style: _subStyle(context, 11),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 规格行：左说明、右按钮（参考页按钮靠右陈列），行高沿用实测行距。
+  Widget _specRow(
+    BuildContext context, {
+    required String caption,
+    required Widget button,
+  }) {
+    return SizedBox(
+      height: MiButtonMetrics.listRowPitch,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              caption,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _subStyle(context, 12.5),
+            ),
+          ),
+          const SizedBox(width: MiDimens.spaceMd),
+          button,
+        ],
+      ),
+    );
+  }
+}
+
 /// 组件展示位：渐变底 + 墨迹图形 + 名称（logo / 占位共用）。
 class _ShowcaseTile extends StatelessWidget {
   const _ShowcaseTile({
@@ -401,7 +509,7 @@ class _ShowcaseTile extends StatelessWidget {
   }
 }
 
-/// 展示位渐变底（「示例一」配真实 logo，其余分组配抽象占位图形）。
+/// 展示位渐变底（「Logo 展示」组配真实 logo，其余分组配抽象占位图形）。
 const List<List<Color>> _tileGradients = [
   [Color(0xFF396AFC), Color(0xFF2948FF)],
   [Color(0xFF00B4DB), Color(0xFF0083B0)],

@@ -152,7 +152,7 @@ void main() {
             body: Align(
               alignment: Alignment.topCenter,
               child: MiPillTabBar(
-                labels: const ['示例一', '示例二', '示例三', '示例四'],
+                labels: const ['Logo 展示', '按钮展示', '示例三', '示例四'],
                 selectedIndex: 0,
                 onTap: (_) {},
                 themeMode: mode,
@@ -197,5 +197,53 @@ void main() {
 
     await capture(MiThemeMode.light, '../doc/preview/showcase_light.png');
     await capture(MiThemeMode.dark, '../doc/preview/showcase_dark.png');
+  });
+
+  testWidgets('README preview: button closeups (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 132 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 按钮特写（页底 = 「我的关注」页实测底色，三态：主 / 次级 / 禁用）
+    Widget strip(MiThemeMode mode) {
+      final light = mode == MiThemeMode.light;
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+          body: Center(
+            child: Column(
+              key: const ValueKey('buttonStrip'),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MiButton(label: '关注', themeMode: mode, onPressed: () {}),
+                const SizedBox(height: 12),
+                MiButton(
+                  label: '已关注',
+                  variant: MiButtonVariant.tonal,
+                  themeMode: mode,
+                ),
+                const SizedBox(height: 12),
+                MiButton(label: '关注', themeMode: mode, onPressed: null),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final stripFinder = find.byKey(const ValueKey('buttonStrip'));
+
+    await tester.pumpWidget(strip(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(MiButton), findsNWidgets(3));
+    await expectLater(stripFinder, matchesGoldenFile('../doc/preview/button_light.png'));
+
+    await tester.pumpWidget(strip(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(stripFinder, matchesGoldenFile('../doc/preview/button_dark.png'));
   });
 }
