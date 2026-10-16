@@ -65,7 +65,7 @@ class MiGlassPalette {
   /// 透镜色调垂直渐变（可空 = 纯色 [lensTint]）。
   final Gradient? lensTintGradient;
 
-  /// 透镜内描边。
+  /// 透镜内描边（深色 0.08 实测；浅色真值为无描边=透明，见 [MiGlassPalette.light]）。
   final Color lensStroke;
 
   /// 玻璃体外缘高光。
@@ -90,6 +90,10 @@ class MiGlassPalette {
   ///    色 #FBFBFB，透射模型 out = a·C + (1-a)·blurB（背后内容色彩透上来）；
   ///  * 选中胶囊是独立暖灰玻璃体（色 ≈#E6E6E7，alpha 0.66→0.78→0.82），
   ///    比栏体暗 ~13 级；lensShade 置全透明（无额外暗化）；
+  ///  * 胶囊边缘**无描边**（录屏真值：218→205 干净亮度阶跃、无亮环）；
+  ///    旧 lensStroke 白 0.30 系早期拟合虚构（帽形拟合本就不含边缘），
+  ///    会在胶囊外沿形成白亮环、与间隙带连成一片，吃掉胶囊↔栏体间距的
+  ///    可读性（明暗模式“内圈外圈相距”感知不一致的根因），2026-10-16 移除；
   ///  * 外缘纯白 #FFFFFF 高光（实测峰值 255）；
   ///  * 投影：下缘近处约 -8 级、~50px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
@@ -116,7 +120,7 @@ class MiGlassPalette {
         Color.fromRGBO(230, 230, 231, 0.82),
       ],
     ),
-    lensStroke: Color.fromRGBO(255, 255, 255, 0.30),
+    lensStroke: Color.fromRGBO(255, 255, 255, 0),
     rim: Color.fromRGBO(255, 255, 255, 1.0),
     elevationShadow: [
       BoxShadow(color: Color(0x0F000000), blurRadius: 32, offset: Offset(0, 4)),
