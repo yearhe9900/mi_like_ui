@@ -28,6 +28,7 @@
 - **文字的墨心落点依赖字体族 → 已用 `Baseline` 解决**：墨心在**基线上方** `k ≈ 0.355em` 跨字体很稳（simhei/msyh/simsun 实测 0.350~0.360），但**基线在行盒内的位置**只能由字体度量决定（`StrutStyle` 在本 SDK 无 `ascent`/`descent`；`TextStyle.height` 只按比例缩放），字体间可差 0.14em（参考录屏 MiSans ≈0.807 vs Android CJK 回退字体 ≈0.95；0.14em × 31.83 ≈ 4.5dp）。2026-10-16 实机实测大标题墨心比模型低 **6.9dp**（chevron 是 CustomPainter、字体无关，精确吻合 0.5dp 内 → 组件几何没问题）；字号经墨盒宽度交叉验证仍为 31.83dp。修法 = 标题外包 `Baseline(baselineType: alphabetic, baseline: 墨心 + 0.355em)`，由框架在布局期求解，**别再退回 em 经验换算/行盒中心反推**。
 - **`Baseline` 的定位语义**：`RenderBaseline` 把子级基线放到「距**它自己 box 顶端** N 处」，`size.height = (N − 子级基线距) + 子级高`、无 clamp（可负）。所以用法是 `Positioned(left:/top: 0) → (Padding) → Center/Align → Baseline → Text`：`top` 必须给 0（基线从 box 顶量起），`Center` 在**无界高**约束下 shrink-wrap 且 dy 偏移为 0（`maxHeight == ∞` → `shrinkWrapHeight`），所以水平居中不会破坏垂直落点。
 - **判据别被描边骗**：测「卡片填充顶缘」时用 `(B−R)>15` 之类的色差阈值会先撞上**卡片描边**（录屏帧因此在 177.17dp 误报，真值是 183.0dp）。要沿列剖面找**单行内的硬跳变**（亮度 0 → 135）才可靠。
+- **`test/` 不参与 app 构建**：`flutter build` 只编译 app，测试代码里的编译错误（如 `AnimatedSwitcher` 缺必填 `duration`）不会暴露 → 动过 `test/` 后至少跑一次 `dart analyze`（`C:\src\flutter\bin\dart.bat`，**0 error 才算过**；`flutter analyze` 同级）。教训来自 2026-10-16：`flutter build` 只报了 `StrutStyle.ascent` 那一处，测试里另一处错误是 `dart analyze` 才翻出来的。
 
 ## 工具
 - 像素测量脚本：`.workbuddy/measure_*.py`（PIL，分析用非交付物，不入库）。
