@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import 'theme_mode.dart';
+import 'transparency_tokens.dart';
 
 /// 磨砂玻璃材质配方 token（视频/截图实测，所有玻璃类组件共用）。
 ///
@@ -16,7 +17,10 @@ class MiGlassTokens {
   MiGlassTokens._();
 
   /// 背景高斯模糊 sigma（明暗通用）。
-  static const double blurSigma = 28;
+  ///
+  /// 同源转发自 [MiTransparencyTokens.blurSigma]（统一透明配置），
+  /// 保持旧引用兼容；新代码请直接取 [MiTransparencyTokens.blurSigma]。
+  static const double blurSigma = MiTransparencyTokens.blurSigma;
 
   /// 玻璃体深色遮罩（rgba(20,20,20,0.63)）。
   static const Color scrim = Color.fromRGBO(20, 20, 20, 0.63);

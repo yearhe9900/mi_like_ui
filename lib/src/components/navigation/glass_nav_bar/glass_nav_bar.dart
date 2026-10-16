@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
 import '../../../theme/theme_mode.dart';
+import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import 'glass_nav_bar_metrics.dart';
@@ -327,8 +328,8 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
             borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
             child: BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: MiGlassTokens.blurSigma,
-                    sigmaY: MiGlassTokens.blurSigma,
+                    sigmaX: MiTransparencyTokens.blurSigma,
+                    sigmaY: MiTransparencyTokens.blurSigma,
                   ),
                   child: Stack(
                     fit: StackFit.expand,

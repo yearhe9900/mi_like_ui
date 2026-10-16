@@ -17,6 +17,7 @@ export 'src/theme/colors.dart';
 export 'src/theme/theme_mode.dart';
 export 'src/theme/typography.dart';
 export 'src/theme/dimens.dart';
+export 'src/theme/transparency_tokens.dart';
 export 'src/theme/glass_tokens.dart';
 export 'src/theme/pill_tab_tokens.dart';
 
