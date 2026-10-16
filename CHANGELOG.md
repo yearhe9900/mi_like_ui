@@ -19,6 +19,15 @@
   - `MiButtonPalette` 配方入主题层（`theme/button_tokens.dart`）+ `MiButtonMetrics` 几何入组件目录
 - **组件展示页「按钮展示」分组** 陈列 MiButton 三态（主按钮可点按切换 关注 ↔ 已关注），行距沿用实测 56.1dp
 - **按钮 README 预览图** `doc/preview/button_light|dark.png`（明暗三态特写，由预览捕获测试生成）
+- **MiTopBar** 大标题折叠顶部导航栏（明暗双模式，1:1 逐帧实测自 HyperOS 设置页录屏 1220×2656@24.32fps）
+  - **折叠动效为逐帧实测**：大标题**属于滚动内容** —— 质心位移与列表滚动位移逐帧相等（−6/−18/−28/−31/−37/−45px 对同一组滚动量），即随内容 1:1 上移、**不是**钉在栏上缩放；在此之上另有一条独立淡出曲线（`largeTitleFade`：0→19.97dp 归零，中段下降最快），紧凑标题在大标题归零**之后**才淡入（`compactTitleFade`：19.97→29.31dp），两段不重叠
+  - **遮挡是纯色遮罩，不是磨砂玻璃**：实心段下沿 63.6dp + 1.5 次幂渐隐裙边至 128.9dp（拟合 `alpha(y)=1−clamp((y−63.6)/65.3,0,1)^1.5`，渐变为 8 等分采样）；实测依据 = 均匀色块在遮罩下出现亮度斜坡（排除 backdrop 模糊）+ 卡片硬边 3px 内完成跳变（无拖尾）。故刻意不复用 `MiGlassPalette`
+  - 几何实测：返回圆钮 ⌀44.1 / 左 11.9 / 垂心 76.0，箭头墨盒 11.68×21.31 / 笔宽 2.05 / 墨心左偏 1.3dp（光学偏置）；大标题 31.83dp（墨左 29.6 / 墨心 y 132.9）、紧凑标题 18.0dp（屏内心 / 墨心 y 75.9）；内容首行顶缘 183dp
+  - 按压反馈实测：⌀44.1 圆盘、白 @9.4%、420ms easeOut 淡入 / 300ms 淡出（逐帧 0→25%→83%→100%）
+  - **受控组件**：`scrollOffset` 由宿主注入（与 `MiPillTabBar.selectedIndex` 同风格），组件不自带滚动；除返回圆钮外整体不参与手势。负位移 / NaN 构建期断言，+∞ 饱和为折叠完成态
+  - `MiTopBarPalette` 配方入主题层（`theme/top_bar_tokens.dart`，**浅色配方为推导**：无亮色顶栏录屏，遮罩基色取实测页底 #F3F3F3）、`MiTopBarMetrics` 几何 + 折叠查找表入组件目录、返回箭头 `BackChevronIconPainter` 入 `icons/nav_icons.dart`
+- demo 首页 / 「我的」页接入 `MiTopBar`（页面壳改 `StatefulWidget`，用 `ValueNotifier` 承接 `ScrollController` 位移，只重建顶栏一层）
+- **顶栏 README 预览图** `doc/preview/top_bar_light|dark.png`（每格上=静止、下=滚动 105dp，内容穿进遮罩显形）
 
 ### Changed
 
@@ -67,6 +76,7 @@
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 按钮
 - [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
+- [x] `MiTopBar` — 大标题折叠顶部导航栏（纯色遮罩，非磨砂）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合

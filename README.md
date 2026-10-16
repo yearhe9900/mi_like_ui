@@ -4,8 +4,9 @@
 
 以像素级实测还原小米系视觉与动效，沉淀为分层清晰、可持续扩充的组件库。
 当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）、`MiPillTabBar`
-（胶囊分类标签行）、`MiButton`（胶囊按钮）与 `MiSearchBar`（搜索栏，
-透明磨砂参数与导航栏同源）；弹窗、表单等组件按同一组织方式逐步扩充。
+（胶囊分类标签行）、`MiButton`（胶囊按钮）、`MiSearchBar`（搜索栏，
+透明磨砂参数与导航栏同源）与 `MiTopBar`（大标题折叠顶部导航栏，
+纯色遮罩 + 逐帧实测折叠曲线）；弹窗、表单等组件按同一组织方式逐步扩充。
 
 ## 效果
 
@@ -26,6 +27,16 @@
 「我的关注」页关注按钮实测复刻（59.9×28.3dp stadium、#4980F7 明暗同色）；下图为 主 / 次级 / 禁用 三态：
 
 <img src="doc/preview/button_light.png" width="360" alt="浅色胶囊按钮三态" /> <img src="doc/preview/button_dark.png" width="360" alt="深色胶囊按钮三态" />
+
+### 组件：大标题折叠顶部导航栏（MiTopBar）
+
+HyperOS 设置页顶栏实测复刻（1220×2656 录屏逐帧反解）：大标题**属于滚动内容**
+（质心位移与列表滚动逐帧相等），并另沿一条独立曲线淡出；紧凑标题在其归零后
+（滚动 ≈20→27.4dp）才居中淡入，两段不重叠。顶部遮挡是**纯色遮罩**（实心段
+63.6dp + 1.5 次幂渐隐裙边至 128.9dp），实测**无 backdrop 模糊** —— 故刻意不复用
+磨砂语言。下图每格上=静止（内容首行顶缘 183dp）、下=滚动 105dp（内容穿进遮罩显形）：
+
+<img src="doc/preview/top_bar_light.png" width="240" alt="浅色顶栏两态对照" /> <img src="doc/preview/top_bar_dark.png" width="240" alt="深色顶栏两态对照" />
 
 「分类」tab 为组件展示页（「Logo 展示」组前 6 位为 `nav_icons.dart` 全量 logo，「按钮展示」组陈列 `MiButton` 三态，其余为示例占位；标签行吸顶，滚动内容从半透明磨砂胶囊后方经过）：
 
@@ -53,7 +64,8 @@ lib/
     ├── components/          # 组件层（类别/组件名/ 两级目录）
     │   ├── navigation/
     │   │   ├── glass_nav_bar/
-    │   │   └── pill_tab_bar/
+    │   │   ├── pill_tab_bar/
+    │   │   └── top_bar/
     │   ├── buttons/
     │   │   └── button/
     │   └── inputs/
@@ -100,6 +112,7 @@ flutter test     # 回归测试
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 按钮
 - [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
+- [x] `MiTopBar` — 大标题折叠顶部导航栏（纯色遮罩，非磨砂）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合
