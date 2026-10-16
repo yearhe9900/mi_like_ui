@@ -2,13 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// The 4 nav icons redrawn 1:1 from the reference video.
+/// 底部导航栏 logo 合集（全部 1:1 实测自参考视频/截图）。
+///
+/// Contents: the 4 tab icons + the FAB dot-grid glyph (theme-store videos),
+/// and the white plus glyph of the green action button ([PlusIconPainter],
+/// phone-app screenshot 1220x378).
 ///
 /// Each painter draws inside a normalized coordinate system that is
 /// 100 units tall; the natural width follows the measured pixel aspect
 /// ratio so every icon keeps its exact silhouette:
 ///   roller 53x71 px, grid+sparkle 65x65 px, cards+star 68x72 px,
-///   smiley+beret 68x76 px.
+///   smiley+beret 68x76 px, plus 62x62 px.
 ///
 /// [inkCenterX] passed to [_fit] is the horizontal center of the drawing's
 /// ink bbox in the normalized frame, so every icon lands dead-centre in its
@@ -207,4 +211,37 @@ class SmileyBeretIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant SmileyBeretIconPainter old) => old.color != color;
+}
+
+/// 加号 logo —— 绿色圆钮内的白色圆角加号（电话 App 截图 1220x378 实测）。
+///
+/// 实测（绿圆 ⌀171px，即亮色 FAB 绿 #66CB61）：加号墨迹 62x62px、
+/// 笔宽 8.7px、端头圆角约 2px、纯白 #FFFFFF，与圆心同心（±0.5px）。
+/// 归一到 100 单位见方即笔宽 14、圆角 3.2；配 [MiGlassNavFab] 使用时
+/// 建议 child 尺寸约 20dp（= 62px ÷ 3.09px/dp）。
+class PlusIconPainter extends CustomPainter {
+  PlusIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ink bbox is exactly the 100x100 unit square -> center 50
+    _fit(canvas, size, 50);
+    final p = Paint()..color = color;
+    const stroke = 14.0;
+    const radius = Radius.circular(3.2);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(50 - stroke / 2, 0, stroke, 100), radius),
+      p,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(const Rect.fromLTWH(0, 50 - stroke / 2, 100, stroke), radius),
+      p,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant PlusIconPainter old) => old.color != color;
 }

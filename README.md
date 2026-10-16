@@ -47,7 +47,7 @@ lib/
     │   └── navigation/
     │       ├── glass_nav_bar/
     │       └── pill_tab_bar/
-    ├── icons/               # 图标 painter 集
+    ├── icons/               # logo.dart：导航栏 logo 合集（含加号 logo）
     └── utils/               # 工具函数层（纯函数）
 
 test/                        # 黄金图 + 交互测试
@@ -58,7 +58,7 @@ test/                        # 黄金图 + 交互测试
 | 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
 | 主题层 `src/theme/` | 跨组件样式 token |
-| 图标 `src/icons/` | `*IconPainter` 图标集 |
+| 图标 `src/icons/logo.dart` | 导航栏 logo 合集（`*IconPainter`） |
 | 工具层 `src/utils/` | 无状态纯函数 |
 | 示例层 `lib/demo/` | 演示 app，模拟真实使用方 |
 

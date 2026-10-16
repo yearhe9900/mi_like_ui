@@ -27,7 +27,7 @@ export 'src/components/navigation/pill_tab_bar/pill_tab_bar.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar_metrics.dart';
 
 // ── 图标 ──────────────────────────────────────────────────────────────────
-export 'src/icons/nav_icons.dart';
+export 'src/icons/logo.dart';
 
 // ── 工具函数层 ────────────────────────────────────────────────────────────
 export 'src/utils/cell_grid.dart';
