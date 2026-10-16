@@ -29,6 +29,10 @@
 - **`Baseline` 的定位语义**：`RenderBaseline` 把子级基线放到「距**它自己 box 顶端** N 处」，`size.height = (N − 子级基线距) + 子级高`、无 clamp（可负）。所以用法是 `Positioned(left:/top: 0) → (Padding) → Center/Align → Baseline → Text`：`top` 必须给 0（基线从 box 顶量起），`Center` 在**无界高**约束下 shrink-wrap 且 dy 偏移为 0（`maxHeight == ∞` → `shrinkWrapHeight`），所以水平居中不会破坏垂直落点。
 - **判据别被描边骗**：测「卡片填充顶缘」时用 `(B−R)>15` 之类的色差阈值会先撞上**卡片描边**（录屏帧因此在 177.17dp 误报，真值是 183.0dp）。要沿列剖面找**单行内的硬跳变**（亮度 0 → 135）才可靠。
 - **`test/` 不参与 app 构建**：`flutter build` 只编译 app，测试代码里的编译错误（如 `AnimatedSwitcher` 缺必填 `duration`）不会暴露 → 动过 `test/` 后至少跑一次 `dart analyze`（`C:\src\flutter\bin\dart.bat`，**0 error 才算过**；`flutter analyze` 同级）。教训来自 2026-10-16：`flutter build` 只报了 `StrutStyle.ascent` 那一处，测试里另一处错误是 `dart analyze` 才翻出来的。
+- **`getDistanceToBaseline` 不能在测试体里调**：本 SDK 的 `RenderBox.getDistanceToBaseline`（无 `dry` 参数）有「只能在父级 layout / paint 期调用」的断言 → 测试里调必抛。要验「文字落点」就断言组件的**输入契约**：`tester.widget<Baseline>(find.ancestor(of: text, matching: find.byType(Baseline))).baseline`（`RenderBaseline` 保证落点 = 该入参）。
+- **`MaterialApp.theme` 是 `AnimatedTheme`（默认 200ms）**：换 theme 的**当帧** `Theme.of().brightness` 仍是旧值（`ThemeData.lerp` 在 `t<0.5` 取前者）→ 测「跟随环境亮度」必须换完 theme 再 `pump(300ms)`，否则拿到上一套配方。
+- **布局类断言别用 `Column` 撑溢出**：写「比容器高」的 mock 内容（如顶栏预览的背景行卡）要用 `Stack` + `Positioned` 逐行摆 —— `Stack` 只按自身边界裁剪、不报 `RenderFlex overflowed`，`Column`/`ClipRect` 组合会报错。行距直接并进 `top` 还能省掉 `Transform`。
+- **行盒高会被引擎向上取整**：`TextStyle(height: 1.0)` + 字号 31.83 时 `Text` 实测高 **32.0**（整数像素）→ 断言容差别写 0.01。
 
 ## 工具
 - 像素测量脚本：`.workbuddy/measure_*.py`（PIL，分析用非交付物，不入库）。
