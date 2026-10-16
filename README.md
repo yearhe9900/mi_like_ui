@@ -20,7 +20,7 @@
 
 <img src="doc/preview/pill_light.png" width="360" alt="浅色胶囊分类标签行" /> <img src="doc/preview/pill_dark.png" width="360" alt="深色胶囊分类标签行" />
 
-「分类」tab 为组件展示页（「示例一」为 `nav_icons.dart` 全量 logo 展示，其余分组为示例占位）：
+「分类」tab 为组件展示页（「示例一」前 6 位为 `nav_icons.dart` 全量 logo，其余为示例占位；标签行吸顶，滚动内容从半透明磨砂胶囊后方经过）：
 
 <img src="doc/preview/showcase_light.png" width="200" alt="浅色组件展示页" /> <img src="doc/preview/showcase_dark.png" width="200" alt="深色组件展示页" />
 
@@ -42,7 +42,7 @@ lib/
 ├── main.dart                # demo 引导
 ├── demo/                    # 示例层（演示 app）
 └── src/
-    ├── theme/               # 样式/主题层（颜色·文字·间距·材质 token，明暗双配方）
+    ├── theme/               # 样式/主题层（颜色·文字·间距·材质·透明/磨砂 token，明暗双配方）
     ├── components/          # 组件层（类别/组件名/ 两级目录）
     │   └── navigation/
     │       ├── glass_nav_bar/
@@ -57,7 +57,7 @@ test/                        # 黄金图 + 交互测试
 |---|---|
 | 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
-| 主题层 `src/theme/` | 跨组件样式 token |
+| 主题层 `src/theme/` | 跨组件样式 token（玻璃/透明参数统一配置，组件同源取值） |
 | 图标 `src/icons/nav_icons.dart` | 导航栏 logo 合集（`*IconPainter`） |
 | 工具层 `src/utils/` | 无状态纯函数 |
 | 示例层 `lib/demo/` | 演示 app，模拟真实使用方 |

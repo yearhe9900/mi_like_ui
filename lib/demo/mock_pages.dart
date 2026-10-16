@@ -207,9 +207,12 @@ const List<Widget> _homeItems = [
 /// 「分类」tab = 组件展示库（示例层）。
 ///
 /// 顶部胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），
-/// 用来切分组件分组；下方网格是各组件的展示位 —— 「示例一」展示
-/// `nav_icons.dart` 的全部 logo（真实框架 logo），其余分组为示例占位
-/// （渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+/// 用来切分组件分组；下方网格是各组件的展示位 —— 「示例一」前 6 位
+/// 展示 `nav_icons.dart` 的全部 logo（真实框架 logo），其余铺占位补足
+/// 可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+///
+/// 吸顶展示：搜索框 + 标签行悬浮吸顶，网格上滚时从胶囊后方经过，
+/// 借胶囊的半透明磨砂直观展示透明/透射效果。
 class _ShowcasePage extends StatefulWidget {
   const _ShowcasePage({required this.themeMode});
 
@@ -220,12 +223,17 @@ class _ShowcasePage extends StatefulWidget {
 }
 
 class _ShowcasePageState extends State<_ShowcasePage> {
+  /// 吸顶头部高度 = 状态栏让位 56 + 搜索框 44.1 + 间距 16 + 胶囊行 39.9；
+  /// 滚动网格初始让出头部 + 12（胶囊行底 → 内容的实测间距）。
+  static const double _headerHeight =
+      56 + 44.1 + 16 + MiPillTabMetrics.pillHeight;
+
   /// 分类标签（示例名，对应截图 推荐/背屏/小部件/主题 的位置）。
   static const List<String> _tabs = ['示例一', '示例二', '示例三', '示例四'];
 
-  /// 每个分类下的展示位数量（示例内容，顺便覆盖可滚动长度）；
-  /// 「示例一」是 logo 全量展示，数量由 [_logoNames] 决定。
-  static const List<int> _counts = [6, 6, 8, 4];
+  /// 每个分类下的展示位数量（示例内容）；取足够行数使网格溢出可滚，
+  /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明/磨砂透射。
+  static const List<int> _counts = [32, 32, 32, 32];
 
   /// 「示例一」的 logo 名称（与 [_logos] 顺序一致）。
   static const List<String> _logoNames = [
@@ -249,23 +257,26 @@ class _ShowcasePageState extends State<_ShowcasePage> {
 
   int _tab = 0;
 
-  /// 展示位：「示例一」给 logo 展示位，其余分组给占位展示位。
+  /// 展示位：「示例一」前 6 位给真实 logo 全量展示位，其余铺占位展示位
+  /// （补足可滚长度）；其余分组全给占位展示位。
   Widget _tileAt(int i, bool logoMode, List<CustomPainter> logos) {
-    if (logoMode) {
+    if (logoMode && i < _logoNames.length) {
       return _ShowcaseTile(
         colors: _tileGradients[i % _tileGradients.length],
         glyph: CustomPaint(painter: logos[i], size: const Size.square(26)),
         name: _logoNames[i],
       );
     }
+    // 占位下标从头计（「示例一」的占位跟在 6 个 logo 之后，命名从一重排）
+    final k = logoMode ? i - _logoNames.length : i;
     return _ShowcaseTile(
-      colors: _tileGradients[(i + _tab * 2) % _tileGradients.length],
+      colors: _tileGradients[(k + _tab * 2) % _tileGradients.length],
       glyph: Icon(
-        _tileIcons[(i + _tab * 2) % _tileIcons.length],
+        _tileIcons[(k + _tab * 2) % _tileIcons.length],
         color: Colors.white,
         size: 26,
       ),
-      name: _tileNames[i],
+      name: _tileNames[k % _tileNames.length],
     );
   }
 
@@ -273,53 +284,70 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   Widget build(BuildContext context) {
     final logoMode = _tab == 0;
     final logos = logoMode ? _logos(Colors.white) : const <CustomPainter>[];
-    final count = logoMode ? _logoNames.length : _counts[_tab];
+    final count = _counts[_tab];
     // 页底色与内容边距按完整截图实测：亮 #F3F3F3 / 暗 #000000，
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）
     return Container(
       color: widget.themeMode == MiThemeMode.light
           ? const Color(0xFFF3F3F3)
           : const Color(0xFF000000),
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Stack(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(11.9, 56, 11.9, 0),
-            child: _SearchBar(),
-          ),
-          const SizedBox(height: 16), // 实测搜索框底 → 标签行 49px ≈ 15.8dp
-          MiPillTabBar(
-            labels: _tabs,
-            selectedIndex: _tab,
-            onTap: (i) => setState(() => _tab = i),
-            themeMode: widget.themeMode,
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 11.9),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // 滚动网格：初始让出吸顶头部高度；上滚后内容从胶囊行后方经过，
+          // 胶囊的半透明磨砂把透上来的网格磨出毛玻璃感。
+          Positioned.fill(
+            child: ListView(
+              padding:
+                  const EdgeInsets.fromLTRB(11.9, _headerHeight + 12, 11.9, 0),
               children: [
-                _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
-                for (var row = 0; row * 4 < count; row++) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (var col = 0; col < 4; col++) ...[
-                          if (col > 0) const SizedBox(width: 12),
-                          Expanded(
-                            child: row * 4 + col < count
-                                ? _tileAt(row * 4 + col, logoMode, logos)
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
+                    for (var row = 0; row * 4 < count; row++) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 18),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var col = 0; col < 4; col++) ...[
+                              if (col > 0) const SizedBox(width: 12),
+                              Expanded(
+                                child: row * 4 + col < count
+                                    ? _tileAt(row * 4 + col, logoMode, logos)
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // 吸顶头部：搜索框 + 胶囊分类标签悬浮在滚动内容之上
+          //（标签行吸附搜索框下方，网格从胶囊后方滚过）。
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(11.9, 56, 11.9, 0),
+                  child: _SearchBar(),
+                ),
+                const SizedBox(height: 16), // 实测搜索框底 → 标签行 49px ≈ 15.8dp
+                MiPillTabBar(
+                  labels: _tabs,
+                  selectedIndex: _tab,
+                  onTap: (i) => setState(() => _tab = i),
+                  themeMode: widget.themeMode,
+                ),
               ],
             ),
           ),
