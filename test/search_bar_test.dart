@@ -164,6 +164,9 @@ void main() {
     expect(fillIn(), MiSearchBarPalette.light.fill);
 
     await tester.pumpWidget(_harness(theme: ThemeData.dark(useMaterial3: true)));
+    // MaterialApp 的 theme 是 AnimatedTheme（默认 200ms）→ 换 theme 的当帧
+    // `Theme.of` 仍是旧亮度（`ThemeData.lerp` 在 t<0.5 取前者），必须等动画走完
+    await tester.pump(const Duration(milliseconds: 300));
     expect(fillIn(), MiSearchBarPalette.dark.fill);
   });
 

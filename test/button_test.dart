@@ -27,7 +27,11 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      wrap(const MiButton(label: '关注', themeMode: MiThemeMode.dark)),
+      wrap(const MiButton(
+        label: '关注',
+        themeMode: MiThemeMode.dark,
+        onPressed: _noop,
+      )),
     );
     await tester.pump(const Duration(milliseconds: 300));
 
@@ -63,6 +67,7 @@ void main() {
         label: '已关注',
         variant: MiButtonVariant.tonal,
         themeMode: MiThemeMode.light,
+        onPressed: _noop,
       )),
     );
     await tester.pump(const Duration(milliseconds: 300));
@@ -70,7 +75,11 @@ void main() {
     expect(tester.widget<Text>(find.text('已关注')).style!.color, light.tonalLabel);
 
     await tester.pumpWidget(
-      wrap(const MiButton(label: '关注', themeMode: MiThemeMode.light)),
+      wrap(const MiButton(
+        label: '关注',
+        themeMode: MiThemeMode.light,
+        onPressed: _noop,
+      )),
     );
     await tester.pump(const Duration(milliseconds: 300));
     expect(fillOf(tester, '关注'), light.filledFill);
