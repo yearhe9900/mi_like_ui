@@ -20,6 +20,8 @@
 - 样式改动后必须重跑 `flutter test --update-goldens test/preview_capture_test.dart`，否则 `doc/preview/*.png` 预览测试挂。
 - 组件的**构造期断言**（如 `MiTopBar` 的 `scrollOffset >= 0`）在 `harness()` 同步构造时就抛，走不到 `pumpWidget`：测试要写 `expect(() => harness(...), throwsA(isA<AssertionError>()))`，不要写 `pumpWidget` + `takeException()`。
 - 顶栏/滚动类组件若用「叠在内容之上的 Stack」，其透明区域要包 `IgnorePointer`，否则会把下层内容的点击吃掉（顶栏整体只有返回圆钮吃手势）。
+- **全屏页壳的 `Stack` 子级一律用 `Positioned`**：只要有**非定位子级**（如叠在顶部的顶栏），Stack 就不再撑满父级、而是收缩到该子级尺寸；一旦上级给的是 loose 约束（`Center`、`AnimatedSwitcher` 内部那个 `alignment: center` 的 Stack），整页会被居中 → 顶栏跑到屏幕正中。2026-10-16 实机截图实测偏移 =（856 − 152.8）/ 2 = 351.6dp。
+- **文字的墨心落点依赖字体族**：`MiTopBarMetrics` 的「行盒中心 = 墨心 + 0.126em」是从参考录屏（MiSans）反解的修正；换字体（含 Flutter 在 Android 上的 CJK 回退字体）会整体偏移。2026-10-16 实机实测：同一行盒位置下，demo 设备上的大标题墨心落点比模型低 **6.9dp**（chevron 是 CustomPainter、字体无关，墨心 y 与 x 都精确吻合 0.5dp 内 → 组件几何没问题，是文字度量差异）。字号经墨盒宽度交叉验证仍为 31.83dp（非字号偏差）。
 
 ## 工具
 - 像素测量脚本：`.workbuddy/measure_*.py`（PIL，分析用非交付物，不入库）。
