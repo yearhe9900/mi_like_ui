@@ -11,3 +11,6 @@ build/
 # 逐帧抽帧原始产物（量大，仅归档分析拼图）
 .workbuddy/video_frames/drag_bug/
 .workbuddy/video_frames/light_glass/
+
+# 黄金图测试失败诊断产物（master/test/diff 图，随时再生）
+test/failures/
