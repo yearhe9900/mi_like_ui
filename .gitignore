@@ -14,3 +14,7 @@ build/
 
 # 黄金图测试失败诊断产物（master/test/diff 图，随时再生）
 test/failures/
+
+# 像素测量脚本与截图裁剪（分析用非交付物，见 MEMORY.md「工具」）
+.workbuddy/measure_*.py
+.workbuddy/tmp_*.png
