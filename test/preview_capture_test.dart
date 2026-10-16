@@ -398,10 +398,15 @@ void main() {
 
 /// 顶栏预览的背景内容：设置页行卡（参考页配色），按 [shift] 上移模拟滚动。
 ///
-/// 行卡只是**预览用的 mock 内容**（非框架组件）：首行顶缘取实测
-/// [topInset]（静止态与对应参考页同构）、行距取参考页实测 53.2dp、饱和蓝
-/// #3B6BF5 最能显形遮罩的亮度斜坡。[first] 可换掉首行（顶层页是搜索栏，
+/// 行卡只是**预览用的 mock 内容**（非框架组件）：首行顶缘取实测 [topInset]
+/// （静止态与对应参考页同构）、行距取参考页实测 53.2dp、饱和蓝 #3B6BF5
+/// 最能显形遮罩的亮度斜坡。[first] 可换掉首行（顶层页是搜索栏，
 /// 用框架组件 [MiSearchBar] 顶替第一张行卡）。
+///
+/// 逐行用 `Positioned` 摆进 `Stack`（而不是 `Column` + `Transform`）：这些
+/// 行天然比面板高（首行顶缘 168.5/183 + 5 行 257 ≫ 面板 240），`Column`
+/// 会报 RenderFlex 溢出，`Stack` 只按自身边界裁剪、不报错；滚动位移直接
+/// 并进每行 `top`，连 `Transform` 都省了。
 Widget _topBarBackdrop(
   MiThemeMode mode,
   double shift, {
@@ -410,36 +415,36 @@ Widget _topBarBackdrop(
 }) {
   final light = mode == MiThemeMode.light;
   final neutral = light ? const Color(0xFFFFFFFF) : const Color(0xFF242424);
-  Widget row(Color color) => Container(
+  final rows = <Widget>[];
+  var y = topInset - shift;
+  if (first != null) {
+    rows.add(Positioned(left: 11.9, right: 11.9, top: y, child: first));
+    y += MiSearchBarMetrics.barHeight + 12;
+  }
+  for (final color in <Color>[
+    const Color(0xFF3B6BF5),
+    const Color(0xFF3B6BF5),
+    neutral,
+    neutral,
+    neutral,
+  ]) {
+    rows.add(
+      Positioned(
+        left: 11.9, // 参考页实测内容边距
+        right: 11.9,
+        top: y,
         height: 44,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-      );
-  return ClipRect(
-    child: Transform.translate(
-      offset: Offset(0, -shift),
-      child: Padding(
-        // 左右 11.9 = 参考页实测内容边距
-        padding: EdgeInsets.fromLTRB(11.9, topInset, 11.9, 0),
-        child: Column(
-          children: [
-            if (first != null) ...[first, const SizedBox(height: 12)],
-            row(const Color(0xFF3B6BF5)),
-            const SizedBox(height: 9.2), // 行距 53.2 实测
-            row(const Color(0xFF3B6BF5)),
-            const SizedBox(height: 9.2),
-            row(neutral),
-            const SizedBox(height: 9.2),
-            row(neutral),
-            const SizedBox(height: 9.2),
-            row(neutral),
-          ],
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
-    ),
-  );
+    );
+    y += 53.2; // 实测行距（行高 44 + 间隙 9.2）
+  }
+  return Stack(children: rows);
 }
 
 /// 主题卡特写的 3 张占位卡（实测壁纸主色渐变 + 示例标题）。

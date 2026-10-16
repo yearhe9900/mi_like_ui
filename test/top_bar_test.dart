@@ -100,11 +100,18 @@ EdgeInsets _compactPadding(WidgetTester tester) => tester
     .first
     .padding as EdgeInsets;
 
-/// 文字盒内**基线**距盒顶的距离（标题垂直落点由 `Baseline` 组件按它求解，
-/// 故这是唯一与字体无关的可断言量：`rect.top + 该值` = 基线距屏顶）。
-double _baselineOf(WidgetTester tester, Finder finder) => tester
-    .renderObject<RenderBox>(finder)
-    .getDistanceToBaseline(TextBaseline.alphabetic)!;
+/// 标题的**基线目标值** = `Baseline` 组件的 `baseline` 参数（基线距组件顶端）。
+///
+/// 不用 `RenderObject.getDistanceToBaseline`：本 SDK 对这个方法有「只能在
+/// **父级正在 layout / paint 时**调用」的断言（`box.dart` 里的 owner /
+/// debugActiveLayout 检查），在测试体里调会直接抛断言。改断言组件的**输入
+/// 契约** —— `RenderBaseline` 已保证「子级基线落在此参数处」，故入参正确
+/// ⇔ 落点正确。
+double _baselineArgOf(WidgetTester tester, Finder textFinder) => tester
+    .widget<Baseline>(
+      find.ancestor(of: textFinder, matching: find.byType(Baseline)),
+    )
+    .baseline;
 
 /// 大标题基线的实测目标值（= 墨心 132.9 + 0.355em）。
 double get _largeBaseline => MiTopBarMetrics.titleBaselineY(
@@ -192,20 +199,15 @@ void main() {
       // 大标题：行盒左 27.6、基线钉在 144.2（= 墨心 132.9 + 0.355em）
       final large = tester.getRect(_large);
       expect(large.left, closeTo(MiTopBarMetrics.largeTitleLeadingInset, 0.01));
-      expect(large.height, closeTo(MiTypography.topBarLargeTitle.fontSize!, 0.01));
-      expect(
-        large.top + _baselineOf(tester, _large),
-        closeTo(_largeBaseline, 0.01),
-      );
+      // 行盒高 ≈ 字号（`height: 1.0`；引擎会把行高向上取整到整数像素）
+      expect(large.height, closeTo(MiTypography.topBarLargeTitle.fontSize!, 0.5));
+      expect(_baselineArgOf(tester, _large), closeTo(_largeBaseline, 0.01));
       expect(_opacityOf(tester, _large), 1.0);
 
       // 紧凑标题：屏内水平居中、基线 82.29、静止态全透明
       final compact = tester.getRect(_compact);
       expect(compact.center.dx, closeTo(393 / 2, 0.01));
-      expect(
-        compact.top + _baselineOf(tester, _compact),
-        closeTo(_compactBaseline, 0.01),
-      );
+      expect(_baselineArgOf(tester, _compact), closeTo(_compactBaseline, 0.01));
       expect(_opacityOf(tester, _compact), 0.0);
 
       // 遮罩：满宽、只高 scrimHeight
@@ -253,21 +255,20 @@ void main() {
 
       await tester.pumpWidget(harness());
       final restTop = tester.getRect(_large).top;
-      final restCompactBaseline = _baselineOf(tester, _compact);
-      final restCompactCenterX = tester.getRect(_compact).center.dx;
 
       await tester.pumpWidget(harness(offset: 40));
       expect(tester.getRect(_large).top, closeTo(restTop - 40, 0.01));
+      expect(
+        _baselineArgOf(tester, _large),
+        closeTo(_largeBaseline - 40, 0.01),
+        reason: '大标题基线随滚动 1:1 上移',
+      );
       expect(_opacityOf(tester, _large), 0.0);
       expect(_opacityOf(tester, _compact), 1.0);
 
-      // 紧凑标题位置不随滚动变化（基线 + 屏心都不动）
-      expect(_baselineOf(tester, _compact), closeTo(restCompactBaseline, 0.01));
-      expect(_compactBaseline, closeTo(restCompactBaseline, 0.01));
-      expect(
-        tester.getRect(_compact).center.dx,
-        closeTo(restCompactCenterX, 0.01),
-      );
+      // 紧凑标题位置不随滚动变化（基线入参 + 屏心都不动）
+      expect(_baselineArgOf(tester, _compact), closeTo(_compactBaseline, 0.01));
+      expect(tester.getRect(_compact).center.dx, closeTo(393 / 2, 0.01));
     });
 
     testWidgets('过渡区间：12dp 时大标题半透明且紧凑标题仍隐', (tester) async {
@@ -311,8 +312,19 @@ void main() {
       expect(_opacityOf(tester, _large), 0.0);
       expect(_opacityOf(tester, _compact), 1.0);
       expect(
-        tester.getRect(_large).top + _baselineOf(tester, _large),
+        _baselineArgOf(tester, _large),
         closeTo(_largeBaseline - MiTopBarMetrics.collapsedOffset, 0.01),
+      );
+      // 布局仍是有限坐标（+∞ 不会渗进 top），且折叠态标题仍在组件高度内
+      final rect = tester.getRect(_large);
+      expect(rect.top.isFinite, isTrue);
+      expect(
+        rect.bottom,
+        lessThanOrEqualTo(
+          MiTopBarMetrics.componentHeight(
+            MiTypography.topBarLargeTitle.fontSize!,
+          ),
+        ),
       );
     });
   });
