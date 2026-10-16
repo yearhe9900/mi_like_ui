@@ -22,12 +22,15 @@ export 'src/theme/glass_tokens.dart';
 export 'src/theme/pill_tab_tokens.dart';
 export 'src/theme/button_tokens.dart';
 export 'src/theme/search_bar_tokens.dart';
+export 'src/theme/top_bar_tokens.dart';
 
 // ── 组件层 ────────────────────────────────────────────────────────────────
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar.dart';
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar_metrics.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar_metrics.dart';
+export 'src/components/navigation/top_bar/top_bar.dart';
+export 'src/components/navigation/top_bar/top_bar_metrics.dart';
 export 'src/components/buttons/button/button.dart';
 export 'src/components/buttons/button/button_metrics.dart';
 export 'src/components/inputs/search_bar/search_bar.dart';

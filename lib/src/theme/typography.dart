@@ -51,4 +51,34 @@ class MiTypography {
     height: 1.0,
     fontWeight: FontWeight.w400,
   );
+
+  /// 顶栏大标题：录屏实测 5 字墨宽 482px、相邻字面左缘间距 98/99/100/98px
+  /// → CJK 字面 advance 98.8px ≈ **31.83dp**；笔画核心 7px ⇒ 7/98.8 =
+  /// 0.071em，与胶囊标签同档 Medium。墨色取框架前景色（实测笔画内部 246）。
+  static const TextStyle topBarLargeTitle = TextStyle(
+    color: MiColors.foreground,
+    fontSize: 31.83,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// 按明暗模式取大标题样式（字面量模式下与 [topBarLargeTitle] 一致）。
+  static TextStyle topBarLargeTitleFor(MiThemeMode mode) => mode == MiThemeMode.dark
+      ? topBarLargeTitle
+      : topBarLargeTitle.copyWith(color: MiColors.foregroundLight);
+
+  /// 顶栏紧凑标题：录屏实测 5 字墨宽 273px → advance 55.9px ≈ **18.0dp**；
+  /// 笔画核心 4.5px ⇒ 0.080em，同档 Medium。与 [topBarLargeTitle] 同为中国
+  /// 大陆字体度量，`height: 1.0` 下由 `MiTopBarMetrics` 按墨心定位。
+  static const TextStyle topBarCompactTitle = TextStyle(
+    color: MiColors.foreground,
+    fontSize: 18.0,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// 按明暗模式取紧凑标题样式（字面量模式下与 [topBarCompactTitle] 一致）。
+  static TextStyle topBarCompactTitleFor(MiThemeMode mode) => mode == MiThemeMode.dark
+      ? topBarCompactTitle
+      : topBarCompactTitle.copyWith(color: MiColors.foregroundLight);
 }

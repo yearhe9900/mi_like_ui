@@ -213,6 +213,48 @@ class SmileyBeretIconPainter extends CustomPainter {
   bool shouldRepaint(covariant SmileyBeretIconPainter old) => old.color != color;
 }
 
+/// 顶栏返回箭头「‹」—— 1:1 实测自参考录屏（1220x2656，设置页顶栏）。
+///
+/// 实测（3.104 px/dp）：
+///  * 墨迹包围盒 36x66px = 11.6x21.3dp；两臂严格 45°（逐行左缘 −4px/4px）；
+///  * 笔画**横切** 9px → 垂直笔宽 9·sin45° = 6.36px = 2.05dp；
+///  * 端头与顶点均为**圆角**（顶点行左缘 83→85 回退；圆角顶点墨左 =
+///    顶点 x − 笔宽/2，而非尖角顶点的 −笔宽/2·√2）；
+///  * 反解中心线：墨高 = 2L + w、墨宽 = L + w（L = 臂垂直半跨）⇒
+///    L = 9.63dp，墨盒 11.68x21.31dp，与阈值实测吻合（±0.08dp）。
+///
+/// 归一到 100 单位高：笔宽 9.624、顶点 (4.812, 50)、臂端 (50, 4.812)/(50, 95.188)，
+/// 墨迹恰好铺满 54.812x100 单位。建议配 [MiTopBarMetrics.chevronWidth] /
+/// [MiTopBarMetrics.chevronHeight] 使用（两者即该墨盒）。
+class BackChevronIconPainter extends CustomPainter {
+  BackChevronIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ink bbox x: 0..54.812 -> center 27.406
+    _fit(canvas, size, 27.406);
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9.624
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(50, 4.812)
+        ..lineTo(4.812, 50)
+        ..lineTo(50, 95.188),
+      p,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant BackChevronIconPainter old) => old.color != color;
+}
+
 /// 加号 logo —— 绿色圆钮内的白色圆角加号（电话 App 截图 1220x378 实测）。
 ///
 /// 实测（绿圆 ⌀171px，即亮色 FAB 绿 #66CB61）：加号墨迹 62x62px、
