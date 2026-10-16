@@ -247,23 +247,39 @@ void main() {
     await expectLater(stripFinder, matchesGoldenFile('../doc/preview/button_dark.png'));
   });
 
-  testWidgets('README preview: top bar closeups (expanded & collapsed)', (tester) async {
+  testWidgets('README preview: top bar closeups (top-level & secondary)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
-    tester.view.physicalSize = const Size(393 * 2, 480 * 2);
+    tester.view.physicalSize = const Size(393 * 2, 744 * 2);
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
-    // 顶栏两态对照（每格逻辑高 234）：
-    //  上 = 静止：大标题展开，内容首行顶缘 = 实测 183（遮罩之外，与参考页
-    //       静止态同构）；
-    //  下 = 滚动 105dp：大标题已随内容上移并归零、紧凑标题居中浮现，
-    //       内容穿到遮罩里 —— 直接看到「实心段 + 1.5 次幂渐隐裙边」，
-    //       并佐证它没有磨砂（卡片在裙边内是亮度斜坡 + 硬边，不是模糊拖尾）。
+    // 三格形态对照（每格逻辑高 240）：
+    //  ① 顶层页「设置」= **默认形态**（`showBack` 不传 → 无返回圆钮）：首行是
+    //     搜索栏 → 内容顶缘实测 168.5dp；
+    //  ② 次级页「显示与亮度」= `showBack: true`（带返回圆钮）：首行是卡片 →
+    //     内容顶缘实测 183dp，与参考录屏同构；
+    //  ③ 同②但滚动 105dp：大标题已随内容上移并归零、紧凑标题居中浮现，内容
+    //     穿到遮罩里 —— 直接看到「实心段 + 1.5 次幂渐隐裙边」，并佐证它没有
+    //     磨砂（卡片在裙边内是亮度斜坡 + 硬边，不是模糊拖尾）。
     Widget frame(MiThemeMode mode) {
       final light = mode == MiThemeMode.light;
-      Widget panel(double shift) => Stack(
+      Widget panel({
+        required String title,
+        required bool showBack,
+        required double shift,
+        double topInset = MiTopBarMetrics.contentTopInset,
+        Widget? first,
+      }) =>
+          Stack(
             children: [
-              Positioned.fill(child: _topBarBackdrop(mode, shift)),
+              Positioned.fill(
+                child: _topBarBackdrop(
+                  mode,
+                  shift,
+                  topInset: topInset,
+                  first: first,
+                ),
+              ),
               // 与 demo 同样用 Positioned 钉顶（顶栏若作非定位子级，外层
               // Stack 会按它收缩而不是撑满）
               Positioned(
@@ -271,7 +287,8 @@ void main() {
                 left: 0,
                 right: 0,
                 child: MiTopBar(
-                  title: '显示与亮度',
+                  title: title,
+                  showBack: showBack,
                   scrollOffset: shift,
                   themeMode: mode,
                   onBack: () {},
@@ -289,9 +306,23 @@ void main() {
           body: Column(
             key: const ValueKey('topBarPreview'),
             children: [
-              Expanded(child: panel(0)),
+              Expanded(
+                child: panel(
+                  title: '设置',
+                  showBack: false,
+                  shift: 0,
+                  topInset: MiTopBarMetrics.searchBarTopInset,
+                  first: MiSearchBar(hint: '搜索设置项', themeMode: mode),
+                ),
+              ),
               const SizedBox(height: 12),
-              Expanded(child: panel(105)),
+              Expanded(
+                child: panel(title: '显示与亮度', showBack: true, shift: 0),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: panel(title: '显示与亮度', showBack: true, shift: 105),
+              ),
             ],
           ),
         ),
@@ -368,9 +399,15 @@ void main() {
 /// 顶栏预览的背景内容：设置页行卡（参考页配色），按 [shift] 上移模拟滚动。
 ///
 /// 行卡只是**预览用的 mock 内容**（非框架组件）：首行顶缘取实测
-/// [MiTopBarMetrics.contentTopInset]（静止态与参考页同构）、行距取参考页
-/// 实测 53.2dp、饱和蓝 #3B6BF5 最能显形遮罩的亮度斜坡。
-Widget _topBarBackdrop(MiThemeMode mode, double shift) {
+/// [topInset]（静止态与对应参考页同构）、行距取参考页实测 53.2dp、饱和蓝
+/// #3B6BF5 最能显形遮罩的亮度斜坡。[first] 可换掉首行（顶层页是搜索栏，
+/// 用框架组件 [MiSearchBar] 顶替第一张行卡）。
+Widget _topBarBackdrop(
+  MiThemeMode mode,
+  double shift, {
+  double topInset = MiTopBarMetrics.contentTopInset,
+  Widget? first,
+}) {
   final light = mode == MiThemeMode.light;
   final neutral = light ? const Color(0xFFFFFFFF) : const Color(0xFF242424);
   Widget row(Color color) => Container(
@@ -385,14 +422,10 @@ Widget _topBarBackdrop(MiThemeMode mode, double shift) {
       offset: Offset(0, -shift),
       child: Padding(
         // 左右 11.9 = 参考页实测内容边距
-        padding: const EdgeInsets.fromLTRB(
-          11.9,
-          MiTopBarMetrics.contentTopInset,
-          11.9,
-          0,
-        ),
+        padding: EdgeInsets.fromLTRB(11.9, topInset, 11.9, 0),
         child: Column(
           children: [
+            if (first != null) ...[first, const SizedBox(height: 12)],
             row(const Color(0xFF3B6BF5)),
             const SizedBox(height: 9.2), // 行距 53.2 实测
             row(const Color(0xFF3B6BF5)),

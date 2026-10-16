@@ -8,10 +8,15 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 const String kTitle = '显示与亮度';
 
 /// 顶栏叠在纯黑内容之上（与参考页同底），默认 393x240 逻辑像素。
+///
+/// [showBack] 默认 true：本文件大部分用例针对返回圆钮（几何 / 交互），
+/// 而组件默认值是 false（顶层页无返回），故 harness 显式打开；
+/// 「默认不显示」本身另有专门用例。
 Widget harness({
   String title = kTitle,
   double offset = 0,
   MiThemeMode? mode = MiThemeMode.dark,
+  bool showBack = true,
   VoidCallback? onBack,
   VoidCallback? onBackgroundTap,
 }) {
@@ -28,6 +33,7 @@ Widget harness({
           ),
           MiTopBar(
             title: title,
+            showBack: showBack,
             scrollOffset: offset,
             themeMode: mode,
             onBack: onBack,
@@ -85,6 +91,14 @@ Finder get _pressDisc => find.ancestor(
 double _opacityOf(WidgetTester tester, Finder finder) => tester
     .widget<Opacity>(find.ancestor(of: finder, matching: find.byType(Opacity)))
     .opacity;
+
+/// 紧凑标题外层那个 `Padding`（最近祖先，即组件里包 `Center` 的那个）。
+EdgeInsets _compactPadding(WidgetTester tester) => tester
+    .widgetList<Padding>(
+      find.ancestor(of: _compact, matching: find.byType(Padding)),
+    )
+    .first
+    .padding as EdgeInsets;
 
 void _size(WidgetTester tester, [Size size = const Size(393, 240)]) {
   tester.view.devicePixelRatio = 1.0;
@@ -147,14 +161,14 @@ void main() {
 
       await tester.pumpWidget(harness());
 
-      // 大标题：行盒左 27.6、行心 136.9（height: 1.0 → 盒高 = 字号）
+      // 大标题：行盒左 27.6、行心 133.9（strut 钉基线 + height: 1.0 → 盒高 = 字号）
       final large = tester.getRect(_large);
       expect(large.left, closeTo(MiTopBarMetrics.largeTitleLeadingInset, 0.01));
       expect(large.center.dy, closeTo(MiTopBarMetrics.largeTitleBoxCenterY, 0.01));
       expect(large.height, closeTo(MiTypography.topBarLargeTitle.fontSize!, 0.01));
       expect(_opacityOf(tester, _large), 1.0);
 
-      // 紧凑标题：屏内水平居中、行心 78.2、静止态全透明
+      // 紧凑标题：屏内水平居中、行心 76.4、静止态全透明
       final compact = tester.getRect(_compact);
       expect(compact.center.dx, closeTo(393 / 2, 0.01));
       expect(
@@ -342,6 +356,78 @@ void main() {
     });
   });
 
+  group('返回圆钮显示开关（showBack）', () {
+    test('默认 false（顶层页无返回）——不传即不显示', () {
+      const bar = MiTopBar(title: kTitle);
+      expect(bar.showBack, isFalse);
+      expect(bar.onBack, isNull);
+    });
+
+    testWidgets('showBack: false 时不绘制圆钮与箭头，该处点击落到下层内容', (tester) async {
+      _size(tester);
+
+      var background = 0;
+      var back = 0;
+      await tester.pumpWidget(harness(
+        showBack: false,
+        onBack: () => back++,
+        onBackgroundTap: () => background++,
+      ));
+
+      // 既无命中区也无箭头墨迹（CustomPaint 只在大标题/圆钮里出现）
+      expect(_backHitArea, findsNothing);
+      expect(_chevron, findsNothing);
+
+      await tester.tapAt(
+        const Offset(MiTopBarMetrics.backCenterX, MiTopBarMetrics.backCenterY),
+      );
+      await tester.pump();
+      expect(background, 1, reason: '圆钮位置不再吃手势');
+      expect(back, 0, reason: '圆钮不存在，回调不该被触发');
+    });
+
+    testWidgets('showBack: true + onBack = null → 只显示、不可点', (tester) async {
+      _size(tester);
+
+      var background = 0;
+      await tester.pumpWidget(harness(
+        showBack: true,
+        onBackgroundTap: () => background++,
+      ));
+
+      // 箭头仍绘制
+      expect(
+        tester.widget<CustomPaint>(_chevron).painter,
+        isA<BackChevronIconPainter>(),
+      );
+      // 无手势层 → 点击穿透到下层
+      expect(_backHitArea, findsNothing);
+      await tester.tapAt(
+        const Offset(MiTopBarMetrics.backCenterX, MiTopBarMetrics.backCenterY),
+      );
+      await tester.pump();
+      expect(background, 1);
+    });
+
+    testWidgets('showBack 决定紧凑标题的对称内缩（让开圆钮 / 用满整屏宽）', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(showBack: false));
+      expect(_compactPadding(tester), EdgeInsets.zero);
+      expect(tester.getRect(_compact).center.dx, closeTo(393 / 2, 0.01));
+
+      await tester.pumpWidget(harness(showBack: true));
+      expect(
+        _compactPadding(tester),
+        EdgeInsets.symmetric(
+          horizontal: MiTopBarMetrics.backInset + MiTopBarMetrics.backDiameter,
+        ),
+      );
+      // 对称内缩不改变屏内居中
+      expect(tester.getRect(_compact).center.dx, closeTo(393 / 2, 0.01));
+    });
+  });
+
   group('demo 接入：页面壳必须撑满（实机截图回归）', () {
     // 2026-10-16 实机截图：顶栏被摆到屏幕正中，偏移 351.1dp =
     // (856 − 152.8) / 2 —— 页面壳的 Stack 里顶栏是非定位子级时，Stack 会
@@ -384,6 +470,10 @@ void main() {
     expect(bar.title, kTitle);
     expect(bar.scrollOffset, 0);
     expect(bar.themeMode, isNull);
+    expect(bar.showBack, isFalse);
     expect(bar.onBack, isNull);
+
+    const withBack = MiTopBar(title: kTitle, showBack: true);
+    expect(withBack.showBack, isTrue);
   });
 }
