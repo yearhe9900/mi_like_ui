@@ -4,8 +4,8 @@
 
 以像素级实测还原小米系视觉与动效，沉淀为分层清晰、可持续扩充的组件库。
 当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）、`MiPillTabBar`
-（胶囊分类标签行）与 `MiButton`（胶囊按钮）；弹窗、表单等组件按同一
-组织方式逐步扩充。
+（胶囊分类标签行）、`MiButton`（胶囊按钮）与 `MiSearchBar`（搜索栏，
+透明磨砂参数与导航栏同源）；弹窗、表单等组件按同一组织方式逐步扩充。
 
 ## 效果
 
@@ -54,8 +54,10 @@ lib/
     │   ├── navigation/
     │   │   ├── glass_nav_bar/
     │   │   └── pill_tab_bar/
-    │   └── buttons/
-    │       └── button/
+    │   ├── buttons/
+    │   │   └── button/
+    │   └── inputs/
+    │       └── search_bar/
     ├── icons/               # nav_icons.dart：导航栏 logo 合集（含加号 logo）
     └── utils/               # 工具函数层（纯函数）
 
@@ -97,6 +99,7 @@ flutter test     # 回归测试
 - [x] `MiGlassNavBar` — 玻璃悬浮底部导航栏
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 按钮
+- [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合

@@ -135,35 +135,11 @@ class _GradientCard extends StatelessWidget {
   }
 }
 
-class _SearchBar extends StatelessWidget {
-  const _SearchBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final light = Theme.of(context).brightness == Brightness.light;
-    // 尺寸/配色实测自分类页完整截图：高 137px≈44.1dp、stadium 圆角、
-    // 亮 #E7E7E7 / 暗 #242424
-    return Container(
-      height: 44.1,
-      decoration: BoxDecoration(
-        color: light ? const Color(0xFFE7E7E7) : const Color(0xFF242424),
-        borderRadius: BorderRadius.circular(22.05),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        '搜索主题 / 壁纸 / 图标',
-        style: TextStyle(
-          fontSize: 12,
-          color: light ? const Color(0xFF9A9A9E) : const Color(0xFF8A8A8F),
-        ),
-      ),
-    );
-  }
-}
-
+/// 搜索位即框架组件 [MiSearchBar]（亮/暗完整截图实测 + 与底部导航栏同源的
+/// 透明磨砂参数，见 `src/components/inputs/search_bar/`）：占位文案与
+/// 页面级左右 inset（11.9）由 demo 提供，明暗配方由组件 palette 供给。
 const List<Widget> _homeItems = [
-  _SearchBar(),
+  MiSearchBar(hint: '搜索主题 / 壁纸 / 图标'),
   SizedBox(height: 16),
   _GradientCard(
     height: 150,
@@ -345,9 +321,12 @@ class _ShowcasePageState extends State<_ShowcasePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(11.9, 56, 11.9, 0),
-                  child: _SearchBar(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(11.9, 56, 11.9, 0),
+                  child: MiSearchBar(
+                    hint: '搜索主题 / 壁纸 / 图标',
+                    themeMode: widget.themeMode,
+                  ),
                 ),
                 const SizedBox(height: 16), // 实测搜索框底 → 标签行 49px ≈ 15.8dp
                 MiPillTabBar(

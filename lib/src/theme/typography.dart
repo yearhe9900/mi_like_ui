@@ -41,4 +41,14 @@ class MiTypography {
     height: 1.0,
     fontWeight: FontWeight.w500,
   );
+
+  /// 搜索栏占位文字：亮/暗完整截图实测 CJK 字面 advance 37px → 16.5dp
+  /// （两图交叉一致，栏内垂心居中）。墨色偏灰属次级信息，字重未见
+  /// 实测证据取常规 Regular。占位色随明暗由 `theme/search_bar_tokens.dart`
+  /// 供给，故此样式不预置颜色。
+  static const TextStyle searchHint = TextStyle(
+    fontSize: 16.5,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+  );
 }

@@ -8,6 +8,11 @@
 
 ### Added
 
+- **MiSearchBar** 搜索栏（亮/暗分类页完整截图 1:1 实测）
+  - **透明参数与底部导航栏同源**：backdrop 磨砂取 `MiTransparencyTokens.blurSigma`（与 `MiGlassNavBar` / 胶囊同一磨砂强度），填充为半透明表面 —— 平底合成 = 截图实测实色（亮 #E7E7E7 / 暗 #242424，实测反推 黑@13 / 白@36；非胶囊 subtle(15) 档，代入会得 #E5/#0F 偏离截图）
+  - 几何实测：高 44.1、stadium、图标 17.8dp 起于左缘 15.4、图文间距 12、占位 16.5dp CJK advance、放大镜墨色明暗同值 #9A9A9A、占位墨色 亮 #848484 / 暗 #6D6D6D
+  - `MiSearchBarPalette` 配方入主题层（`theme/search_bar_tokens.dart`）、`MiSearchBarMetrics` 几何入组件目录、放大镜 `SearchIconPainter` 组件内自包含；`themeMode` 为空时跟随环境 Theme 亮度
+- demo 首页与分类页吸顶头部的搜索位接入 `MiSearchBar`（替换私有不透明 `_SearchBar`），滚动内容从栏后透上来被磨砂
 - **MiButton** 胶囊按钮（明暗双模式）
   - 1:1 实测自「我的关注」页关注按钮（亮/暗两张 1220×2656 完整截图）：高 28.3dp stadium、填充 `#4980F7` 明暗同色、标签 13dp Medium 白字、左右 17dp 内边距（宽度随内容自适应）
   - `MiButtonVariant` 形态：`filled`（实测）/ `tonal`（已关注，推导：复用搜索栏实测灰 + 胶囊标签实测墨色）；`onPressed = null` 为禁用态（推导：onSurface@12%/38%）
@@ -61,6 +66,7 @@
 - [x] `MiGlassNavBar` — 玻璃悬浮底部导航栏
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 按钮
+- [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合
