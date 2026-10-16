@@ -51,10 +51,16 @@ import 'top_bar_metrics.dart';
 /// （否则整体会下移、大标题与圆钮的实测垂心失效）。
 ///
 /// [themeMode] 为空时跟随环境 `Theme.of(context).brightness`。
+///
+/// **返回圆钮默认不显示**（顶层页无返回，如参考截图「设置」首页）：需要时
+/// 传 `showBack: true`，其可点性再由 [onBack] 决定（null = 只显示、不可点）。
+/// 两条标题都用 [MiTopBarMetrics.titleStrutAscent] 的 strut 把**基线钉死**，
+/// 使墨心落点不随字体族的 ascent/descent 漂移（详见 metrics 类文档）。
 class MiTopBar extends StatelessWidget {
   const MiTopBar({
     super.key,
     required this.title,
+    this.showBack = false,
     this.onBack,
     this.themeMode,
     this.scrollOffset = 0,
@@ -63,7 +69,11 @@ class MiTopBar extends StatelessWidget {
   /// 标题文案（大标题与紧凑标题同源）。
   final String title;
 
-  /// 返回回调；null = 圆钮不可点（仍绘制箭头，但不参与手势、无按压反馈）。
+  /// 是否显示返回圆钮（默认 false —— 顶层页无返回）。
+  final bool showBack;
+
+  /// 返回回调；仅在 [showBack] 为 true 时生效。
+  /// null = 圆钮只显示、不可点（不参与手势、无按压反馈）。
   final VoidCallback? onBack;
 
   /// 明暗模式；null = 跟随环境 Theme 亮度。
@@ -71,6 +81,17 @@ class MiTopBar extends StatelessWidget {
 
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
+
+  /// 标题的 strut：把基线钉在行盒顶下方 `0.825em`（字体无关），
+  /// 使墨心稳定落在 [MiTopBarMetrics.largeTitleInkCenterY] 附近。
+  static StrutStyle _titleStrut(double fontSize) => StrutStyle(
+        fontSize: fontSize,
+        height: 1.0,
+        leading: 0,
+        ascent: MiTopBarMetrics.titleStrutAscent,
+        descent: MiTopBarMetrics.titleStrutDescent,
+        forceStrutHeight: true,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +139,7 @@ class MiTopBar extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  strutStyle: _titleStrut(largeSize),
                   style: MiTypography.topBarLargeTitleFor(mode),
                 ),
               ),
@@ -132,16 +154,20 @@ class MiTopBar extends StatelessWidget {
               child: Opacity(
                 opacity: MiTopBarMetrics.compactTitleOpacity(offset),
                 child: Padding(
-                  // 对称内缩（圆钮右缘）——长标题居中且不与圆钮相撞
+                  // 显示圆钮时对称内缩（圆钮右缘），长标题居中且不与圆钮相撞；
+                  // 不显示圆钮时不留内缩，居中标题可用满整屏宽。
                   padding: EdgeInsets.symmetric(
-                    horizontal: MiTopBarMetrics.backInset +
-                        MiTopBarMetrics.backDiameter,
+                    horizontal: showBack
+                        ? MiTopBarMetrics.backInset +
+                            MiTopBarMetrics.backDiameter
+                        : 0,
                   ),
                   child: Center(
                     child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      strutStyle: _titleStrut(compactSize),
                       style: MiTypography.topBarCompactTitleFor(mode),
                     ),
                   ),
@@ -149,16 +175,17 @@ class MiTopBar extends StatelessWidget {
               ),
             ),
           ),
-          // 4) 返回圆钮（组件唯一的可交互元素）
-          Positioned(
-            left: MiTopBarMetrics.backInset,
-            top: MiTopBarMetrics.backCenterY -
-                MiTopBarMetrics.backDiameter / 2,
-            child: _MiTopBarBackButton(
-              palette: palette,
-              onTap: onBack,
+          // 4) 返回圆钮（可选，组件唯一的可交互元素）
+          if (showBack)
+            Positioned(
+              left: MiTopBarMetrics.backInset,
+              top: MiTopBarMetrics.backCenterY -
+                  MiTopBarMetrics.backDiameter / 2,
+              child: _MiTopBarBackButton(
+                palette: palette,
+                onTap: onBack,
+              ),
             ),
-          ),
         ],
       ),
     );

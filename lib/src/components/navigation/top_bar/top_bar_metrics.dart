@@ -36,9 +36,17 @@
 ///    11.68 x 21.31dp，与阈值实测 11.6 x 21.3dp 吻合（±0.08dp）；
 ///  * 返回箭头墨心比圆钮中心**左偏 1.3dp**（实测，光学偏置；非测量误差：
 ///    圆钮边缘在 x≈37.5/173.5px，中心 105.5px，箭头墨心 101.4px）；
-///  * [largeTitleBoxCenterY] / [compactTitleBoxCenterY] 是**行盒中心**：
-///    Flutter 的 `Text` 按行盒布局，而实测目标是墨心，两者差一个 CJK 字面
-///    上偏量（0.88em 墨高、比例行距分布下 ≈0.126em）。字体族变化需回校。
+///  * 标题的**垂心落点由显式 strut 钉死**（见 [titleStrutAscent] /
+///    [titleStrutDescent]）：墨心相对基线的比例在各中文字体间很稳
+///    （本机 simhei / msyh / simsun 实测 0.35…0.36em，含 2 字与 5 字样本），
+///    而基线在行盒内的位置 = 字体 ascent/(ascent+descent)，字体间可差到
+///    0.14em（参考录屏 MiSans ≈0.807，Android CJK 回退字体 ≈0.95）。
+///    故用 strut 让基线可预期，[largeTitleBoxCenterY] / [compactTitleBoxCenterY]
+///    即由「墨心 − (strut 基线比 − k)·em + em/2」反推出的行盒中心
+///    （墨心本身仍是实测值，见 [largeTitleInkCenterY]）。
+///
+/// 第二样本交叉验证：参考截图「设置」首页（同为 1220×2656）大标题墨心
+/// 133.50dp（模型 132.9，差 0.6dp）、墨盒 186×90px、墨左 29.64dp。
 ///
 /// 文字样式见 `theme/typography.dart`，配色 / 遮罩见
 /// `theme/top_bar_tokens.dart`，返回箭头见 `icons/nav_icons.dart`。
@@ -82,21 +90,40 @@ class MiTopBarMetrics {
   static const int pressFadeOutMs = 300;
 
   // ── 大标题 ────────────────────────────────────────────────────────────
-  /// 大标题墨心距屏顶（实测 412.5px，静止态）。
+  /// 标题行盒的 strut：基线在行盒顶下方 [titleStrutAscent]·em 处（**与字体无关**）。
+  ///
+  /// 取 0.825 的依据：墨心在基线上方 `k ≈ 0.355em`、墨高 ≈ 0.94em（本机三
+  /// 种中文字体实测），故 0.825 − 0.355 − 0.47 ≈ 0 → 墨顶恰好贴住行盒顶、
+  /// 墨底留 0.06em 余量；同时墨心落在行盒顶下方 0.47em。
+  /// 两者之和 = 1.0，配 `height: 1.0` 即行盒 = 1em。
+  static const double titleStrutAscent = 0.825;
+
+  /// strut 的下沉比例（= 1 − [titleStrutAscent]）。
+  static const double titleStrutDescent = 0.175;
+
+  /// 墨心相对基线的比例（本机 simhei 0.360 / msyh 0.350 / simsun 0.355 实测）。
+  static const double titleInkAboveBaseline = 0.355;
+
+  /// 墨心在行盒顶下方的比例（= [titleStrutAscent] − [titleInkAboveBaseline]）。
+  static const double titleInkCenterFromBoxTop = 0.470;
+
+  /// 大标题墨心距屏顶（实测 412.5px = 132.88dp，静止态；第二样本「设置」页
+  /// 复核 133.50dp）。
   static const double largeTitleInkCenterY = 132.9;
 
   /// 大标题行盒左缘（实测墨左 92px − 字面左边距 6.4px = 85.6px；与
   /// 「页边距 11.9 + 16」的复合估计一致，取实测值）。
   static const double largeTitleLeadingInset = 27.6;
 
-  /// 大标题行盒中心距屏顶（墨心 + 0.126em 上偏修正，见类文档）。
-  static const double largeTitleBoxCenterY = 136.9;
+  /// 大标题行盒中心距屏顶（= [largeTitleInkCenterY] − [titleInkCenterFromBoxTop]
+  /// ·em + em/2 = 132.9 − 14.96 + 15.92）。
+  static const double largeTitleBoxCenterY = 133.9;
 
   /// 紧凑标题墨心距屏顶（实测 235.5px，与圆钮垂心相差 0.1dp）。
   static const double compactTitleInkCenterY = 75.9;
 
-  /// 紧凑标题行盒中心距屏顶（墨心 + 0.126em 上偏修正）。
-  static const double compactTitleBoxCenterY = 78.2;
+  /// 紧凑标题行盒中心距屏顶（同上式，em = 18.0）。
+  static const double compactTitleBoxCenterY = 76.4;
 
   // ── 顶栏遮罩 ──────────────────────────────────────────────────────────
   /// 遮罩纵向高度：全不透明段下沿 [scrimSolidBottom] ≈ 63.6dp，此后按
@@ -107,9 +134,15 @@ class MiTopBarMetrics {
   static const double scrimSolidBottom = 63.6;
 
   // ── 内容 ──────────────────────────────────────────────────────────────
-  /// 内容首行在静止态的顶缘（实测 568px）——宿主给滚动内容的上内边距；
-  /// 大标题（墨底 147.9dp）与它之间留 35dp 空档。
+  /// 内容首行（**卡片**类）在静止态的顶缘：录屏页首行卡片填充顶缘
+  /// 568px = 183.0dp（硬边：亮度 0 → 135 单行跳变，左右两张预览卡一致）
+  /// —— 宿主给滚动内容的上内边距；大标题（墨底 147.7dp）与它留 35.3dp 空档。
   static const double contentTopInset = 183.0;
+
+  /// 内容首行是**搜索栏**时的顶缘：实测自参考截图「设置」首页搜索栏顶缘
+  /// 523px = 168.5dp（同页卡片组顶缘 224.85dp，组间距 12.24dp）。
+  /// 搜索栏比卡片类首行高 14.5dp，两个值都来自整机实测，故分档给出。
+  static const double searchBarTopInset = 168.5;
 
   // ── 折叠动效（逐帧实测查找表） ─────────────────────────────────────────
   /// 大标题不透明度：`(滚动位移 dp, 墨迹峰值比)`。

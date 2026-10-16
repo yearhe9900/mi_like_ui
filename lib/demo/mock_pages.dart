@@ -26,11 +26,13 @@ class MockPage extends StatelessWidget {
         // 25~26 同量级，与分类页一致）；区块标题行经 _SectionTitle.inset
         // 收进 ≈20.5dp 文本列（实测 x46），卡标题再由卡片自身 8.8dp
         // 内缩与之同列起排。
+        // 顶层页形态：**无返回圆钮**（`showBack` 默认 false）。首行是搜索栏，
+        // 其顶缘实测 168.5dp（比卡片档少一档 14.5dp）→ 用搜索栏档上内边距。
         return const _MockPageShell(
           title: '首页',
           padding: EdgeInsets.fromLTRB(
             11.9,
-            MiTopBarMetrics.contentTopInset,
+            MiTopBarMetrics.searchBarTopInset,
             11.9,
             20,
           ),
@@ -40,7 +42,9 @@ class MockPage extends StatelessWidget {
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
         return _ShowcasePage(themeMode: themeMode);
       default:
-        return _MockPageShell(title: '我的', children: [
+        // 次级页形态：**带返回圆钮**（`showBack: true`），首行是卡片 →
+        // 用卡片档上内边距（183，即 `_MockPageShell` 默认值）。
+        return _MockPageShell(title: '我的', showBack: true, children: [
           // 模式切换入口（demo 功能，放在「我的」里）
           if (onThemeModeChanged != null)
             _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
@@ -93,10 +97,14 @@ class _ThemeModeSwitch extends StatelessWidget {
 /// [ScrollController] 的位移，只重建顶栏一层而非整页 setState。
 /// 页底取参考页实测色（亮 #F3F3F3 / 暗 #000000）——同时让顶栏遮罩
 /// 实心段与页底同色（遮罩基色即页底色）。
+///
+/// 两种页面形态各演示一次：[showBack] 默认 `false`（顶层页，首页），
+/// 「我的」传 `true`（次级页，带返回圆钮）。
 class _MockPageShell extends StatefulWidget {
   const _MockPageShell({
     required this.title,
     required this.children,
+    this.showBack = false,
     this.padding = const EdgeInsets.fromLTRB(
       20,
       MiTopBarMetrics.contentTopInset,
@@ -108,8 +116,12 @@ class _MockPageShell extends StatefulWidget {
   final String title;
   final List<Widget> children;
 
+  /// 是否显示返回圆钮（默认 false，对齐 [MiTopBar.showBack]）。
+  final bool showBack;
+
   /// 滚动内容内边距：左右默认 20（「我的」页沿用原值）；首页按实测
-  /// 页边距 11.9dp 覆盖（见 `MockPage.build` 的 `case 0`）。
+  /// 页边距 11.9dp + 搜索栏档上内边距 168.5dp 覆盖（见 `MockPage.build`
+  /// 的 `case 0`）。
   final EdgeInsetsGeometry padding;
 
   @override
@@ -167,7 +179,9 @@ class _MockPageShellState extends State<_MockPageShell> {
               valueListenable: _offset,
               builder: (context, offset, _) => MiTopBar(
                 title: widget.title,
+                showBack: widget.showBack,
                 scrollOffset: offset,
+                // 只有 showBack 为 true 时圆钮才存在，回调此时才可能被触发
                 onBack: () => ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('返回圆钮被点击'),
