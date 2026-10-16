@@ -208,7 +208,7 @@ const List<Widget> _homeItems = [
 ///
 /// 顶部胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），
 /// 用来切分组件分组；下方网格是各组件的展示位 —— 「示例一」展示
-/// `logo.dart` 的全部 logo（真实框架 logo），其余分组为示例占位
+/// `nav_icons.dart` 的全部 logo（真实框架 logo），其余分组为示例占位
 /// （渐变圆角方块 + 抽象图形 + 「示例组件N」）。
 class _ShowcasePage extends StatefulWidget {
   const _ShowcasePage({required this.themeMode});
@@ -237,7 +237,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     '加号',
   ];
 
-  /// 「示例一」= `logo.dart` 全量 logo 展示（真实框架 logo，非占位）。
+  /// 「示例一」= `nav_icons.dart` 全量 logo 展示（真实框架 logo，非占位）。
   List<CustomPainter> _logos(Color ink) => [
         RollerIconPainter(ink),
         GridSparkleIconPainter(ink),
