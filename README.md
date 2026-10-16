@@ -20,7 +20,7 @@
 
 <img src="doc/preview/pill_light.png" width="360" alt="浅色胶囊分类标签行" /> <img src="doc/preview/pill_dark.png" width="360" alt="深色胶囊分类标签行" />
 
-「分类」tab 为组件展示页（logo / 名称为示例占位）：
+「分类」tab 为组件展示页（「示例一」为 `logo.dart` 全量 logo 展示，其余分组为示例占位）：
 
 <img src="doc/preview/showcase_light.png" width="200" alt="浅色组件展示页" /> <img src="doc/preview/showcase_dark.png" width="200" alt="深色组件展示页" />
 

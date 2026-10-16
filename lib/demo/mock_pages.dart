@@ -207,8 +207,9 @@ const List<Widget> _homeItems = [
 /// 「分类」tab = 组件展示库（示例层）。
 ///
 /// 顶部胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），
-/// 用来切分组件分组；下方网格是各组件的展示位 —— 分类 logo 与名称
-/// 全部为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+/// 用来切分组件分组；下方网格是各组件的展示位 —— 「示例一」展示
+/// `logo.dart` 的全部 logo（真实框架 logo），其余分组为示例占位
+/// （渐变圆角方块 + 抽象图形 + 「示例组件N」）。
 class _ShowcasePage extends StatefulWidget {
   const _ShowcasePage({required this.themeMode});
 
@@ -222,14 +223,57 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   /// 分类标签（示例名，对应截图 推荐/背屏/小部件/主题 的位置）。
   static const List<String> _tabs = ['示例一', '示例二', '示例三', '示例四'];
 
-  /// 每个分类下的展示位数量（示例内容，顺便覆盖可滚动长度）。
-  static const List<int> _counts = [8, 6, 8, 4];
+  /// 每个分类下的展示位数量（示例内容，顺便覆盖可滚动长度）；
+  /// 「示例一」是 logo 全量展示，数量由 [_logoNames] 决定。
+  static const List<int> _counts = [6, 6, 8, 4];
+
+  /// 「示例一」的 logo 名称（与 [_logos] 顺序一致）。
+  static const List<String> _logoNames = [
+    '滚筒刷',
+    '网格闪光',
+    '卡片星',
+    '点阵圆钮',
+    '笑脸贝雷',
+    '加号',
+  ];
+
+  /// 「示例一」= `logo.dart` 全量 logo 展示（真实框架 logo，非占位）。
+  List<CustomPainter> _logos(Color ink) => [
+        RollerIconPainter(ink),
+        GridSparkleIconPainter(ink),
+        CardsStarIconPainter(ink),
+        GridDotsIconPainter(ink),
+        SmileyBeretIconPainter(ink),
+        PlusIconPainter(ink),
+      ];
 
   int _tab = 0;
 
+  /// 展示位：「示例一」给 logo 展示位，其余分组给占位展示位。
+  Widget _tileAt(int i, bool logoMode, List<CustomPainter> logos) {
+    if (logoMode) {
+      return _ShowcaseTile(
+        colors: _tileGradients[i % _tileGradients.length],
+        glyph: CustomPaint(painter: logos[i], size: const Size.square(26)),
+        name: _logoNames[i],
+      );
+    }
+    return _ShowcaseTile(
+      colors: _tileGradients[(i + _tab * 2) % _tileGradients.length],
+      glyph: Icon(
+        _tileIcons[(i + _tab * 2) % _tileIcons.length],
+        color: Colors.white,
+        size: 26,
+      ),
+      name: _tileNames[i],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final count = _counts[_tab];
+    final logoMode = _tab == 0;
+    final logos = logoMode ? _logos(Colors.white) : const <CustomPainter>[];
+    final count = logoMode ? _logoNames.length : _counts[_tab];
     // 页底色与内容边距按完整截图实测：亮 #F3F3F3 / 暗 #000000，
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）
     return Container(
@@ -256,7 +300,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _SectionTitle('组件展示'),
+                _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
                 for (var row = 0; row * 4 < count; row++) ...[
                   Padding(
                     padding: const EdgeInsets.only(bottom: 18),
@@ -267,15 +311,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                           if (col > 0) const SizedBox(width: 12),
                           Expanded(
                             child: row * 4 + col < count
-                                ? _ShowcaseTile(
-                                    colors: _tileGradients[
-                                        (row * 4 + col + _tab * 2) %
-                                            _tileGradients.length],
-                                    icon: _tileIcons[
-                                        (row * 4 + col + _tab * 2) %
-                                            _tileIcons.length],
-                                    name: _tileNames[row * 4 + col],
-                                  )
+                                ? _tileAt(row * 4 + col, logoMode, logos)
                                 : const SizedBox.shrink(),
                           ),
                         ],
@@ -293,16 +329,16 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   }
 }
 
-/// 组件展示位（示例占位）：渐变 logo + 示例名称。
+/// 组件展示位：渐变底 + 墨迹图形 + 名称（logo / 占位共用）。
 class _ShowcaseTile extends StatelessWidget {
   const _ShowcaseTile({
     required this.colors,
-    required this.icon,
+    required this.glyph,
     required this.name,
   });
 
   final List<Color> colors;
-  final IconData icon;
+  final Widget glyph;
   final String name;
 
   @override
@@ -323,7 +359,7 @@ class _ShowcaseTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: Colors.white, size: 26),
+          child: glyph,
         ),
         const SizedBox(height: 8),
         Text(
@@ -337,7 +373,7 @@ class _ShowcaseTile extends StatelessWidget {
   }
 }
 
-/// 示例分类 logo：渐变底 + 抽象图形（占位内容，非框架图标）。
+/// 展示位渐变底（「示例一」配真实 logo，其余分组配抽象占位图形）。
 const List<List<Color>> _tileGradients = [
   [Color(0xFF396AFC), Color(0xFF2948FF)],
   [Color(0xFF00B4DB), Color(0xFF0083B0)],
