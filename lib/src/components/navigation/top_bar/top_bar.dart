@@ -22,9 +22,13 @@ import 'top_bar_metrics.dart';
 /// 栏顶全强度模糊、越往下越锐利，栏底完全清晰。
 ///
 /// 材质是**盖在整条顶栏上的底**（不占布局高度）：无头部区时只到实测材质盒
-/// [MiTopBarMetrics.scrimHeight]（128.9dp）；有头部区时铺满整条顶栏，模糊段与
-/// 叠色按 `栏高 / 128.9` 等比拉伸 —— 头部区既然在顶栏内，就被顶栏同一条曲线
-/// 一起磨，而不是「零件各自一块玻璃、间隙与四周锐利」。
+/// [MiTopBarMetrics.scrimHeight]（128.9dp）；有头部区时铺满整条顶栏。
+///
+/// 两种形态的模糊规律不同，都是实测的：
+///  * **纯标题形态** → σ 沿 y 递减的阶梯（0…119dp 归零，见 [blurBands]）；
+///  * **头部区形态** → **整条栏一个恒定 σ**（[uniformBlurBands]）：分类页截图
+///    里搜索栏行与胶囊行后方的模糊强度一致，一直糊到栏底才切回清晰内容，
+///    没有「越往下越清晰」的过渡。头部区既然在顶栏内，整条栏就是同一块材质。
 ///
 /// 实现是 **8 段定 σ 阶梯**（[MiTopBarPalette.blurBands]）：每段
 /// `ClipRect → BackdropFilter(σ_i)`，σ_i 取实测 σ(y) 曲线在该段中点的值。
@@ -328,10 +332,10 @@ class MiTopBar extends StatelessWidget {
   ///    首版一致；
   ///  * **有头部区**：铺满**整条顶栏** —— 头部区在顶栏内，就该被顶栏的材质
   ///    一起盖住（否则搜索栏 / 胶囊之间与四周是锐利的内容，只有零件自己是
-  ///    玻璃，视觉上割裂）。此时 blurBands 与叠色梯度按
-  ///    `materialHeight / scrimHeight` **等比拉伸**，保持「顶部最糊、到栏底
-  ///    渐隐为锐利」的实测形状（拉伸是推导：参考录屏的顶栏不内嵌组件，
-  ///    155.7dp 以上的 σ 无可测样本）。
+  ///    玻璃，视觉上割裂）。这一形态的模糊是**恒定 σ**（见
+  ///    [uniformBlurBands]，实测自分类页截图：搜索栏行与胶囊行后方的模糊
+  ///    强度一致、糊到栏底才切回清晰）；叠色梯度是按盒高比例的 stop，随盒
+  ///    拉高自动等比拉伸。
   double materialExtent(BuildContext context) {
     if (!showSurface) return 0;
     if (!hasHeaderSlot) return MiTopBarMetrics.scrimHeight;
@@ -348,29 +352,50 @@ class MiTopBar extends StatelessWidget {
   /// 段从 8 段 / 119dp 降到 5 段 / 45.4dp，模糊面积 85,680 → 32,688 dp²
   ///（−62%）；每段在滚动时都要重算一次全宽高斯，这是丢帧的主因。
   /// 裁剪后段的 σ 仍取原段值（段变窄，σ 沿 y 的变化在 3~7dp 内可忽略）。
-  ///
-  /// [scale] 把整条曲线沿 y 等比拉伸（含不透明段下沿），用于「材质铺满带
-  /// 头部区的顶栏」—— 见 [materialExtent]。
   @visibleForTesting
-  static List<MiTopBarBlurBand> visibleBlurBands(
-    MiTopBarPalette palette, {
-    double scale = 1,
-  }) {
-    final opaque = palette.scrimOpaqueBottom * scale;
+  static List<MiTopBarBlurBand> visibleBlurBands(MiTopBarPalette palette) {
+    final opaque = palette.scrimOpaqueBottom;
     final bands = <MiTopBarBlurBand>[];
     for (final band in MiTopBarPalette.blurBands) {
       if (band.sigma < MiTopBarMetrics.minVisibleBlurSigma) continue;
-      final bandTop = band.top * scale;
-      final bandBottom = band.bottom * scale;
-      final top = bandTop > opaque ? bandTop : opaque;
-      if (bandBottom <= top) continue;
+      final top = band.top > opaque ? band.top : opaque;
+      if (band.bottom <= top) continue;
       bands.add(MiTopBarBlurBand(
         top: top,
-        height: bandBottom - top,
+        height: band.bottom - top,
         sigma: band.sigma,
       ));
     }
     return bands;
+  }
+
+  /// **头部区形态**的模糊段：整条栏**一个恒定 σ**，不随 y 衰减。
+  ///
+  /// 与纯标题形态的渐进阶梯不是一回事 —— 实测自分类页完整截图（881×1920，
+  /// s = 393/881）：搜索栏行与胶囊行后方的模糊强度**一致**，且一直糊到栏底
+  /// 才切回清晰内容；没有"越往下越清晰 / 到栏底渐隐"的过渡。头部区既然是
+  /// 顶栏的一部分，整条栏就该是同一块材质。
+  ///
+  /// σ 取 [MiTopBarPalette.blurSigma]（栏顶实测 5.37dp）。深色配方同样跳过
+  /// 被不透明叠色盖住的段（[MiTopBarPalette.scrimOpaqueBottom]，按
+  /// [scale] 缩放 —— 叠色盒被拉伸到整条栏时，实心段也跟着拉长）。
+  @visibleForTesting
+  static List<MiTopBarBlurBand> uniformBlurBands(
+    MiTopBarPalette palette,
+    double height, {
+    double scale = 1,
+  }) {
+    if (height <= 0) return const <MiTopBarBlurBand>[];
+    const sigma = MiTopBarPalette.blurSigma;
+    if (sigma < MiTopBarMetrics.minVisibleBlurSigma) {
+      return const <MiTopBarBlurBand>[];
+    }
+    final opaque = palette.scrimOpaqueBottom * scale;
+    final top = opaque >= height ? height : opaque;
+    if (top >= height) return const <MiTopBarBlurBand>[];
+    return <MiTopBarBlurBand>[
+      MiTopBarBlurBand(top: top, height: height - top, sigma: sigma),
+    ];
   }
 
   @override
@@ -427,13 +452,16 @@ class MiTopBar extends StatelessWidget {
                 frosted: !showSurface,
               ));
     // 材质层铺满整条顶栏（有头部区时）/ 只到实测盒高（纯标题形态）。
-    // 有头部区时整条曲线等比拉伸：顶部仍最糊、到栏底渐隐为锐利。
+    // 两种形态的模糊不是一条曲线：纯标题形态用实测的 σ(y) 渐进阶梯；头部区
+    // 形态按分类页截图实测——整条栏**一个恒定 σ**，糊到栏底再切回清晰。
     final materialHeight = materialExtent(context);
     final materialScale =
         materialHeight > 0 ? materialHeight / MiTopBarMetrics.scrimHeight : 1.0;
-    final bands = showSurface
-        ? visibleBlurBands(palette, scale: materialScale)
-        : const <MiTopBarBlurBand>[];
+    final bands = !showSurface
+        ? const <MiTopBarBlurBand>[]
+        : hasHeaderSlot
+            ? uniformBlurBands(palette, materialHeight, scale: materialScale)
+            : visibleBlurBands(palette);
 
     return SizedBox(
       // 顶部叠加的根：材质层是**盖在**整条顶栏上的底，不占布局高度 ——

@@ -855,9 +855,13 @@ void main() {
       expect(
         blurLayers(),
         findsNWidgets(
-          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, scale: scale).length,
+          MiTopBar.uniformBlurBands(
+            MiTopBarPalette.dark,
+            156.0,
+            scale: scale,
+          ).length,
         ),
-        reason: '材质随栏高等比拉伸后，绘制段数与拉伸后的裁剪结果一致',
+        reason: '头部区形态是整条栏一个恒定 σ 的材质段',
       );
       expect(_scrimDark, findsOneWidget);
       expect(
@@ -867,7 +871,7 @@ void main() {
       );
     });
 
-    testWidgets('材质铺满整条顶栏：搜索栏与胶囊行都落在磨砂段内（统一材质）', (tester) async {
+    testWidgets('材质铺满整条顶栏：搜索栏与胶囊行落在同一块均匀磨砂里', (tester) async {
       _size(tester);
 
       await tester.pumpWidget(harness(
@@ -884,18 +888,36 @@ void main() {
       expect(scrim.top, 0);
       expect(scrim.height, closeTo(156.0, 0.01));
 
-      // 头部区（56…156）内每一段的 σ 都来自实测曲线按 156/128.9 拉伸后的值，
-      // 且栏底 σ 已经很小（渐隐为锐利，与参考录屏同形状）
-      final bands = MiTopBar.visibleBlurBands(
+      // 模糊是**恒定 σ**：整条栏只有一段，σ 取栏顶实测值，且覆盖到栏底
+      // （对照分类页截图：搜索栏行与胶囊行后方的模糊强度一致，糊到栏底
+      //  才切回清晰内容，没有「越往下越清晰」）。
+      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
+      final bands = MiTopBar.uniformBlurBands(
         MiTopBarPalette.dark,
-        scale: 156.0 / MiTopBarMetrics.scrimHeight,
+        156.0,
+        scale: scale,
       );
-      expect(bands.last.sigma, lessThan(1.0), reason: '栏底渐隐为锐利');
+      expect(bands, hasLength(1));
+      expect(bands.single.sigma, MiTopBarPalette.blurSigma);
       expect(
-        bands.last.bottom,
-        closeTo(109 * 156 / MiTopBarMetrics.scrimHeight, 0.01),
-        reason: 'σ 0.30 的尾段被 minVisibleBlurSigma 剔除，可见段止于 109dp 拉伸位',
+        bands.single.bottom,
+        closeTo(156.0, 0.01),
+        reason: '一直糊到栏底',
       );
+      // 深色配方仍跳过被不透明叠色盖住的段（按同一比例拉伸）
+      expect(
+        bands.single.top,
+        closeTo(
+          MiTopBarPalette.dark.scrimOpaqueBottom * scale,
+          0.01,
+        ),
+      );
+
+      // 纯标题形态不受影响：仍是实测渐进阶梯（多段、σ 递减）
+      final ladder = MiTopBar.visibleBlurBands(MiTopBarPalette.dark);
+      expect(ladder.length, greaterThan(1));
+      expect(ladder.first.sigma, lessThanOrEqualTo(MiTopBarPalette.blurSigma));
+      expect(ladder.last.sigma, lessThan(ladder.first.sigma));
     });
 
     testWidgets('header 插槽：高度取 preferredSize，左右同 headerInset', (tester) async {
@@ -1144,13 +1166,12 @@ void main() {
     testWidgets('顶栏自己画材质时内置组件不再自绘 backdrop（整条栏只糊一次）',
         (tester) async {
       _size(tester);
-      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
       Finder barBlurs() => find.descendant(
             of: find.byType(MiTopBar),
             matching: find.byType(BackdropFilter),
           );
 
-      // 开材质（默认）：零件交出磨砂，全栏只剩材质那几段
+      // 开材质（默认）：零件交出磨砂，全栏只剩材质那段
       await tester.pumpWidget(harness(
         title: null,
         showBack: false,
@@ -1168,10 +1189,8 @@ void main() {
       );
       expect(
         barBlurs(),
-        findsNWidgets(
-          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, scale: scale).length,
-        ),
-        reason: '全栏模糊层数 = 材质段数，没有零件私货',
+        findsOneWidget,
+        reason: '全栏只剩一段恒定 σ 的材质模糊，没有零件私货',
       );
 
       // 关材质：零件各自带 backdrop（旧形态，仅作对照）
