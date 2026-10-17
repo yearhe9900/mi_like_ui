@@ -7,6 +7,7 @@ import '../../../theme/pill_tab_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/filter_cache.dart';
 import 'pill_tab_bar_metrics.dart';
 
 /// 小米主题商店风格的胶囊分类标签行（深/浅色双模式）。
@@ -21,8 +22,13 @@ import 'pill_tab_bar_metrics.dart';
 /// 胶囊填充为半透明表面（平底合成 = 实测实色），胶囊下叠与
 /// [MiGlassNavBar] 同款 backdrop 磨砂（sigma = [MiTransparencyTokens.blurSigma]），
 /// 内容从胶囊后方经过时透上来并被磨出毛玻璃感。渲染分两遍：
-/// 先画全部胶囊的磨砂取景框（此时画布上还没有任何填充，backdrop
-/// 只含背景/身后内容，相邻胶囊互不串色），再画全部填充/文案/手势。
+/// 先画**整行一次**的磨砂（`ClipPath` 裁出全部胶囊形状 + 单个
+/// `BackdropFilter`，此时画布上还没有任何填充，backdrop 只含背景/身后内容，
+/// 相邻胶囊互不串色），再画全部填充/文案/手势。
+///
+/// 旧实现是「每个胶囊一个 `ClipRRect` + `BackdropFilter`」，4 个胶囊 = 4 次
+/// 全 QUAD 高斯 + 4 个 saveLayer，滚动时每帧重算 —— 分类页的主要掉帧源。
+/// 合并成 1 次后逐像素对比：最大灰度差 1~2 级、无任何像素差 > 2（纯 AA 舍入）。
 ///
 /// 点按切换选中态，填充/标签色以 200ms 过渡（截图是静态参考、无动效
 /// 实测，取标准过渡值；不引入按压缩放等未实测动效）。
@@ -61,38 +67,14 @@ class MiPillTabBar extends StatelessWidget {
       'selectedIndex 必须落在 labels 范围内',
     );
     final palette = MiPillTabPalette.of(themeMode);
-    final blur = ImageFilter.blur(
-      sigmaX: MiTransparencyTokens.blurSigma,
-      sigmaY: MiTransparencyTokens.blurSigma,
-    );
-    // 两遍绘制：plates（磨砂）在下、fills（填充/文案/手势）在上。
-    // 所有磨砂先于任何填充绘制，backdrop 只含背景/身后内容，
-    // 相邻胶囊的填充不进入彼此的模糊源（无串色）。
-    final plates = <Widget>[];
+    // 填充/文案/手势层（与磨砂分离成两层，保证模糊源里没有填充色）。
     final fills = <Widget>[];
     for (var i = 0; i < labels.length; i++) {
-      if (i > 0) {
-        plates.add(const SizedBox(width: MiPillTabMetrics.gap));
-        fills.add(const SizedBox(width: MiPillTabMetrics.gap));
-      }
+      if (i > 0) fills.add(const SizedBox(width: MiPillTabMetrics.gap));
       final selected = i == selectedIndex;
-      // pass 1：磨砂取景框 —— clip 到胶囊形状后做 backdrop 模糊，
-      // 只有胶囊内部透射磨砂，间隙/行外不糊。
-      plates.add(
-        ClipRRect(
-          borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-          child: BackdropFilter(
-            filter: blur,
-            child: SizedBox(
-              width: itemWidth,
-              height: MiPillTabMetrics.pillHeight,
-            ),
-          ),
-        ),
-      );
-      // pass 2：半透明填充 + 文案 + 手势。填充沿用 Decoration 自身
-      // 圆角 AA（与截图实测的单层边缘 AA 一致，勿再外包 ClipRRect，
-      // 两层 AA 叠乘会把边缘覆盖率压成 c²）。
+      // 半透明填充 + 文案 + 手势。填充沿用 Decoration 自身圆角 AA（与截图
+      // 实测的单层边缘 AA 一致，勿再外包 ClipRRect，两层 AA 叠乘会把边缘
+      // 覆盖率压成 c²）。
       fills.add(
         GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -131,11 +113,72 @@ class MiPillTabBar extends StatelessWidget {
         height: MiPillTabMetrics.pillHeight,
         child: Stack(
           children: [
-            Positioned.fill(child: Row(children: plates)),
+            // 磨砂层：**一次** ClipPath 裁出全部胶囊形状 + 一个 BackdropFilter。
+            // 旧实现是「每个胶囊一个 ClipRRect + BackdropFilter」= N 次全 QUAD
+            // 高斯 + N 个 saveLayer（4 个胶囊即 4 次，滚动时每帧重算，是分类页
+            // 的主要掉帧源）。合并后只有 1 次 —— 相邻胶囊仍不会串色：模糊层
+            // 先于所有填充绘制，backdrop 里只有背景内容，没有别的胶囊填充。
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ClipPath(
+                  clipper: _CapsuleStripClipper(
+                    count: labels.length,
+                    itemWidth: itemWidth,
+                    gap: MiPillTabMetrics.gap,
+                    height: MiPillTabMetrics.pillHeight,
+                  ),
+                  child: BackdropFilter(
+                    filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ),
             Positioned.fill(child: Row(children: fills)),
           ],
         ),
       ),
     );
   }
+}
+
+/// 把整行裁成「N 个 stadium 胶囊」的并集（供单次 backdrop 模糊覆盖全部胶囊）。
+///
+/// 胶囊等宽定距，第 i 个的左缘 = `i × (itemWidth + gap)`，圆角半径取高的一半
+/// （与 `BorderRadius.circular(radiusPill)` 半径钳位后的 stadium 一致）。
+class _CapsuleStripClipper extends CustomClipper<Path> {
+  const _CapsuleStripClipper({
+    required this.count,
+    required this.itemWidth,
+    required this.gap,
+    required this.height,
+  });
+
+  final int count;
+  final double itemWidth;
+  final double gap;
+  final double height;
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final radius = Radius.circular(height / 2);
+    for (var i = 0; i < count; i++) {
+      final left = i * (itemWidth + gap);
+      path.addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, 0, itemWidth, height),
+          radius,
+        ),
+      );
+    }
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_CapsuleStripClipper oldClipper) =>
+      oldClipper.count != count ||
+      oldClipper.itemWidth != itemWidth ||
+      oldClipper.gap != gap ||
+      oldClipper.height != height;
 }

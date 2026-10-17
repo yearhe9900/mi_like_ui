@@ -602,18 +602,21 @@ void main() {
       expect(dark.stops!.last, 1.0);
     });
 
-    testWidgets('磨砂层：每段一个定 σ 的 BackdropFilter，满宽、拼起来正好 scrimHeight', (tester) async {
+    testWidgets('磨砂层：每段一个定 σ 的 BackdropFilter，满宽、首尾相接', (tester) async {
       _size(tester);
 
       await tester.pumpWidget(harness());
 
-      // 忠实度关键：必须有 backdrop 模糊（上一版缺失的正是这层）
+      // 忠实度关键：必须有 backdrop 模糊（上一版缺失的正是这层）。
+      // 深色配方顶部 0…63.6dp 的叠色是 α=1.000 纯黑，其下的模糊 100% 不可见
+      // → 渲染层跳过（见 MiTopBar.visibleBlurBands），故段数按「可见段」核。
+      final bands = MiTopBar.visibleBlurBands(MiTopBarPalette.dark);
       final finder = blurLayers();
-      expect(finder, findsNWidgets(MiTopBarPalette.blurBands.length));
+      expect(finder, findsNWidgets(bands.length));
 
       // 每一段：σ 用该段的值、几何与 token 一致
-      for (var i = 0; i < MiTopBarPalette.blurBands.length; i++) {
-        final band = MiTopBarPalette.blurBands[i];
+      for (var i = 0; i < bands.length; i++) {
+        final band = bands[i];
         final widget = tester.widgetList<BackdropFilter>(finder).elementAt(i);
         expect(
           widget.filter,
@@ -628,13 +631,11 @@ void main() {
         expect(rect.height, closeTo(band.height, 0.01));
       }
 
-      // 各段拼起来正好覆盖 [0, scrimHeight) —— 中间不能留缝
-      final rects = [
-        for (var i = 0; i < MiTopBarPalette.blurBands.length; i++)
-          tester.getRect(finder.at(i)),
-      ];
-      expect(rects.first.top, 0);
-      expect(rects.last.bottom, closeTo(119.0, 0.01));
+      // 深色：第一段从不透明叠色下沿开始，段间无缝隙、最后一段止于 109dp
+      //（σ 曲线尾部 σ=0.30 的段 < minVisibleBlurSigma，落在亚像素、不绘制）
+      final rects = [for (var i = 0; i < bands.length; i++) tester.getRect(finder.at(i))];
+      expect(rects.first.top, closeTo(MiTopBarMetrics.scrimSolidBottom, 0.01));
+      expect(rects.last.bottom, closeTo(109.0, 0.01));
       for (var i = 1; i < rects.length; i++) {
         expect(rects[i].top, closeTo(rects[i - 1].bottom, 0.01));
       }
@@ -662,7 +663,12 @@ void main() {
         find.descendant(of: find.byType(MiTopBar), matching: find.byType(Text)),
         findsNothing,
       );
-      expect(blurLayers(), findsNWidgets(MiTopBarPalette.blurBands.length));
+      expect(
+        blurLayers(),
+        findsNWidgets(
+          MiTopBar.visibleBlurBands(MiTopBarPalette.dark).length,
+        ),
+      );
       expect(_scrimDark, findsOneWidget);
       expect(
         tester.getRect(find.byType(MiTopBar)).height,

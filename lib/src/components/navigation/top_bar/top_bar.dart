@@ -1,11 +1,11 @@
-import 'dart:ui' show ImageFilter;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../icons/nav_icons.dart';
 import '../../../theme/top_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/filter_cache.dart';
 import 'top_bar_metrics.dart';
 
 /// 小米「大标题折叠」顶部导航栏（深/浅色双模式）。
@@ -115,6 +115,37 @@ class MiTopBar extends StatelessWidget {
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
 
+  /// 渲染时真正要绘制的模糊段：剔除两类**视觉上不存在**的段。
+  ///
+  ///  * 完全落在叠色不透明段之内（[MiTopBarPalette.scrimOpaqueBottom]）——
+  ///    深色配方 0…63.6dp 是 α = 1.000 的纯黑，底下的模糊结果 100% 被遮住；
+  ///  * σ < [MiTopBarMetrics.minVisibleBlurSigma] —— 高斯半径 < 1dp，亚像素。
+  ///
+  /// 两条都是零视觉差异的省帧手段：平板 768×1280 深色首页实测，顶栏模糊
+  /// 段从 8 段 / 119dp 降到 5 段 / 45.4dp，模糊面积 85,680 → 32,688 dp²
+  ///（−62%）；每段在滚动时都要重算一次全宽高斯，这是丢帧的主因。
+  /// 裁剪后段的 σ 仍取原段值（段变窄，σ 沿 y 的变化在 3~7dp 内可忽略）。
+  @visibleForTesting
+  static List<MiTopBarBlurBand> visibleBlurBands(MiTopBarPalette palette) {
+    final opaque = palette.scrimOpaqueBottom;
+    final bands = <MiTopBarBlurBand>[];
+    for (final band in MiTopBarPalette.blurBands) {
+      if (band.sigma < MiTopBarMetrics.minVisibleBlurSigma) continue;
+      final top = band.top > opaque ? band.top : opaque;
+      if (band.bottom <= top) continue;
+      bands.add(
+        top == band.top
+            ? band
+            : MiTopBarBlurBand(
+                top: top,
+                height: band.bottom - top,
+                sigma: band.sigma,
+              ),
+      );
+    }
+    return bands;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = themeMode ??
@@ -144,6 +175,8 @@ class MiTopBar extends StatelessWidget {
       compactSize,
     );
 
+    final bands = visibleBlurBands(palette);
+
     return SizedBox(
       // 有标题时到大标题墨心 + 一整行（够高不裁标题）；纯材质形态只需盖住
       // 遮罩盒本身。遮罩之外的部分保持透明。
@@ -157,7 +190,7 @@ class MiTopBar extends StatelessWidget {
           //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
           //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
           //    见 MiTopBarPalette.blurBands 的说明。）
-          for (final band in MiTopBarPalette.blurBands)
+          for (final band in bands)
             Positioned(
               left: 0,
               right: 0,
@@ -166,10 +199,9 @@ class MiTopBar extends StatelessWidget {
               child: IgnorePointer(
                 child: ClipRect(
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: band.sigma,
-                      sigmaY: band.sigma,
-                    ),
+                    // σ 来自固定 token → 复用缓存的 native filter，
+                    // 避免每帧重建（滚动时每帧都会走这里）。
+                    filter: MiFilterCache.blur(band.sigma),
                     child: const SizedBox.expand(),
                   ),
                 ),

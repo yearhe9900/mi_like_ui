@@ -7,6 +7,7 @@ import '../../../theme/search_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/filter_cache.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
 
@@ -55,10 +56,8 @@ class MiSearchBar extends StatelessWidget {
     Widget bar = ClipRRect(
       borderRadius: BorderRadius.circular(MiDimens.radiusPill),
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: MiTransparencyTokens.blurSigma,
-          sigmaY: MiTransparencyTokens.blurSigma,
-        ),
+        // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）
+        filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
         child: ColoredBox(
           color: palette.fill,
           child: SizedBox(

@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+### Performance
+
+- **每帧模糊开销减半**（"滚动感觉丢帧"的定位与修复）
+  - **深色顶栏跳过被不透明叠色盖住的模糊段**：0…63.6dp 的 scrim 是 α = 1.000 纯黑，其下模糊 100% 不可见 → 新增 `MiTopBarPalette.scrimOpaqueBottom` + `MiTopBar.visibleBlurBands`，8 段/119dp → 5 段/45.4dp（模糊面积 85,680 → 39,888 dp²）。亮色顶部 α 0.650，**一段不省**
+  - **胶囊行 4 个 BackdropFilter 合并成 1 个**：`ClipPath`（`_CapsuleStripClipper`）一次裁出全部胶囊 + 单个 backdrop 模糊；分类页 6 → 3 层，相邻胶囊仍不串色（模糊层先于填充绘制）
+  - **`ImageFilter` 缓存复用**（`src/utils/filter_cache.dart`，内部不导出）：σ 固定却每帧 `ImageFilter.blur(...)` 新建 native 对象，滚动时每帧 N 次；另跳过 σ < 0.5dp（高斯半径 < 1dp，亚像素）的段
+  - **切 tab 去掉 260ms 淡入淡出**：`FadeTransition` 的 `Opacity` 引入 saveLayer → 下层 `BackdropFilter` 的 backdrop 变空（本项目实测坑），切页期间旧页磨砂消失且多一份全宽高斯（层数 7 → 9、6 层 opacity）；底部 tab 惯例为瞬时切换
+  - 逐像素对比：最大灰度差 1~2 级、零像素差 > 2；新增 `test/perf_budget_test.dart` 把层数/面积钉成预算（含"深色段不落在不透明区""亮色从栏顶开始""同 σ filter 跨帧复用"）
+  - 平板 768×1280 深色首页实测：10 层 / 100,073 dp² → 6~7 层 / 47,081 dp²
+
 ### Changed
 
 - **平板档（medium）改铺内容舞台**（2026-10-17 实机反馈修正）：原先 medium 按 1x 画 393×856 小手机居中，平板竖屏（650×1138）上画面只占 64% 屏高、上下各留 170/240px 纯黑，内容列数也停在手机档。现与 expanded 同策略：画面宽 = 可用宽（上限 1000）、高 = 可用高，四周留 24 —— 平板 650×1138 即 602×1090 舞台，主题卡 3→4 列。仍然只缩不放（`min(1, …)`），不靠放大手机来填满，避免 1dp 实测值失去物理意义。`MockPage` 页边距在非 compact 档统一 24。

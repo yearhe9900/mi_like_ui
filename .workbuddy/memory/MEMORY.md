@@ -25,6 +25,16 @@
   - 折叠：大标题**属于滚动内容**（质心位移 = 滚动位移，1:1 上移）+ 独立淡出曲线（0→19.97dp 归零），紧凑标题 19.97→29.31dp 才淡入，两段不重叠。
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 
+## 性能：每帧模糊预算（2026-10-17）
+- **`BackdropFilter` = 每帧全 QUAD 高斯**，滚动时 backdrop 一变就重算 → 滚动掉帧几乎全出在这。量化口径 = 一次 build 的**层数 + 覆盖面积 dp²**（与 dpr 无关），钉在 `test/perf_budget_test.dart`。
+- 平板 768×1280 深色实测：首页/我的 10 层/100,073 → **6~7 层/47,081~76,716**；分类 6 层 → **3 层**（面积略增 2.5%，因合并后含胶囊间隙）。
+- 三条零视觉差异优化（逐像素最大差 1~2 级、**无像素差 > 2**）：
+  1. **深色顶栏跳过 0…63.6dp**（scrim α=1.000 纯黑，其下模糊不可见）→ `MiTopBarPalette.scrimOpaqueBottom` + `MiTopBar.visibleBlurBands`，8 段→5 段；亮色 α 0.650 一段不省。
+  2. **胶囊行 4 个 BackdropFilter → 1 个**（`_CapsuleStripClipper` + 单 BackdropFilter），相邻胶囊仍不串色（模糊层先于填充）。
+  3. **`ImageFilter` 按 σ 缓存**（`src/utils/filter_cache.dart`，内部不导出）+ 跳过 σ<0.5dp（半径<1dp 亚像素）的段。
+- **切 tab 不做 fade**：`FadeTransition` 的 Opacity 引入 saveLayer → 下层 backdrop 变空（既有坑的延伸），切页期间旧页磨砂消失 + 双份全宽高斯（层数 7→9）。底部 tab 惯例就是瞬时切换。
+- **"感觉丢帧"先排除 debug 模式**：debug 渲染开销是 profile 的数倍；验证用 `flutter run --profile`（按 P 看 overlay）+ `adb shell dumpsys gfxinfo com.example.bottom_nav_demo` 看 Janky frames。
+
 ## 已知坑
 - **网格断点必须按"容器宽"标定，不能沿用窗口断点**：示例舞台 1000 宽减两侧 24 页边距只剩 952 < 1024，沿用窗口断点的网格会永远停在 medium 档、宽屏换不到 expanded 列数（2026-10-17 实拍发现首页仍是 4 列）。修法 = 给网格自己的 `compactMax/mediumMax`（示例 520/800 ≈ 设计宽 1.3/2 倍）。
 - **`MiPillTabBar` 在宽父级里会居中**：它是横向 `SingleChildScrollView`，拿到 loose 宽时 shrink-wrap 到内容宽（4×87.6+3×11.9+2×11.9 ≈ 410），再被 `Column`（默认 `crossAxisAlignment.center`）居中 → 与左对齐的搜索框/网格错位。宽屏场景要包 `Align(centerStart)`（393 下内容 410 > 视口，行为与原来一致、黄金图不变）。

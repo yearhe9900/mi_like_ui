@@ -189,14 +189,17 @@ class _DemoHomeState extends State<DemoHome> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  child: MockPage(
-                    _index,
-                    key: ValueKey(_index),
-                    themeMode: widget.themeMode,
-                    onThemeModeChanged: widget.onThemeModeChanged,
-                  ),
+                // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
+                //  `FadeTransition` 会给整页套一层 `Opacity` → 引入 saveLayer，
+                //  而 saveLayer 会让下层 `BackdropFilter` 的 backdrop 变空
+                //  （本项目已实测的坑）—— 切页的 260ms 里旧页磨砂直接消失、
+                //  还多算一份 5 段全宽高斯（实测模糊层 7 → 9、另有 6 层 opacity）。
+                //  底部 tab 惯例也是瞬时切换，参考 App 同款。
+                child: MockPage(
+                  _index,
+                  key: ValueKey(_index),
+                  themeMode: widget.themeMode,
+                  onThemeModeChanged: widget.onThemeModeChanged,
                 ),
               ),
               Positioned(

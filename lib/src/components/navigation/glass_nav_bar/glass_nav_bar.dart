@@ -10,6 +10,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
+import '../../../utils/filter_cache.dart';
 import 'glass_nav_bar_metrics.dart';
 import 'glass_nav_bar_painter.dart';
 
@@ -327,10 +328,8 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
           Widget glass = ClipRRect(
             borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
             child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: MiTransparencyTokens.blurSigma,
-                    sigmaY: MiTransparencyTokens.blurSigma,
-                  ),
+                  // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）
+                  filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [

@@ -106,6 +106,7 @@ class MiTopBarPalette {  const MiTopBarPalette({
     required this.scrimGradient,
     required this.ink,
     required this.pressHighlight,
+    this.scrimOpaqueBottom = 0,
   });
 
   /// 顶栏叠色：纵向渐变，顶部最深 → 各自实测处完全透明（渐变坐标按
@@ -117,6 +118,15 @@ class MiTopBarPalette {  const MiTopBarPalette({
 
   /// 返回圆钮按压反馈圆盘底色（半径 = 圆钮半径，实测平坦无角向变化）。
   final Color pressHighlight;
+
+  /// 叠色**完全不透明**段的下沿（dp，距栏顶）。其上区域的模糊结果被 100%
+  /// 遮住 —— 渲染时可以直接跳过那几段 backdrop 模糊（零视觉差异的省帧优化，
+  /// 见 [MiTopBarBlurBand] 与 `MiTopBar.build`）。
+  ///
+  /// * 深色配方：scrim 顶部 α = 1.000（纯黑）直到 63.6dp（stops 0.4934 ×
+  ///   128.9）→ **63.6**；
+  /// * 浅色配方：顶部 α = 0.650，全段半透明 → **0**（一段都不能省）。
+  final double scrimOpaqueBottom;
 
   // ── 磨砂材质（明暗通用） ────────────────────────────────────────────────
   /// 栏顶**平台段**的 blur σ（dp）。取 10-90% 边缘宽度 42.7px 换算：
@@ -182,6 +192,8 @@ class MiTopBarPalette {  const MiTopBarPalette({
     ),
     ink: MiColors.foreground,
     pressHighlight: Color.fromRGBO(255, 255, 255, 0.094),
+    // 顶部 α = 1.000 纯黑直到 63.6dp（stops 0.4934 × scrimHeight 128.9）
+    scrimOpaqueBottom: 63.6,
   );
 
   /// 浅色配方（**本轮实测**：叠色 = 页底色 #F3F3F3，α 0.650 → 0）。
@@ -220,6 +232,8 @@ class MiTopBarPalette {  const MiTopBarPalette({
     ),
     ink: MiColors.foregroundLight,
     pressHighlight: Color.fromRGBO(0, 0, 0, 0.094),
+    // 亮色叠色顶部 α 仅 0.650 → 全段半透明，模糊一段都不能省
+    scrimOpaqueBottom: 0,
   );
 
   /// 按明暗模式取配方。

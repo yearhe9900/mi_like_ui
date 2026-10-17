@@ -106,8 +106,45 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 <img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856：1:1" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470：整机等比缩小" /> <img src="doc/preview/adaptive_tablet.png" width="180" alt="平板 800×1000：1x 居中" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768：加宽舞台，主题卡 6 列" />
 
 
-## 设计原则
+## 性能：每帧模糊预算
 
+磨砂是这个框架最贵的绘制：`BackdropFilter` 每帧都要对 backdrop 重算一次
+**全 QUAD 高斯**，滚动时 backdrop 一变就得重来。滚动掉帧基本都出在这里，
+所以把「一次 build 里的模糊层数 + 覆盖面积（dp²，与 dpr 无关）」钉成预算
+（`test/perf_budget_test.dart`）：
+
+| 页面（深色，768×1280） | 优化前 | 现在 |
+|---|---|---|
+| 首页 / 我的（顶栏 + 导航栏 + 搜索栏） | 10 层 / 100,073 dp² | **6~7 层 / 47,081~76,716 dp²** |
+| 分类（胶囊行 4 + 搜索 + 导航） | 6 层 / 58,009 dp² | **3 层 / 59,434 dp²** |
+
+三条**零视觉差异**的优化（逐像素对比：最大灰度差 1~2 级，无任何像素差 > 2）：
+
+1. **顶栏跳过被不透明叠色盖住的模糊段**：深色配方 0…63.6dp 的叠色是
+   α = 1.000 纯黑，其下的模糊结果 100% 看不见 —— 8 段 / 119dp 降到 5 段 /
+   45.4dp（`MiTopBar.visibleBlurBands`）。亮色叠色顶部只有 α 0.650，一段不省。
+2. **胶囊行 4 个 BackdropFilter 合并成 1 个**：一次 `ClipPath` 裁出全部胶囊形状
+   + 单个 backdrop 模糊（旧实现每个胶囊各一次高斯 + 一个 saveLayer）。相邻
+   胶囊仍不串色 —— 模糊层先于所有填充绘制。
+3. **σ 固定的 `ImageFilter` 缓存复用**（`src/utils/filter_cache.dart`）：避免每帧
+   新建 native filter；另外 σ < 0.5dp 的段（高斯半径 < 1dp，亚像素）不绘制。
+
+还有一个**交互层**的修正：切 tab 去掉了 260ms 淡入淡出。`FadeTransition` 会给
+整页套 `Opacity` → 引入 saveLayer，而 saveLayer 会让下层 `BackdropFilter` 的
+backdrop 变空（本项目实测过的坑）—— 切页期间旧页磨砂会消失、还多算一份全宽
+高斯（实测模糊层 7 → 9、另有 6 层 opacity）。底部 tab 惯例本就是瞬时切换。
+
+**验证方式**（务必在 profile 下看，debug 模式的渲染开销是 profile 的几倍，
+「感觉丢帧」多半来自 debug 运行）：
+
+```bash
+flutter run --profile                       # 运行后按 P 打开性能 overlay
+adb shell dumpsys gfxinfo com.example.bottom_nav_demo reset
+# … 在应用里连续滚动 / 切 tab 约 20 秒 …
+adb shell dumpsys gfxinfo com.example.bottom_nav_demo | Select-String "Janky frames"
+```
+
+## 设计原则
 - **实测优先** — 视觉与动效参数以像素测量值为准，黄金图回归锁行为
 - **组件自包含** — widget / 参数 / 绘制同目录组织，互不泄漏
 - **token 驱动** — 颜色、文字、间距、材质统一走主题层，组件内不写字面量
