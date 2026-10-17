@@ -22,6 +22,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // 归属：搜索栏与胶囊行都是 **MiTopBar 的子树**（由顶栏自己产出），
+    // 页面不再 new 这两个组件、也不再自己拼吸顶 Column。
+    final bar = find.byType(MiTopBar);
+    expect(bar, findsOneWidget);
+    expect(
+      find.descendant(of: bar, matching: find.byType(MiSearchBar)),
+      findsOneWidget,
+      reason: '分类页的搜索栏必须在顶部导航栏内部',
+    );
+    expect(
+      find.descendant(of: bar, matching: find.byType(MiPillTabBar)),
+      findsOneWidget,
+      reason: '分类页的胶囊按钮必须在顶部导航栏内部',
+    );
+    // 页面里没有第二个（顶栏之外不该再有一份）
+    expect(find.byType(MiSearchBar), findsOneWidget);
+    expect(find.byType(MiPillTabBar), findsOneWidget);
+
     // 初始：标签行吸附搜索框下方 = 56 + 44.1 + 16 = 116.1
     final pillTop = tester.getTopLeft(find.byType(MiPillTabBar)).dy;
     expect(pillTop, closeTo(56 + 44.1 + 16, 0.01));

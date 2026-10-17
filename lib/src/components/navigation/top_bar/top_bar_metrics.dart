@@ -193,8 +193,10 @@ class MiTopBarMetrics {
 
   /// 搜索栏插槽默认高度 = `MiSearchBarMetrics.barHeight`（44.1）。
   ///
-  /// 两个常量同值是有意的重复：`navigation/` 不依赖 `inputs/`，
-  /// 跨层一致由测试 `top_bar_test.dart` 钉住（改一处漏另一处会红）。
+  /// 两个常量同值是有意的重复：metrics 类保持纯数据、不 import 组件层
+  ///（`MiTopBar` 自身为了产出内置搜索栏会 import `inputs/search_bar`，但
+  /// 几何表不需要跟着耦合）。跨层一致由测试 `top_bar_test.dart` 钉住
+  ///（改一处漏另一处会红）。
   static const double searchBarSlotHeight = 44.1;
 
   /// 胶囊标签行插槽默认高度 = `MiPillTabMetrics.pillHeight`（39.9）；同上，

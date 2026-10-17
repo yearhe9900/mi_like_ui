@@ -23,6 +23,11 @@ Widget harness({
   VoidCallback? onBackgroundTap,
   Widget? searchBar,
   Widget? tabBar,
+  String? searchHint,
+  List<String>? tabs,
+  int selectedTab = 0,
+  ValueChanged<int>? onTabChanged,
+  VoidCallback? onSearchTap,
   PreferredSizeWidget? header,
   bool showSurface = true,
   double headerInset = MiTopBarMetrics.headerInset,
@@ -46,6 +51,11 @@ Widget harness({
             onBack: onBack,
             searchBar: searchBar,
             tabBar: tabBar,
+            searchHint: searchHint,
+            tabs: tabs,
+            selectedTab: selectedTab,
+            onTabChanged: onTabChanged,
+            onSearchTap: onSearchTap,
             header: header,
             showSurface: showSurface,
             headerInset: headerInset,
@@ -719,7 +729,8 @@ void main() {
         );
 
     test('跨层常量同值：插槽默认高度 = 搜索栏 / 胶囊行的实测高度', () {
-      // navigation/ 不依赖 inputs/，两个常量是有意重复，改一处漏另一处会红
+      // metrics 表保持纯数据（不 import 组件层），两个常量有意重复；
+      // 改一处漏另一处会红
       expect(MiTopBarMetrics.searchBarSlotHeight, MiSearchBarMetrics.barHeight);
       expect(MiTopBarMetrics.tabBarSlotHeight, MiPillTabMetrics.pillHeight);
     });
@@ -942,6 +953,184 @@ void main() {
           title: null,
           searchBar: const SizedBox(),
           tabBar: const SizedBox(),
+        ),
+        returnsNormally,
+      );
+    });
+  });
+
+  group('头部区由顶栏自己产出（声明式入参 searchHint / tabs）', () {
+    const hint = '搜索主题 / 壁纸 / 图标';
+    const labels = ['Logo 展示', '按钮展示', '示例三', '示例四'];
+
+    testWidgets('给 searchHint 就产出 MiSearchBar，几何与插槽形态一致', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+      ));
+
+      final search = find.byType(MiSearchBar);
+      expect(search, findsOneWidget, reason: '顶栏应自己 new 出搜索栏');
+      expect(
+        find.descendant(of: find.byType(MiTopBar), matching: search),
+        findsOneWidget,
+        reason: '搜索栏必须是顶栏的子树（不是页面拼在顶栏外面）',
+      );
+      expect(
+        tester.widget<MiSearchBar>(search).hint,
+        hint,
+        reason: '占位文案透传',
+      );
+      final rect = tester.getRect(search);
+      expect(rect.top, closeTo(MiTopBarMetrics.headerTopInset, 0.01));
+      expect(rect.left, closeTo(MiTopBarMetrics.headerInset, 0.01));
+      expect(rect.height, closeTo(MiSearchBarMetrics.barHeight, 0.01));
+    });
+
+    testWidgets('给 tabs 就产出 MiPillTabBar，标签与选中下标透传、满宽', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        tabs: labels,
+        selectedTab: 1,
+      ));
+
+      final pills = find.byType(MiPillTabBar);
+      expect(
+        find.descendant(of: find.byType(MiTopBar), matching: pills),
+        findsOneWidget,
+      );
+      final widget = tester.widget<MiPillTabBar>(pills);
+      expect(widget.labels, labels);
+      expect(widget.selectedIndex, 1);
+      expect(widget.itemWidth, MiPillTabMetrics.itemWidth);
+      // 胶囊行仍满宽（左右不内缩，保留横向出血滚动）
+      expect(tester.getRect(pills).left, 0);
+      expect(tester.getRect(pills).width, 393);
+    });
+
+    testWidgets('高度与插槽形态逐值相同：56 + 44.1 + 16 + 39.9 = 156', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        tabs: labels,
+      ));
+      final bar = tester.widget<MiTopBar>(find.byType(MiTopBar));
+      final context = tester.element(find.byType(MiTopBar));
+      expect(bar.hasHeaderSlot, isTrue);
+      expect(bar.occupiedHeight(context), closeTo(156.0, 0.01));
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(bar.occupiedHeight(context), 0.01),
+        reason: '宿主按 occupiedHeight 让位，必须与实际高度同源',
+      );
+    });
+
+    testWidgets('点按胶囊回调出下标；点按搜索栏回调 onSearchTap', (tester) async {
+      _size(tester);
+
+      int? tapped;
+      var searchTaps = 0;
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        onSearchTap: () => searchTaps++,
+        tabs: labels,
+        onTabChanged: (i) => tapped = i,
+      ));
+
+      await tester.tap(find.text('按钮展示'));
+      await tester.pump();
+      expect(tapped, 1);
+
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      expect(searchTaps, 1);
+    });
+
+    testWidgets('onTabChanged = null 时只展示：点按不抛错、选中态不变', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        tabs: labels,
+        selectedTab: 0,
+      ));
+
+      await tester.tap(find.text('示例三'));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).selectedIndex,
+        0,
+      );
+    });
+
+    testWidgets('内置组件的明暗配方随顶栏 themeMode（页面不用再各传一遍）', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        mode: MiThemeMode.light,
+        searchHint: hint,
+        tabs: labels,
+      ));
+
+      expect(
+        tester.widget<MiSearchBar>(find.byType(MiSearchBar)).themeMode,
+        MiThemeMode.light,
+      );
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).themeMode,
+        MiThemeMode.light,
+        reason: 'MiPillTabBar 默认值是 dark，必须由顶栏显式覆盖',
+      );
+    });
+
+    test('声明式入参与插槽互斥（构造期断言）', () {
+      expect(
+        () => harness(searchHint: hint, searchBar: const SizedBox()),
+        throwsA(isA<AssertionError>()),
+        reason: '搜索栏不能既内置又外传',
+      );
+      expect(
+        () => harness(tabs: const ['a'], tabBar: const SizedBox()),
+        throwsA(isA<AssertionError>()),
+        reason: '胶囊行不能既内置又外传',
+      );
+      expect(
+        () => harness(header: const _FixedHeader(height: 20), searchHint: hint),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => harness(header: const _FixedHeader(height: 20), tabs: const ['a']),
+        throwsA(isA<AssertionError>()),
+      );
+      // 合法：只给数据
+      expect(
+        () => harness(
+          title: null,
+          showSurface: false,
+          searchHint: hint,
+          tabs: const ['a'],
         ),
         returnsNormally,
       );

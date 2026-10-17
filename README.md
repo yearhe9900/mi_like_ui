@@ -50,13 +50,17 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 （`null` = 只显示不可点）。内容首行顶缘按实测分两档：卡片类
 `contentTopInset` 183dp、搜索栏类 `searchBarTopInset` 168.5dp。
 
-除了标题，顶栏还能**内嵌头部插槽**（分类页就是这种形态）：`searchBar` /
-`tabBar` 两个结构化插槽由顶栏统一负责状态栏让位、左右页边距、两者间距与
-左缘对齐，`header`（`PreferredSizeWidget`）是整块自定义头部的逃生口（三者
-互斥，构造期断言）。插槽高度是**声明值**，顶栏据此排版、宿主用
-`bar.occupiedHeight(context)` 给滚动内容让位 —— 同一套数字，不会出现「头部
-下移而列表没让位」。`showSurface: false` 关掉磨砂 + 叠色，适合头部自带
-backdrop 的场景（分类页的搜索栏与胶囊各有自己的磨砂）。
+除了标题，顶栏还能**内嵌头部区**（分类页就是这种形态），而且这部分**由顶栏
+自己产出**：传 `searchHint` 顶栏内部就构造 `MiSearchBar`，传 `tabs` /
+`selectedTab` / `onTabChanged` 就构造 `MiPillTabBar` —— 页面只给数据，不 new
+组件、也不传 `themeMode`（明暗配方由顶栏统一解析后下发）。状态栏让位、左右
+页边距、两者间距与左缘对齐全在顶栏里算。要换皮/塞别的组件时改用同名的
+`searchBar` / `tabBar` 插槽，`header`（`PreferredSizeWidget`）是整块自定义头部
+的逃生口（`header` 与搜索栏 / 胶囊行互斥，`searchBar`↔`searchHint`、
+`tabBar`↔`tabs` 各自互斥，均构造期断言）。高度是**声明值**，顶栏据此排版、
+宿主用 `bar.occupiedHeight(context)` 给滚动内容让位 —— 同一套数字，不会出现
+「头部下移而列表没让位」。`showSurface: false` 关掉磨砂 + 叠色，适合头部自带
+backdrop 的场景（内置的搜索栏与胶囊各有自己的磨砂）。
 
 下图每格分别是：① 纯材质形态（标题不传，滚动 96dp → 头像滑进栏内被抹开）、
 ② 顶层页（无圆钮、首行搜索栏 168.5dp）、③ 次级页（带圆钮、首行卡片 183dp）、

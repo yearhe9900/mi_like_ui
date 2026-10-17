@@ -18,17 +18,18 @@
 
 ### Changed
 
-- **分类页的搜索栏 + 胶囊标签行改由 `MiTopBar` 插槽渲染**：页面里手写的「吸顶 `Column`（搜索栏 + 16dp + 胶囊行）」与 `_headerHeight`（`状态栏 + 44.1 + 16 + 39.9`）全部删除，改为 `MiTopBar(showSurface: false, searchBar: MiSearchBar(...), tabBar: MiPillTabBar(...))`，滚动内容让位取 `bar.occupiedHeight(context) + headerContentGap`。渲染结果与迁移前**逐像素一致**（`doc/preview/showcase_*.png` 未变），吸顶/透射/点按行为不变；`showcase_sticky_test` 追加一条「内容让位 = 168dp」的断言
+- **分类页的搜索栏 + 胶囊标签行改由 `MiTopBar` 内部产出**：页面里手写的「吸顶 `Column`（搜索栏 + 16dp + 胶囊行）」、`_headerHeight`（`状态栏 + 44.1 + 16 + 39.9`）以及两个组件的 `new` 全部删除，改为 `MiTopBar(showSurface: false, searchHint: …, tabs: …, selectedTab: …, onTabChanged: …)` —— 页面只给数据，`MiSearchBar` / `MiPillTabBar` 由顶栏自己构造，滚动内容让位取 `bar.occupiedHeight(context) + headerContentGap`。渲染结果与迁移前**逐像素一致**（`doc/preview/showcase_*.png` 未变），吸顶/透射/点按行为不变；`showcase_sticky_test` 追加「搜索栏与胶囊行必须是 `MiTopBar` 的子树」「内容让位 = 168dp」两条断言
 - **平板档（medium）改铺内容舞台**（2026-10-17 实机反馈修正）：原先 medium 按 1x 画 393×856 小手机居中，平板竖屏（650×1138）上画面只占 64% 屏高、上下各留 170/240px 纯黑，内容列数也停在手机档。现与 expanded 同策略：画面宽 = 可用宽（上限 1000）、高 = 可用高，四周留 24 —— 平板 650×1138 即 602×1090 舞台，主题卡 3→4 列。仍然只缩不放（`min(1, …)`），不靠放大手机来填满，避免 1dp 实测值失去物理意义。`MockPage` 页边距在非 compact 档统一 24。
 
 ### Added
 
-- **MiTopBar 通用化：头部插槽（搜索栏 / 胶囊标签行 / 自定义头部）** —— 顶栏由「标题区 + 头部区」上下拼成，两区可自由组合
-  - `searchBar`：搜索栏插槽，顶栏负责状态栏让位（实测 56dp，安全区更高时取安全区）、左右页边距（`headerInset`，实测 11.9）、与胶囊行的间距（16dp）
-  - `tabBar`：胶囊标签行插槽，**满宽**渲染（自带 11.9 `edgeInset` 与搜索栏左缘对齐，且保留横向出血滚动；套内边距会把末尾胶囊多裁一截）
-  - `header`：`PreferredSizeWidget` 逃生口，高度取 `preferredSize.height`；与上面两者**互斥**（构造期断言）
+- **MiTopBar 通用化：头部区（顶栏自己产出搜索栏 / 胶囊行）** —— 顶栏由「标题区 + 头部区」上下拼成，两区可自由组合
+  - **声明式入参（默认路径，调用方不 new 组件）**：`searchHint` / `onSearchTap` → 顶栏内部构造 `MiSearchBar`；`tabs` / `selectedTab` / `onTabChanged` → 内部构造 `MiPillTabBar`。明暗配方由顶栏解析后的 `themeMode` 统一下发（页面不必再各传一遍 `themeMode`），`onTabChanged` 为空时胶囊只展示不可切换
+  - **同名插槽（逃生口，与声明式入参二选一）**：`searchBar` / `tabBar` 传现成组件换皮，排版与让位完全相同；`searchBarHeight` / `tabBarHeight` 用于声明插槽高度（默认 44.1 / 39.9，声明式入参时恒等于组件自身高度）
+  - `header`：`PreferredSizeWidget` 整块自定义头部，高度取 `preferredSize.height`；与搜索栏 / 胶囊行**互斥**，`searchBar`↔`searchHint`、`tabBar`↔`tabs` 也各自互斥（构造期断言）
   - `showSurface`：是否绘制磨砂 + 叠色（默认 true）。头部自带 backdrop（如 `MiSearchBar` / `MiPillTabBar`）时传 false，避免多叠若干层模糊、并把头部间隙染上叠色
   - `occupiedHeight(context)`：顶栏自身占用的总高（= 声明插槽高 + 标题区），宿主据此给滚动内容让位 —— 与组件内部排版同源，不会「头部下移而列表没让位」
+  - 新增 `hasSearchBar` / `hasTabBar` / `hasHeaderSlot` 三个只读判断（声明式入参与插槽合并判断）
   - `MiTopBarMetrics` 新增头部件几何：`headerTopInset` 56 / `searchBarGap` 16 / `headerContentGap` 12 / `headerInset` 11.9 / `searchBarSlotHeight` 44.1 / `tabBarSlotHeight` 39.9，以及 `headerTopInsetFor(safeAreaTop)`
 - **响应式 / 自适应能力**（桌面、平板、手机三档）
   - `src/utils/responsive.dart`：`MiBreakpoints`（窗口三档 compact <600 / medium 600…1023 / expanded ≥1024，纯函数）、`MiViewport`（`MediaQuery.sizeOf` 派生的窗口快照，随尺寸变化自动重建）、`MiScaledCanvas`（把固定设计画布按 contain 等比缩放：只缩不放、宽高同比例、`scale == 1` 时零变换层）、`MiResponsiveGrid`（按**容器宽**断点切列数，行内 `Expanded` 等分、末行留空不拉伸）

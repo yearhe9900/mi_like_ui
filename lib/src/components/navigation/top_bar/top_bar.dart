@@ -5,6 +5,8 @@ import '../../../theme/top_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../inputs/search_bar/search_bar.dart';
+import '../pill_tab_bar/pill_tab_bar.dart';
 import 'top_bar_metrics.dart';
 
 /// 小米「大标题折叠」顶部导航栏（深/浅色双模式）。
@@ -44,26 +46,36 @@ import 'top_bar_metrics.dart';
 /// ## 形态与插槽
 ///
 /// 顶栏由「**标题区**」（材质 + 大/紧凑标题 + 返回圆钮，定高）与
-/// 「**头部区**」（插槽，按需）上下拼成，两区可自由组合：
+/// 「**头部区**」（按需）上下拼成，两区可自由组合：
 ///
-/// | 形态 | `title` | `showSurface` | 插槽 | 典型用法 |
-/// |------|---------|---------------|------|----------|
+/// | 形态 | `title` | `showSurface` | 头部区 | 典型用法 |
+/// |------|---------|---------------|--------|----------|
 /// | 大标题折叠 | 有 | `true` | — | 首页 / 「我的」/ 设置页 |
 /// | 纯材质 | `null` | `true` | — | 参考录屏「我的」页（顶栏不内嵌组件） |
-/// | 吸顶头部 | `null` | `false` | `searchBar` + `tabBar` | 分类页（搜索栏 + 胶囊行吸顶） |
+/// | 吸顶头部 | `null` | `false` | `searchHint` + `tabs` | 分类页（搜索栏 + 胶囊行吸顶） |
 /// | 材质 + 头部 | `null` | `true` | 任意 | 需要磨砂底的自定义头部 |
 ///
-/// 头部插槽自上而下排列，**三者互斥**（构造期断言保证）：
+/// 头部区**默认由顶栏自己产出**两个框架组件，调用方只给数据、不 new 组件：
+///
+/// | 头部内容 | 声明式入参 | 顶栏内部产出的组件 | 高度 |
+/// |----------|------------|--------------------|------|
+/// | 搜索栏 | [searchHint] / [onSearchTap] | `MiSearchBar` | [searchBarHeight]（44.1） |
+/// | 胶囊标签行 | [tabs] / [selectedTab] / [onTabChanged] | `MiPillTabBar` | [tabBarHeight]（39.9） |
+///
+/// 需要换皮或塞别的组件时，用同名**插槽**覆盖（与声明式入参二选一）：
 ///
 /// | 插槽 | 类型 | 高度来源 | 布局 |
 /// |------|------|----------|------|
-/// | [searchBar] | `Widget` | [searchBarHeight]（默认 44.1） | 左右 [headerInset]、顶部状态栏让位 |
-/// | [tabBar] | `Widget` | [tabBarHeight]（默认 39.9） | **满宽**（自带 11.9 边距，需横向出血滚动），与搜索栏隔 16 |
+/// | [searchBar] | `Widget` | [searchBarHeight] | 左右 [headerInset]、顶部状态栏让位 |
+/// | [tabBar] | `Widget` | [tabBarHeight] | **满宽**（自带 11.9 边距，需横向出血滚动），与搜索栏隔 16 |
 /// | [header] | `PreferredSizeWidget` | `preferredSize.height` | 左右 [headerInset]，整块自定义头部的逃生口 |
+///
+/// [header] 与搜索栏 / 胶囊行**互斥**，`searchBar`↔`searchHint`、
+/// `tabBar`↔`tabs` 各自互斥（构造期断言保证）。
 ///
 /// 插槽高度是**声明值**：组件按它分配高度，宿主也按它（经 [occupiedHeight]）
 /// 给滚动内容让位 —— 两侧同源，不会出现「头部下移而列表没让位」的错位。
-/// 换成自定义高度的组件时记得同步传高度。
+/// 换成自定义高度的组件时记得同步传高度（用声明式入参则恒等于组件自身高度）。
 ///
 /// ## 用法 —— 吸顶头部（分类页形态）
 ///
@@ -71,8 +83,10 @@ import 'top_bar_metrics.dart';
 /// final bar = MiTopBar(
 ///   themeMode: mode,
 ///   showSurface: false,             // 头部自带磨砂，不再叠一层材质
-///   searchBar: MiSearchBar(hint: '搜索主题 / 壁纸 / 图标'),
-///   tabBar: MiPillTabBar(labels: tabs, selectedIndex: i, onTap: ...),
+///   searchHint: '搜索主题 / 壁纸 / 图标',
+///   tabs: const ['推荐', '背屏', '小部件', '主题'],
+///   selectedTab: index,
+///   onTabChanged: (i) => setState(() => index = i),
 /// );
 ///
 /// Stack(children: [
@@ -82,6 +96,9 @@ import 'top_bar_metrics.dart';
 ///   Positioned(top: 0, left: 0, right: 0, child: bar),
 /// ])
 /// ```
+///
+/// 需要自定义搜索栏 / 胶囊行时改传 [searchBar] / [tabBar] 插槽，排版与让位
+/// 完全一致，只是组件本体由调用方提供。
 ///
 /// ## 用法 —— 大标题折叠
 ///
@@ -137,25 +154,38 @@ class MiTopBar extends StatelessWidget {
     this.themeMode,
     this.scrollOffset = 0,
     this.searchBar,
+    this.searchHint,
+    this.onSearchTap,
     this.searchBarHeight = MiTopBarMetrics.searchBarSlotHeight,
     this.tabBar,
+    this.tabs,
+    this.selectedTab = 0,
+    this.onTabChanged,
     this.tabBarHeight = MiTopBarMetrics.tabBarSlotHeight,
     this.header,
     this.headerInset = MiTopBarMetrics.headerInset,
     this.showSurface = true,
   })  : assert(scrollOffset >= 0, 'scrollOffset 不能为负（未滚动时传 0）'),
-        assert(header == null || (searchBar == null && tabBar == null),
-            'header 与 searchBar / tabBar 互斥：给了整块头部就不要再给零件'),
+        assert(header == null || (searchBar == null && searchHint == null &&
+            tabBar == null && tabs == null),
+            'header 与搜索栏 / 胶囊行互斥：给了整块头部就不要再给零件'),
+        assert(searchBar == null || searchHint == null,
+            '搜索栏二选一：searchBar（自定义组件）与 searchHint（内置 MiSearchBar）不能同时给'),
+        assert(tabBar == null || tabs == null,
+            '胶囊行二选一：tabBar（自定义组件）与 tabs（内置 MiPillTabBar）不能同时给'),
         assert(searchBarHeight > 0, 'searchBarHeight 必须为正'),
         assert(tabBarHeight > 0, 'tabBarHeight 必须为正'),
         assert(headerInset >= 0, 'headerInset 不能为负'),
+        assert(selectedTab >= 0, 'selectedTab 不能为负'),
         assert(
           title != null ||
               showSurface ||
               searchBar != null ||
+              searchHint != null ||
               tabBar != null ||
+              tabs != null ||
               header != null,
-          '空顶栏没有意义：title / showSurface / 插槽至少要给一个',
+          '空顶栏没有意义：title / showSurface / 头部区至少要给一个',
         );
 
   /// 标题文案（大标题与紧凑标题同源）。
@@ -177,10 +207,32 @@ class MiTopBar extends StatelessWidget {
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
 
-  // ── 头部插槽（searchBar / tabBar / header 三者互斥） ────────────────────
+  // ── 头部区：声明式入参（顶栏内部产出组件） ──────────────────────────────
+  /// 搜索栏的占位文案 —— 给了它，顶栏**自己在内部产出** `MiSearchBar`，
+  /// 调用方不用 import / new 搜索栏组件。
+  ///
+  /// 与 [searchBar] 二选一（同时给会在构造期断言）。
+  final String? searchHint;
+
+  /// 内置搜索栏的点按回调（仅 [searchHint] 生效时有效）。
+  final VoidCallback? onSearchTap;
+
+  /// 胶囊分类标签文案 —— 给了它，顶栏**自己在内部产出** `MiPillTabBar`。
+  ///
+  /// 与 [tabBar] 二选一（同时给会在构造期断言）；须非空、长度覆盖
+  /// [selectedTab]（校验在 `MiPillTabBar.build`）。
+  final List<String>? tabs;
+
+  /// 内置胶囊行的选中下标（仅 [tabs] 生效时有效）。
+  final int selectedTab;
+
+  /// 内置胶囊行的点按回调；null = 只展示、不可切换。
+  final ValueChanged<int>? onTabChanged;
+
+  // ── 头部区：插槽（逃生口，与上面的声明式入参二选一） ──────────────────
   /// 搜索栏插槽：头部区首行，左右留 [headerInset]、顶部留状态栏让位。
   ///
-  /// 分类页传 `MiSearchBar`；只给它不给 [tabBar] 时头部区只有一行。
+  /// 需要换皮时用；只要内置 `MiSearchBar` 就传 [searchHint]。
   final Widget? searchBar;
 
   /// 搜索栏插槽的高度（**布局用**，须与传入组件的实际高度一致）。
@@ -196,12 +248,12 @@ class MiTopBar extends StatelessWidget {
   /// 胶囊标签行插槽的高度（**布局用**，须与传入组件的实际高度一致）。
   final double tabBarHeight;
 
-  /// 整块自定义头部的逃生口（与 [searchBar] / [tabBar] 互斥）。
+  /// 整块自定义头部的逃生口（与搜索栏 / 胶囊行互斥）。
   ///
   /// 高度取 `preferredSize.height`，左右仍走 [headerInset]。
   final PreferredSizeWidget? header;
 
-  /// 头部插槽的左右页边距（默认 [MiTopBarMetrics.headerInset] 11.9）。
+  /// 头部区的左右页边距（默认 [MiTopBarMetrics.headerInset] 11.9）。
   ///
   /// 宽屏舞台下页面边距会放大（示例层用 24），由宿主传同值以保持与滚动
   /// 内容左缘对齐。
@@ -209,14 +261,19 @@ class MiTopBar extends StatelessWidget {
 
   /// 是否绘制磨砂 + 叠色材质层（默认 true）。
   ///
-  /// 头部插槽自带磨砂（`MiSearchBar` / `MiPillTabBar` 都有自己的 backdrop）
+  /// 头部区自带磨砂（`MiSearchBar` / `MiPillTabBar` 都有自己的 backdrop）
   /// 时传 `false`：否则材质会在它们后方再叠一层，多出若干层 backdrop 模糊，
   /// 且搜索栏 / 胶囊之间的间隙被染上叠色，与参考页不符。
   final bool showSurface;
 
-  /// 头部区是否有插槽。
-  bool get hasHeaderSlot =>
-      searchBar != null || tabBar != null || header != null;
+  /// 头部区是否有搜索栏（声明式入参或插槽任一生效）。
+  bool get hasSearchBar => searchBar != null || searchHint != null;
+
+  /// 头部区是否有胶囊标签行（声明式入参或插槽任一生效）。
+  bool get hasTabBar => tabBar != null || tabs != null;
+
+  /// 头部区是否有内容。
+  bool get hasHeaderSlot => hasSearchBar || hasTabBar || header != null;
 
   /// 标题区高度：有标题 = 大标题墨心 + 一整行；无标题 = 只剩材质盒
   /// （不画材质则为 0）。
@@ -224,7 +281,7 @@ class MiTopBar extends StatelessWidget {
       ? MiTopBarMetrics.componentHeight(largeTitleFontSize)
       : (showSurface ? MiTopBarMetrics.scrimHeight : 0);
 
-  /// 头部区高度（含状态栏让位；无插槽为 0）。
+  /// 头部区高度（含状态栏让位；无头部内容为 0）。
   ///
   /// 与 [occupiedHeight]、`build` 三处共用同一套声明值，改一处同步生效。
   double headerExtent(BuildContext context) {
@@ -233,11 +290,11 @@ class MiTopBar extends StatelessWidget {
       MediaQuery.paddingOf(context).top,
     );
     if (header != null) return extent + header!.preferredSize.height;
-    if (searchBar != null) extent += searchBarHeight;
-    if (searchBar != null && tabBar != null) {
+    if (hasSearchBar) extent += searchBarHeight;
+    if (hasSearchBar && hasTabBar) {
       extent += MiTopBarMetrics.searchBarGap;
     }
-    if (tabBar != null) extent += tabBarHeight;
+    if (hasTabBar) extent += tabBarHeight;
     return extent;
   }
 
@@ -312,6 +369,27 @@ class MiTopBar extends StatelessWidget {
 
     final bands =
         showSurface ? visibleBlurBands(palette) : const <MiTopBarBlurBand>[];
+
+    // 头部区：**顶栏自己产出**框架组件本体 —— 调用方只给数据（hint / tabs），
+    // 拿到的就是统一渲染的 MiSearchBar / MiPillTabBar；要换皮才用插槽覆盖。
+    // 明暗配方由顶栏解析后的 mode 统一驱动，页面无需再各传一遍 themeMode。
+    final resolvedSearchBar = searchBar ??
+        (searchHint == null
+            ? null
+            : MiSearchBar(
+                hint: searchHint!,
+                onTap: onSearchTap,
+                themeMode: mode,
+              ));
+    final resolvedTabBar = tabBar ??
+        (tabs == null
+            ? null
+            : MiPillTabBar(
+                labels: tabs!,
+                selectedIndex: selectedTab,
+                onTap: onTabChanged ?? _ignoreTabTap,
+                themeMode: mode,
+              ));
 
     return SizedBox(
       // 上下拼装：标题区定高 + 头部区按插槽声明高度；无插槽时整体高度即
@@ -452,17 +530,20 @@ class MiTopBar extends StatelessWidget {
                         child: header,
                       ),
                     ),
-                  if (searchBar != null)
+                  if (resolvedSearchBar != null)
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: headerInset),
-                      child: SizedBox(height: searchBarHeight, child: searchBar),
+                      child: SizedBox(
+                        height: searchBarHeight,
+                        child: resolvedSearchBar,
+                      ),
                     ),
-                  if (searchBar != null && tabBar != null)
+                  if (resolvedSearchBar != null && resolvedTabBar != null)
                     const SizedBox(height: MiTopBarMetrics.searchBarGap),
                   // 胶囊行满宽：靠自身 11.9 的 edgeInset 与搜索栏左缘对齐，
                   // 同时保留横向出血滚动（再套内边距会把末尾胶囊多裁一截）。
-                  if (tabBar != null)
-                    SizedBox(height: tabBarHeight, child: tabBar),
+                  if (resolvedTabBar != null)
+                    SizedBox(height: tabBarHeight, child: resolvedTabBar),
                 ],
               ),
             ),
@@ -471,6 +552,10 @@ class MiTopBar extends StatelessWidget {
     );
   }
 }
+
+/// 内置胶囊行未给 [MiTopBar.onTabChanged] 时的空回调 —— 顶栏仍可展示标签，
+/// 但点按不改变选中态（`MiPillTabBar` 的 `onTap` 是必填）。
+void _ignoreTabTap(int _) {}
 
 /// 返回圆钮：⌀44.1 命中区 + 箭头，按下时浮现白 @9.4% 圆盘（实测）。
 ///

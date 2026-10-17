@@ -368,12 +368,14 @@ class _ThemeCardGrid extends StatelessWidget {
 
 /// 「分类」tab = 组件展示库（示例层）。
 ///
-/// 顶部吸顶头部（搜索框 + 胶囊分类标签行）由框架组件 [MiTopBar] 的插槽
-/// 统一渲染：`searchBar` / `tabBar` 的页边距、两者间距、状态栏让位、以及
-/// 给滚动内容让位的高度全部由顶栏算（[MiTopBar.occupiedHeight]），本页
-/// 不再手算 `状态栏 + 搜索框 + 间距 + 胶囊行`。顶栏在此页**不画材质**
-/// （`showSurface: false`）—— 搜索栏与胶囊行各自带 backdrop 磨砂，参考页
-/// 也没有整条磨砂底。
+/// 顶部吸顶头部（搜索框 + 胶囊分类标签行）**由框架组件 [MiTopBar] 内部
+/// 产出**：本页只传数据（`searchHint` / `tabs` / `selectedTab` /
+/// `onTabChanged`），`MiSearchBar` 与 `MiPillTabBar` 都是顶栏自己构造的；
+/// 页边距、两者间距、状态栏让位、以及给滚动内容让位的高度也全部由顶栏算
+/// （[MiTopBar.occupiedHeight]），本页不再手算
+/// `状态栏 + 搜索框 + 间距 + 胶囊行`。顶栏在此页**不画材质**
+/// （`showSurface: false`）—— 内置的搜索栏与胶囊行各自带 backdrop 磨砂，
+/// 参考页也没有整条磨砂底。
 ///
 /// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），用来切分
 /// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位展示
@@ -455,25 +457,21 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）；
     // 外壳加宽成内容舞台（expanded）时页边距收到 24。
     final inset = _pageInset(context, 11.9);
-    // 吸顶头部交给 MiTopBar 的插槽：它负责状态栏让位、搜索栏左右页边距、
-    // 搜索栏↔胶囊行间距，以及给下面滚动内容让位的高度。本页只提供两个
-    // 组件本体与页边距，别的一律不再手算。
+    // 顶部吸顶头部（搜索栏 + 胶囊分类标签）**由 MiTopBar 自己产出**：本页
+    // 只给数据（占位文案 / 标签文案 / 选中下标 / 回调），搜索栏与胶囊行都是
+    // 顶栏内部构造的框架组件 —— 页边距、两者间距、状态栏让位、给滚动内容
+    // 让位的高度也全部由顶栏算（[MiTopBar.occupiedHeight]），本页不再手算
+    // `状态栏 + 搜索框 + 间距 + 胶囊行`，也不再 new 这两个组件。
     final bar = MiTopBar(
       themeMode: widget.themeMode,
       // 搜索栏/胶囊行各自带 backdrop 磨砂，参考页也没有整条磨砂底 ——
       // 再叠一层材质会多出 8 层模糊、且把两者之间的间隙染上叠色。
       showSurface: false,
       headerInset: inset,
-      searchBar: MiSearchBar(
-        hint: '搜索主题 / 壁纸 / 图标',
-        themeMode: widget.themeMode,
-      ),
-      tabBar: MiPillTabBar(
-        labels: _tabs,
-        selectedIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
-        themeMode: widget.themeMode,
-      ),
+      searchHint: '搜索主题 / 壁纸 / 图标',
+      tabs: _tabs,
+      selectedTab: _tab,
+      onTabChanged: (i) => setState(() => _tab = i),
     );
     return Container(
       color: widget.themeMode == MiThemeMode.light
