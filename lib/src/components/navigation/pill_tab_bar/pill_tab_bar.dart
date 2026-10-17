@@ -40,6 +40,7 @@ class MiPillTabBar extends StatelessWidget {
     required this.onTap,
     this.itemWidth = MiPillTabMetrics.itemWidth,
     this.themeMode = MiThemeMode.dark,
+    this.frosted = true,
   }) : assert(itemWidth > 0);
   // labels 非空与 selectedIndex 范围校验见 build()：const 构造断言不支持
   // .length 求值（放构造器会封死 const 构造）
@@ -58,6 +59,13 @@ class MiPillTabBar extends StatelessWidget {
 
   /// 明暗模式，驱动配色配方。
   final MiThemeMode themeMode;
+
+  /// 是否自绘 backdrop 磨砂（默认 true）。
+  ///
+  /// 放进**自带材质的顶栏**（`MiTopBar(showSurface: true)` 的头部区）时传
+  /// `false`：磨砂由顶栏那条渐进曲线统一提供，否则胶囊比周围更糊、且多一份
+  /// 每帧全 QUAD 高斯。只保留半透明填充。
+  final bool frosted;
 
   @override
   Widget build(BuildContext context) {
@@ -118,22 +126,25 @@ class MiPillTabBar extends StatelessWidget {
             // 高斯 + N 个 saveLayer（4 个胶囊即 4 次，滚动时每帧重算，是分类页
             // 的主要掉帧源）。合并后只有 1 次 —— 相邻胶囊仍不会串色：模糊层
             // 先于所有填充绘制，backdrop 里只有背景内容，没有别的胶囊填充。
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ClipPath(
-                  clipper: _CapsuleStripClipper(
-                    count: labels.length,
-                    itemWidth: itemWidth,
-                    gap: MiPillTabMetrics.gap,
-                    height: MiPillTabMetrics.pillHeight,
-                  ),
-                  child: BackdropFilter(
-                    filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
-                    child: const SizedBox.expand(),
+            // [frosted] 为 false 时整层跳过（材质由顶栏给）。
+            if (frosted)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ClipPath(
+                    clipper: _CapsuleStripClipper(
+                      count: labels.length,
+                      itemWidth: itemWidth,
+                      gap: MiPillTabMetrics.gap,
+                      height: MiPillTabMetrics.pillHeight,
+                    ),
+                    child: BackdropFilter(
+                      filter:
+                          MiFilterCache.blur(MiTransparencyTokens.blurSigma),
+                      child: const SizedBox.expand(),
+                    ),
                   ),
                 ),
               ),
-            ),
             Positioned.fill(child: Row(children: fills)),
           ],
         ),

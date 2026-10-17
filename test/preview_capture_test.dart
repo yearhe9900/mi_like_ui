@@ -223,7 +223,11 @@ void main() {
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
-    Future<void> capture(MiThemeMode mode, String file) async {
+    Future<void> capture(
+      MiThemeMode mode,
+      String file, {
+      double scroll = 0,
+    }) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: mode == MiThemeMode.dark
@@ -233,11 +237,27 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      if (scroll > 0) {
+        // 卷起来看吸顶头部：网格从搜索栏 / 胶囊行后方经过，整条头部区在
+        // 顶栏那条渐进磨砂下一起被磨开（越往上越糊、到栏底渐隐）。
+        await tester.drag(find.byType(ListView), Offset(0, -scroll));
+        await tester.pumpAndSettle();
+      }
       await expectLater(find.byType(MockPage), matchesGoldenFile(file));
     }
 
     await capture(MiThemeMode.light, '../doc/preview/showcase_light.png');
     await capture(MiThemeMode.dark, '../doc/preview/showcase_dark.png');
+    await capture(
+      MiThemeMode.light,
+      '../doc/preview/showcase_sticky_light.png',
+      scroll: 150,
+    );
+    await capture(
+      MiThemeMode.dark,
+      '../doc/preview/showcase_sticky_dark.png',
+      scroll: 150,
+    );
   });
 
   testWidgets('README preview: button closeups (light & dark)', (tester) async {

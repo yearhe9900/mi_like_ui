@@ -59,8 +59,15 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 的逃生口（`header` 与搜索栏 / 胶囊行互斥，`searchBar`↔`searchHint`、
 `tabBar`↔`tabs` 各自互斥，均构造期断言）。高度是**声明值**，顶栏据此排版、
 宿主用 `bar.occupiedHeight(context)` 给滚动内容让位 —— 同一套数字，不会出现
-「头部下移而列表没让位」。`showSurface: false` 关掉磨砂 + 叠色，适合头部自带
-backdrop 的场景（内置的搜索栏与胶囊各有自己的磨砂）。
+「头部下移而列表没让位」。
+
+**材质也在顶栏这一层统一**：开着 `showSurface`（默认）时，磨砂 + 叠色铺满
+**整条顶栏**（含头部区），内置的搜索栏 / 胶囊行随之关掉自绘的 backdrop
+（`frosted: false`）—— 整条栏只糊一次，网格从后面滚过时搜索栏、胶囊行、以及
+两者之间与四周的空隙都在同一条渐进曲线下被磨开，越往上越糊、到栏底渐隐。
+曲线是实测 σ(y) 按 `栏高 / 128.9` 等比拉伸的（拉伸属推导：参考录屏的顶栏
+不内嵌组件，155.7dp 以上无实测样本）。`showSurface: false` 才回到「零件各自
+玻璃」的旧形态。
 
 下图每格分别是：① 纯材质形态（标题不传，滚动 96dp → 头像滑进栏内被抹开）、
 ② 顶层页（无圆钮、首行搜索栏 168.5dp）、③ 次级页（带圆钮、首行卡片 183dp）、
@@ -76,9 +83,15 @@ backdrop 的场景（内置的搜索栏与胶囊各有自己的磨砂）。
 
 <img src="doc/preview/card_light.png" width="360" alt="浅色主题卡片" /> <img src="doc/preview/card_dark.png" width="360" alt="深色主题卡片" />
 
-「分类」tab 为组件展示页（「Logo 展示」组前 6 位为 `nav_icons.dart` 全量 logo，「按钮展示」组陈列 `MiButton` 三态，其余为示例占位；标签行吸顶，滚动内容从半透明磨砂胶囊后方经过）：
+「分类」tab 为组件展示页（「Logo 展示」组前 6 位为 `nav_icons.dart` 全量 logo，「按钮展示」组陈列 `MiButton` 三态，其余为示例占位；标签行吸顶）：
 
 <img src="doc/preview/showcase_light.png" width="200" alt="浅色组件展示页" /> <img src="doc/preview/showcase_dark.png" width="200" alt="深色组件展示页" />
+
+卷起来看吸顶头部（滚动 150dp）：网格从搜索栏 / 胶囊行后方经过，整条头部区在
+**顶栏同一条渐进磨砂**下一起被磨开，栏底渐隐回锐利 —— 搜索栏、胶囊行与它们
+之间的空隙不再是「各自一块玻璃、中间夹着锐利内容」：
+
+<img src="doc/preview/showcase_sticky_light.png" width="200" alt="浅色分类页吸顶材质" /> <img src="doc/preview/showcase_sticky_dark.png" width="200" alt="深色分类页吸顶材质" />
 
 > 预览图由 `test/preview_capture_test.dart` 生成，样式变更后重新执行
 > `flutter test --update-goldens test/preview_capture_test.dart` 刷新。

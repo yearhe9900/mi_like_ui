@@ -373,9 +373,8 @@ class _ThemeCardGrid extends StatelessWidget {
 /// `onTabChanged`），`MiSearchBar` 与 `MiPillTabBar` 都是顶栏自己构造的；
 /// 页边距、两者间距、状态栏让位、以及给滚动内容让位的高度也全部由顶栏算
 /// （[MiTopBar.occupiedHeight]），本页不再手算
-/// `状态栏 + 搜索框 + 间距 + 胶囊行`。顶栏在此页**不画材质**
-/// （`showSurface: false`）—— 内置的搜索栏与胶囊行各自带 backdrop 磨砂，
-/// 参考页也没有整条磨砂底。
+/// `状态栏 + 搜索框 + 间距 + 胶囊行`。顶部材质也归顶栏：整条头部区（含
+/// 搜索栏 / 胶囊行及其间隙）盖在**同一条渐进磨砂**下，零件不再各绘 backdrop。
 ///
 /// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），用来切分
 /// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位展示
@@ -462,11 +461,13 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     // 顶栏内部构造的框架组件 —— 页边距、两者间距、状态栏让位、给滚动内容
     // 让位的高度也全部由顶栏算（[MiTopBar.occupiedHeight]），本页不再手算
     // `状态栏 + 搜索框 + 间距 + 胶囊行`，也不再 new 这两个组件。
+    //
+    // 材质**开着**（默认 showSurface: true）：搜索栏与胶囊行既然在顶栏内，
+    // 就该共用顶栏那条渐进磨砂 —— 网格从后面滚过时，整条头部区（含两者之间
+    // 的间隙与四周）一起被磨砂盖住、越往上越糊，到栏底渐隐；零件自身不再
+    // 各绘一层 backdrop（顶栏会把内置组件的 `frosted` 关掉），所以只糊一次。
     final bar = MiTopBar(
       themeMode: widget.themeMode,
-      // 搜索栏/胶囊行各自带 backdrop 磨砂，参考页也没有整条磨砂底 ——
-      // 再叠一层材质会多出 8 层模糊、且把两者之间的间隙染上叠色。
-      showSurface: false,
       headerInset: inset,
       searchHint: '搜索主题 / 壁纸 / 图标',
       tabs: _tabs,

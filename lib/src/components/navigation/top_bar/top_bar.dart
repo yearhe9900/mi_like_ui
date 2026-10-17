@@ -19,7 +19,12 @@ import 'top_bar_metrics.dart';
 ///
 /// 顶栏 = **backdrop 高斯模糊**（σ 沿 y 递减：[MiTopBarPalette.blurSigma]
 /// 5.37dp 起，到 119dp 归零）+ **叠色** [MiTopBarPalette.scrimGradient]。
-/// 栏顶全强度模糊、越往下越锐利，119dp 以下完全清晰。
+/// 栏顶全强度模糊、越往下越锐利，栏底完全清晰。
+///
+/// 材质是**盖在整条顶栏上的底**（不占布局高度）：无头部区时只到实测材质盒
+/// [MiTopBarMetrics.scrimHeight]（128.9dp）；有头部区时铺满整条顶栏，模糊段与
+/// 叠色按 `栏高 / 128.9` 等比拉伸 —— 头部区既然在顶栏内，就被顶栏同一条曲线
+/// 一起磨，而不是「零件各自一块玻璃、间隙与四周锐利」。
 ///
 /// 实现是 **8 段定 σ 阶梯**（[MiTopBarPalette.blurBands]）：每段
 /// `ClipRect → BackdropFilter(σ_i)`，σ_i 取实测 σ(y) 曲线在该段中点的值。
@@ -52,8 +57,9 @@ import 'top_bar_metrics.dart';
 /// |------|---------|---------------|--------|----------|
 /// | 大标题折叠 | 有 | `true` | — | 首页 / 「我的」/ 设置页 |
 /// | 纯材质 | `null` | `true` | — | 参考录屏「我的」页（顶栏不内嵌组件） |
-/// | 吸顶头部 | `null` | `false` | `searchHint` + `tabs` | 分类页（搜索栏 + 胶囊行吸顶） |
+/// | 吸顶头部 | `null` | `true` | `searchHint` + `tabs` | 分类页（搜索栏 + 胶囊行吸顶，共用顶栏材质） |
 /// | 材质 + 头部 | `null` | `true` | 任意 | 需要磨砂底的自定义头部 |
+/// | 零件自带玻璃 | `null` | `false` | 任意 | 逃生形态：材质交给插槽里的组件自己画 |
 ///
 /// 头部区**默认由顶栏自己产出**两个框架组件，调用方只给数据、不 new 组件：
 ///
@@ -82,7 +88,6 @@ import 'top_bar_metrics.dart';
 /// ```dart
 /// final bar = MiTopBar(
 ///   themeMode: mode,
-///   showSurface: false,             // 头部自带磨砂，不再叠一层材质
 ///   searchHint: '搜索主题 / 壁纸 / 图标',
 ///   tabs: const ['推荐', '背屏', '小部件', '主题'],
 ///   selectedTab: index,
@@ -261,9 +266,15 @@ class MiTopBar extends StatelessWidget {
 
   /// 是否绘制磨砂 + 叠色材质层（默认 true）。
   ///
-  /// 头部区自带磨砂（`MiSearchBar` / `MiPillTabBar` 都有自己的 backdrop）
-  /// 时传 `false`：否则材质会在它们后方再叠一层，多出若干层 backdrop 模糊，
-  /// 且搜索栏 / 胶囊之间的间隙被染上叠色，与参考页不符。
+  /// 开着时材质**铺满整条顶栏**（含头部区，见 [materialExtent]），内置的
+  /// 搜索栏 / 胶囊行会自动关掉自绘的 backdrop（`frosted: false`）——
+  /// 整条栏只糊一次，头部区与栏身是同一条渐进曲线。
+  ///
+  /// 传 `false` 是**逃生形态**：顶栏一点材质都不铺，全交给插槽里的组件
+  /// 自己画玻璃（此时内置组件保持自绘磨砂）。
+  ///
+  /// ⚠️ 走**插槽**塞自带 backdrop 的第三方组件时，要么把本开关关掉，要么
+  /// 自己把那个组件的磨砂关掉 —— 否则同一块区域会被糊两次。
   final bool showSurface;
 
   /// 头部区是否有搜索栏（声明式入参或插槽任一生效）。
@@ -277,9 +288,13 @@ class MiTopBar extends StatelessWidget {
 
   /// 标题区高度：有标题 = 大标题墨心 + 一整行；无标题 = 只剩材质盒
   /// （不画材质则为 0）。
+  ///
+  /// **有头部区且无标题时为 0**：头部区自带状态栏让位，材质层改成铺满整条
+  /// 顶栏的叠加层（见 [materialExtent]），不再需要一个 128.9dp 高的空块把
+  /// 搜索栏往下推。
   double titleExtent(double largeTitleFontSize) => title != null
       ? MiTopBarMetrics.componentHeight(largeTitleFontSize)
-      : (showSurface ? MiTopBarMetrics.scrimHeight : 0);
+      : (showSurface && !hasHeaderSlot ? MiTopBarMetrics.scrimHeight : 0);
 
   /// 头部区高度（含状态栏让位；无头部内容为 0）。
   ///
@@ -307,6 +322,22 @@ class MiTopBar extends StatelessWidget {
       titleExtent(MiTypography.topBarLargeTitle.fontSize!) +
       headerExtent(context);
 
+  /// 材质（磨砂 + 叠色）层的高度，不含则 0。
+  ///
+  ///  * **无头部区**：实测材质盒 [MiTopBarMetrics.scrimHeight]（128.9dp），与
+  ///    首版一致；
+  ///  * **有头部区**：铺满**整条顶栏** —— 头部区在顶栏内，就该被顶栏的材质
+  ///    一起盖住（否则搜索栏 / 胶囊之间与四周是锐利的内容，只有零件自己是
+  ///    玻璃，视觉上割裂）。此时 blurBands 与叠色梯度按
+  ///    `materialHeight / scrimHeight` **等比拉伸**，保持「顶部最糊、到栏底
+  ///    渐隐为锐利」的实测形状（拉伸是推导：参考录屏的顶栏不内嵌组件，
+  ///    155.7dp 以上的 σ 无可测样本）。
+  double materialExtent(BuildContext context) {
+    if (!showSurface) return 0;
+    if (!hasHeaderSlot) return MiTopBarMetrics.scrimHeight;
+    return occupiedHeight(context);
+  }
+
   /// 渲染时真正要绘制的模糊段：剔除两类**视觉上不存在**的段。
   ///
   ///  * 完全落在叠色不透明段之内（[MiTopBarPalette.scrimOpaqueBottom]）——
@@ -317,23 +348,27 @@ class MiTopBar extends StatelessWidget {
   /// 段从 8 段 / 119dp 降到 5 段 / 45.4dp，模糊面积 85,680 → 32,688 dp²
   ///（−62%）；每段在滚动时都要重算一次全宽高斯，这是丢帧的主因。
   /// 裁剪后段的 σ 仍取原段值（段变窄，σ 沿 y 的变化在 3~7dp 内可忽略）。
+  ///
+  /// [scale] 把整条曲线沿 y 等比拉伸（含不透明段下沿），用于「材质铺满带
+  /// 头部区的顶栏」—— 见 [materialExtent]。
   @visibleForTesting
-  static List<MiTopBarBlurBand> visibleBlurBands(MiTopBarPalette palette) {
-    final opaque = palette.scrimOpaqueBottom;
+  static List<MiTopBarBlurBand> visibleBlurBands(
+    MiTopBarPalette palette, {
+    double scale = 1,
+  }) {
+    final opaque = palette.scrimOpaqueBottom * scale;
     final bands = <MiTopBarBlurBand>[];
     for (final band in MiTopBarPalette.blurBands) {
       if (band.sigma < MiTopBarMetrics.minVisibleBlurSigma) continue;
-      final top = band.top > opaque ? band.top : opaque;
-      if (band.bottom <= top) continue;
-      bands.add(
-        top == band.top
-            ? band
-            : MiTopBarBlurBand(
-                top: top,
-                height: band.bottom - top,
-                sigma: band.sigma,
-              ),
-      );
+      final bandTop = band.top * scale;
+      final bandBottom = band.bottom * scale;
+      final top = bandTop > opaque ? bandTop : opaque;
+      if (bandBottom <= top) continue;
+      bands.add(MiTopBarBlurBand(
+        top: top,
+        height: bandBottom - top,
+        sigma: band.sigma,
+      ));
     }
     return bands;
   }
@@ -367,12 +402,11 @@ class MiTopBar extends StatelessWidget {
       compactSize,
     );
 
-    final bands =
-        showSurface ? visibleBlurBands(palette) : const <MiTopBarBlurBand>[];
-
     // 头部区：**顶栏自己产出**框架组件本体 —— 调用方只给数据（hint / tabs），
     // 拿到的就是统一渲染的 MiSearchBar / MiPillTabBar；要换皮才用插槽覆盖。
     // 明暗配方由顶栏解析后的 mode 统一驱动，页面无需再各传一遍 themeMode。
+    // 顶栏自己画材质时（showSurface），内置组件**不再自绘 backdrop**：磨砂由
+    // 顶栏那条渐进曲线统一提供，否则栏内比周围更糊、且多一份每帧全 QUAD 高斯。
     final resolvedSearchBar = searchBar ??
         (searchHint == null
             ? null
@@ -380,6 +414,7 @@ class MiTopBar extends StatelessWidget {
                 hint: searchHint!,
                 onTap: onSearchTap,
                 themeMode: mode,
+                frosted: !showSurface,
               ));
     final resolvedTabBar = tabBar ??
         (tabs == null
@@ -389,58 +424,76 @@ class MiTopBar extends StatelessWidget {
                 selectedIndex: selectedTab,
                 onTap: onTabChanged ?? _ignoreTabTap,
                 themeMode: mode,
+                frosted: !showSurface,
               ));
+    // 材质层铺满整条顶栏（有头部区时）/ 只到实测盒高（纯标题形态）。
+    // 有头部区时整条曲线等比拉伸：顶部仍最糊、到栏底渐隐为锐利。
+    final materialHeight = materialExtent(context);
+    final materialScale =
+        materialHeight > 0 ? materialHeight / MiTopBarMetrics.scrimHeight : 1.0;
+    final bands = showSurface
+        ? visibleBlurBands(palette, scale: materialScale)
+        : const <MiTopBarBlurBand>[];
 
     return SizedBox(
-      // 上下拼装：标题区定高 + 头部区按插槽声明高度；无插槽时整体高度即
-      // 标题区，与首版行为一致。
+      // 顶部叠加的根：材质层是**盖在**整条顶栏上的底，不占布局高度 ——
+      // 这样「纯材质」形态高度仍是 128.9，「搜索栏 + 胶囊行」形态高度就是
+      // 56 + 44.1 + 16 + 39.9，两者不会被材质盒互相污染。
       width: double.infinity,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          SizedBox(
-            // 有标题时到大标题墨心 + 一整行（够高不裁标题）；纯材质形态只需
-            // 盖住遮罩盒本身。遮罩之外的部分保持透明。
-            height: titleExtent(largeSize),
-            child: Stack(
-              children: [
-                // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
-                //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
-                //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
-                //    见 MiTopBarPalette.blurBands 的说明。）
-                for (final band in bands)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: band.top,
-                    height: band.height,
-                    child: IgnorePointer(
-                      child: ClipRect(
-                        child: BackdropFilter(
-                          // σ 来自固定 token → 复用缓存的 native filter，
-                          // 避免每帧重建（滚动时每帧都会走这里）。
-                          filter: MiFilterCache.blur(band.sigma),
-                          child: const SizedBox.expand(),
+          // 0) 材质底（磨砂 + 叠色），铺满 materialHeight
+          if (showSurface)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              height: materialHeight,
+              child: IgnorePointer(
+                child: Stack(
+                  children: [
+                    // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
+                    //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
+                    //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
+                    //    见 MiTopBarPalette.blurBands 的说明。）
+                    for (final band in bands)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        top: band.top,
+                        height: band.height,
+                        child: ClipRect(
+                          child: BackdropFilter(
+                            // σ 来自固定 token → 复用缓存的 native filter，
+                            // 避免每帧重建（滚动时每帧都会走这里）。
+                            filter: MiFilterCache.blur(band.sigma),
+                            child: const SizedBox.expand(),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
-                //    @1→0，两页各自实测，见 MiTopBarPalette 文档）
-                if (showSurface)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    height: MiTopBarMetrics.scrimHeight,
-                    child: IgnorePointer(
+                    // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
+                    //    @1→0，两页各自实测，见 MiTopBarPalette 文档）。
+                    //    梯度 stop 是比例值，盒子拉高即等比拉伸。
+                    Positioned.fill(
                       child: DecoratedBox(
                         decoration:
                             BoxDecoration(gradient: palette.scrimGradient),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                // 有标题时到大标题墨心 + 一整行（够高不裁标题）；纯材质形态高度
+                // 由上面的材质层决定，这里为 0。
+                height: titleExtent(largeSize),
+                child: Stack(
+                  children: [
                 // 3) 大标题：随滚动 1:1 上移 + 按实测表淡出（钉基线 → top 恒为 0）
                 if (title != null)
                   Positioned(
@@ -547,6 +600,8 @@ class MiTopBar extends StatelessWidget {
                 ],
               ),
             ),
+            ],
+          ),
         ],
       ),
     );

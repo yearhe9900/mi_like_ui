@@ -60,9 +60,13 @@ void main() {
     expect(home.area, lessThanOrEqualTo(82000), reason: '首页 $home');
 
     final showcase = await measure(tester, const Size(768, 1280), tab: '分类');
-    // 胶囊行 1（合并后）+ 搜索栏 1 + 导航栏 1（优化前：每个胶囊各 1 = 6）
-    expect(showcase.count, lessThanOrEqualTo(3), reason: '分类页 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(64000), reason: '分类页 $showcase');
+    // 顶栏 5 段（材质铺满 156dp，深色跳过不透明段后剩 5 段）+ 导航栏 1。
+    // 2026-10-17 起分类页改用顶栏的统一材质：搜索栏 / 胶囊行不再各自挂
+    // backdrop，改为整条头部区一次成糊 —— 层数比「零件各自玻璃」形态多，
+    // 但那是「间隙与四周锐利」的旧形态被否掉的代价，面积仍在预算内。
+    // 亮色配方没有实心段可省，是全 7 段材质 + 导航 1 = 8 层（本用例只测深色）。
+    expect(showcase.count, lessThanOrEqualTo(6), reason: '分类页 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(56000), reason: '分类页 $showcase');
 
     final mine = await measure(tester, const Size(768, 1280), tab: '我的');
     expect(mine.count, lessThanOrEqualTo(6), reason: '我的 $mine');

@@ -33,6 +33,7 @@ class MiSearchBar extends StatelessWidget {
     required this.hint,
     this.onTap,
     this.themeMode,
+    this.frosted = true,
   });
 
   /// 占位文字。
@@ -44,6 +45,14 @@ class MiSearchBar extends StatelessWidget {
   /// 明暗模式；null = 跟随环境 Theme 亮度。
   final MiThemeMode? themeMode;
 
+  /// 是否自绘 backdrop 磨砂（默认 true）。
+  ///
+  /// 放进**自带材质的顶栏**（`MiTopBar(showSurface: true)` 的头部区）时传
+  /// `false`：磨砂由顶栏那条渐进曲线统一提供，再叠一层等于两次高斯 ——
+  /// 既让栏内比周围更糊（与「统一材质」相悖），也多一份每帧全 QUAD 开销。
+  /// 只保留半透明填充：平底合成仍等于截图实测实色。
+  final bool frosted;
+
   @override
   Widget build(BuildContext context) {
     final mode = themeMode ??
@@ -53,36 +62,16 @@ class MiSearchBar extends StatelessWidget {
     final palette = MiSearchBarPalette.of(mode);
     // 磨砂取景框裁到 stadium 形状（与玻璃导航栏 / 胶囊同款：clip →
     // backdrop → 半透明填充 → 内容），只有栏内透射磨砂，栏外不糊。
+    // [frosted] 为 false 时跳过 backdrop，只留半透明填充（材质由顶栏给）。
     Widget bar = ClipRRect(
       borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-      child: BackdropFilter(
-        // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）
-        filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
-        child: ColoredBox(
-          color: palette.fill,
-          child: SizedBox(
-            height: MiSearchBarMetrics.barHeight,
-            child: Row(
-              children: [
-                const SizedBox(width: MiSearchBarMetrics.contentInset),
-                CustomPaint(
-                  painter: SearchIconPainter(color: palette.icon),
-                  size: const Size.square(MiSearchBarMetrics.iconSize),
-                ),
-                const SizedBox(width: MiSearchBarMetrics.iconGap),
-                Flexible(
-                  child: Text(
-                    hint,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: MiTypography.searchHint.copyWith(color: palette.hint),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: frosted
+          ? BackdropFilter(
+              // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）
+              filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
+              child: _content(palette),
+            )
+          : _content(palette),
     );
     if (onTap != null) {
       bar = GestureDetector(
@@ -92,5 +81,33 @@ class MiSearchBar extends StatelessWidget {
       );
     }
     return bar;
+  }
+
+  /// 填充 + 内容（图标 / 占位文字），与是否自绘磨砂无关。
+  Widget _content(MiSearchBarPalette palette) {
+    return ColoredBox(
+      color: palette.fill,
+      child: SizedBox(
+        height: MiSearchBarMetrics.barHeight,
+        child: Row(
+          children: [
+            const SizedBox(width: MiSearchBarMetrics.contentInset),
+            CustomPaint(
+              painter: SearchIconPainter(color: palette.icon),
+              size: const Size.square(MiSearchBarMetrics.iconSize),
+            ),
+            const SizedBox(width: MiSearchBarMetrics.iconGap),
+            Flexible(
+              child: Text(
+                hint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MiTypography.searchHint.copyWith(color: palette.hint),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

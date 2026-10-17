@@ -25,8 +25,9 @@
   - **头部区（2026-10-17，两轮）**：顶栏 = 标题区（定高）+ 头部区。**头部区的内容由顶栏自己产出** —— 声明式入参 `searchHint` / `onSearchTap` → 内部构造 `MiSearchBar`；`tabs` / `selectedTab` / `onTabChanged` → 内部构造 `MiPillTabBar`（明暗配方用顶栏解析后的 `mode` 下发，`MiPillTabBar.themeMode` 默认是 dark 必须显式覆盖）。换皮才用同名插槽 `searchBar` / `tabBar`，`header`（`PreferredSizeWidget`）是整块自定义头部。互斥由构造期断言保证：`header` 与搜索栏/胶囊行、`searchBar`↔`searchHint`、`tabBar`↔`tabs`。判定口径 = `hasSearchBar` / `hasTabBar` / `hasHeaderSlot`（声明式 + 插槽合并）。几何走 `MiTopBarMetrics`：`headerTopInset` 56（`headerTopInsetFor(safeAreaTop)` 取大者）、`searchBarGap` 16、`headerContentGap` 12、`headerInset` 11.9、`searchBarSlotHeight` 44.1、`tabBarSlotHeight` 39.9（后两个与 `MiSearchBarMetrics.barHeight` / `MiPillTabMetrics.pillHeight` 同值，跨层一致由测试钉住）。
     - **插槽高度是声明值**：组件按它排版，宿主用 `bar.occupiedHeight(context)` 给滚动内容让位 —— 两侧同源才不会错位。
     - **「纳入组件内部统一渲染」= 顶栏自产组件，不是让页面 new 好传进来**（2026-10-17 用户反馈命中）：只给插槽时页面仍持有 `MiSearchBar` / `MiPillTabBar`，用户判定「没放进顶栏」。收口手段 = 声明式入参（数据进、组件出），插槽降级为逃生口。
+    - **材质也在顶栏这一层统一**（同日第三轮）：材质层是**盖在整条顶栏上的底**（`Stack` + `Positioned(height: materialExtent)`），不占布局高度 —— 无头部区时 128.9，有头部区时 = `occupiedHeight`，模糊段与叠色按 `栏高/scrimHeight` 等比拉伸。配套 `titleExtent` 在「有头部区且无标题」时为 **0**（否则材质盒会把搜索栏整体下推 128.9）。内置组件由顶栏传 `frosted: false` 关掉自绘 backdrop —— 全栏只糊一次；插槽传入的第三方组件不受控。
     - **胶囊行必须满宽**（不套 `headerInset`）：它自带 11.9 `edgeInset` 且要横向出血滚动，套内边距会把末尾胶囊多裁一截；搜索栏才吃 `headerInset`。
-    - `showSurface: false` 关磨砂 + 叠色（头部自带 backdrop 时必传，否则多叠 8 层模糊、且间隙被染叠色）。分类页即 `showSurface: false + searchHint + tabs`，迁移后逐像素不变。
+    - `showSurface: false` 只剩「零件各自玻璃」的旧形态（逃生用）；分类页现在**开着**材质。
   - 折叠：大标题**属于滚动内容**（质心位移 = 滚动位移，1:1 上移）+ 独立淡出曲线（0→19.97dp 归零），紧凑标题 19.97→29.31dp 才淡入，两段不重叠。
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 

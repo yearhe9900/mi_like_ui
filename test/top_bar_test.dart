@@ -818,8 +818,8 @@ void main() {
       );
     });
 
-    testWidgets('showSurface: false 不画磨砂与叠色（头部自带磨砂）', (tester) async {
-      // 画材质时 128.9 + 156 = 284.9dp，默认 240 高的测试窗口装不下
+    testWidgets('材质开关 showSurface：关掉即零磨砂零叠色，打开则铺满整条顶栏', (tester) async {
+      // 材质铺满 156dp，默认 240 高的窗口够用；留宽裕防状态栏让位变化
       _size(tester, const Size(393, 400));
 
       // 占位插槽：自身不含任何 backdrop，磨砂层数量即材质层数量
@@ -835,30 +835,66 @@ void main() {
         searchBar: const SizedBox.expand(),
         tabBar: const SizedBox.expand(),
       ));
-      expect(blurLayers(), findsNothing, reason: '头部自带磨砂，不该再叠一层');
+      expect(blurLayers(), findsNothing, reason: '关掉材质就不该有磨砂层');
       expect(_scrimDark, findsNothing, reason: '叠色也不该出现');
       expect(find.byType(ShaderMask), findsNothing);
       expect(
         tester.getSize(find.byType(MiTopBar)).height,
         closeTo(156.0, 0.01),
-        reason: '不画材质后高度只剩头部区',
+        reason: '高度只由头部区决定',
       );
 
-      // 打开材质：磨砂段与叠色都回来，高度 = scrimHeight + 头部区
+      // 打开材质：材质层**铺满整条顶栏**（156dp），不额外占高
       await tester.pumpWidget(harness(
         title: null,
         showBack: false,
         searchBar: const SizedBox.expand(),
         tabBar: const SizedBox.expand(),
       ));
+      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
       expect(
         blurLayers(),
-        findsNWidgets(MiTopBar.visibleBlurBands(MiTopBarPalette.dark).length),
+        findsNWidgets(
+          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, scale: scale).length,
+        ),
+        reason: '材质随栏高等比拉伸后，绘制段数与拉伸后的裁剪结果一致',
       );
       expect(_scrimDark, findsOneWidget);
       expect(
         tester.getSize(find.byType(MiTopBar)).height,
-        closeTo(MiTopBarMetrics.scrimHeight + 156.0, 0.01),
+        closeTo(156.0, 0.01),
+        reason: '材质是盖在顶栏上的底层，不再把头部区往下推（旧版会多出 128.9dp）',
+      );
+    });
+
+    testWidgets('材质铺满整条顶栏：搜索栏与胶囊行都落在磨砂段内（统一材质）', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        searchBar: const SizedBox.expand(),
+        tabBar: const SizedBox.expand(),
+      ));
+
+      final surface = _scrimDark;
+      // 叠色层高度 = 整条顶栏（156），不是实测材质盒 128.9 ——
+      // 否则胶囊行下半截会露出锐利的内容。
+      final scrim = tester.getRect(surface);
+      expect(scrim.top, 0);
+      expect(scrim.height, closeTo(156.0, 0.01));
+
+      // 头部区（56…156）内每一段的 σ 都来自实测曲线按 156/128.9 拉伸后的值，
+      // 且栏底 σ 已经很小（渐隐为锐利，与参考录屏同形状）
+      final bands = MiTopBar.visibleBlurBands(
+        MiTopBarPalette.dark,
+        scale: 156.0 / MiTopBarMetrics.scrimHeight,
+      );
+      expect(bands.last.sigma, lessThan(1.0), reason: '栏底渐隐为锐利');
+      expect(
+        bands.last.bottom,
+        closeTo(109 * 156 / MiTopBarMetrics.scrimHeight, 0.01),
+        reason: 'σ 0.30 的尾段被 minVisibleBlurSigma 剔除，可见段止于 109dp 拉伸位',
       );
     });
 
@@ -1102,6 +1138,57 @@ void main() {
         tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).themeMode,
         MiThemeMode.light,
         reason: 'MiPillTabBar 默认值是 dark，必须由顶栏显式覆盖',
+      );
+    });
+
+    testWidgets('顶栏自己画材质时内置组件不再自绘 backdrop（整条栏只糊一次）',
+        (tester) async {
+      _size(tester);
+      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
+      Finder barBlurs() => find.descendant(
+            of: find.byType(MiTopBar),
+            matching: find.byType(BackdropFilter),
+          );
+
+      // 开材质（默认）：零件交出磨砂，全栏只剩材质那几段
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        searchHint: hint,
+        tabs: labels,
+      ));
+      expect(
+        tester.widget<MiSearchBar>(find.byType(MiSearchBar)).frosted,
+        isFalse,
+        reason: '搜索栏在顶栏材质里，再自带一层会糊两次',
+      );
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).frosted,
+        isFalse,
+      );
+      expect(
+        barBlurs(),
+        findsNWidgets(
+          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, scale: scale).length,
+        ),
+        reason: '全栏模糊层数 = 材质段数，没有零件私货',
+      );
+
+      // 关材质：零件各自带 backdrop（旧形态，仅作对照）
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        tabs: labels,
+      ));
+      expect(
+        tester.widget<MiSearchBar>(find.byType(MiSearchBar)).frosted,
+        isTrue,
+      );
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).frosted,
+        isTrue,
       );
     });
 
