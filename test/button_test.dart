@@ -49,10 +49,21 @@ void main() {
     expect(text.style!.fontWeight, FontWeight.w500);
     expect(text.style!.color, dark.filledLabel);
 
-    // 几何：高 28.3；「关注」2×13 + 左右 2×17 = 60（测试字体 1em/字）
+    // 几何：高 28.3；宽度 = 文案 + 左右各 17dp（内容自适应胶囊）。
+    // 不写死「2×13 + 2×17 = 60」：真实字体下「关注」13dp 两字实测 ≈60 宽，
+    // 但本 SDK 测试字体的 CJK 字面 advance ≈1.019em（13dp 两字 = 26.5），
+    // 写死 60 会随测试字体度量误报。这里锁的是「内边距 + 收缩到内容」契约。
     final size = tester.getSize(find.byType(MiButton));
     expect(size.height, closeTo(MiButtonMetrics.height, 0.01));
-    expect(size.width, closeTo(2 * 13 + 2 * MiButtonMetrics.horizontalPadding, 0.01));
+    expect(
+      size.width,
+      closeTo(
+        tester.getSize(find.text('关注')).width +
+            2 * MiButtonMetrics.horizontalPadding,
+        0.01,
+      ),
+    );
+    expect(size.width, lessThan(393), reason: '宽度必须随内容收缩，不被父级拉满');
   });
 
   testWidgets('tonal & disabled pick their derived palette', (tester) async {

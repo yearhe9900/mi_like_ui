@@ -16,16 +16,16 @@ import 'top_bar_metrics.dart';
 ///
 /// ## 材质：渐进磨砂（不是纯色遮罩）
 ///
-/// 顶栏 = **定 σ 的 backdrop 模糊**（σ = [MiTopBarPalette.blurSigma]）
-/// 按纵向 alpha 遮罩 [MiTopBarPalette.blurMask] 渐隐 + **叠色**
-/// [MiTopBarPalette.scrimGradient]。合成结果是
-/// `(1−m)·原内容 + m·模糊(原内容)`：栏顶全强度模糊，越往下越锐利，
-/// 119dp 以下完全清晰。
+/// 顶栏 = **backdrop 高斯模糊**（σ 沿 y 递减：[MiTopBarPalette.blurSigma]
+/// 5.37dp 起，到 119dp 归零）+ **叠色** [MiTopBarPalette.scrimGradient]。
+/// 栏顶全强度模糊、越往下越锐利，119dp 以下完全清晰。
 ///
-/// 实现用 `ShaderMask(blendMode: dstIn)` 包住 `BackdropFilter`：
-/// 遮罩为 1 处只保留模糊结果、为 0 处只保留原内容，正好是上式。
-/// （不能用固定 α 的"叠一层半透明色"模拟 —— 那只会整体压暗，不会抹开细节；
-/// 也不宜用多层 `ClipRect` 分段 —— 分段边界在模糊场上会留下可见接缝。）
+/// 实现是 **8 段定 σ 阶梯**（[MiTopBarPalette.blurBands]）：每段
+/// `ClipRect → BackdropFilter(σ_i)`，σ_i 取实测 σ(y) 曲线在该段中点的值。
+/// Flutter 没有"位置相关模糊"，而唯一的替代（渐变 `ShaderMask` / `Opacity`
+/// 削弱模糊层）会引入新的 saveLayer 并把 backdrop 变空 —— 实测遮罩 alpha
+/// 恒 1 时模糊正常，一旦出现 <1 的 alpha 模糊**整段消失**。因此只能分段
+/// 近似：段高 ≤ 17dp、相邻 σ 比 ≤ 1.5，台阶肉眼不可见。
 ///
 /// ⚠️ 上一版曾判定"顶栏是纯色遮罩、无 backdrop 模糊"，该结论**已废弃**：
 /// 当时的证据（沿蓝卡做纵向取样得亮度斜坡、卡片下缘 3px 硬跳变）都取自
@@ -153,31 +153,28 @@ class MiTopBar extends StatelessWidget {
       width: double.infinity,
       child: Stack(
         children: [
-          // 1) 磨砂：定 σ 的 backdrop 模糊 + 纵向 alpha 遮罩 = 渐进模糊。
-          //    ShaderMask(dstIn) 让模糊结果按 m(y) 与原内容混合 ——
-          //    m=1 处只留模糊、m=0 处只留原内容。
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: MiTopBarMetrics.scrimHeight,
-            child: IgnorePointer(
-              child: ClipRect(
-                child: ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (rect) =>
-                      MiTopBarPalette.blurMask.createShader(rect),
+          // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
+          //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
+          //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
+          //    见 MiTopBarPalette.blurBands 的说明。）
+          for (final band in MiTopBarPalette.blurBands)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: band.top,
+              height: band.height,
+              child: IgnorePointer(
+                child: ClipRect(
                   child: BackdropFilter(
                     filter: ImageFilter.blur(
-                      sigmaX: MiTopBarPalette.blurSigma,
-                      sigmaY: MiTopBarPalette.blurSigma,
+                      sigmaX: band.sigma,
+                      sigmaY: band.sigma,
                     ),
                     child: const SizedBox.expand(),
                   ),
                 ),
               ),
             ),
-          ),
           // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
           //    @1→0，两页各自实测，见 MiTopBarPalette 文档）
           Positioned(

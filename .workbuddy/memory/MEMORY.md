@@ -3,7 +3,7 @@
 ## 架构与约定
 - 对外只经 barrel `lib/mi_like_ui.dart`（新增组件/主题 token 记得补 export）；组件放 `src/components/<类别>/<组件名>/`，类 `Mi` 前缀、文件 snake_case；颜色/文字/间距一律走 `src/theme/` token，组件内不写字面量。
 - **实测优先**：视觉参数 1:1 从参考截图像素测量；参考图没有的样式（如按钮禁用态）只能推导，并必须在 doc comment 标注「推导（非实测）」+ 写明取值来源。
-- 变更节奏：每个任务完成即 git commit；`flutter analyze` / `flutter test` 由用户手动执行（agent 不代跑）。
+- 变更节奏：每个任务完成即 git commit；`flutter analyze` / `flutter test` **由 agent 执行**（2026-10-17 用户明确「你自己执行命令」）；工作区不得留未提交改动。
 
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
@@ -14,12 +14,15 @@
   - **内容首行顶缘分两档**（都实测，不归一）：卡片类 `contentTopInset` **183.0**（录屏卡片填充硬边 568px）、搜索栏类 `searchBarTopInset` **168.5**（「设置」首页搜索栏 523px）；demo 首页用后者。
   - **返回圆钮 `showBack` 默认 false**（顶层页无返回）→ true 才绘制，可点性另由 `onBack`（null = 只显示不可点）决定；`showBack` 也决定紧凑标题的对称内缩（`backInset + backDiameter`，false 时 0）。
   - **标题墨心落点靠 `Baseline` 钉死**：`Baseline(baselineType: alphabetic, baseline: 墨心 + 0.355em)`，组件高度取「大标题墨心 + 一整行」定值（`componentHeight`）。**本 SDK（C:\src\flutter @3.47.5）的 `StrutStyle` 没有 `ascent`/`descent` 参数**（`height` 只按比例缩放 ascent/descent，改不了二者之比），所以「钉行盒内基线」这条路走不通；`TextStyle.height` 同理。行盒中心反推的老换算（`largeTitleBoxCenterY` 等）已删除。
-  - **材质 = 渐进磨砂 + 叠色**（亮色「我的」页录屏 1220×2656@24.26fps 实测；旧结论「纯色遮罩、无模糊」已废弃）：`blurSigma` **5.37**、模糊遮罩 m(y) 1.00(0…35dp)→0.85(50)→0.67(67.5)→0.30(90)→0.14(109)→**0(119dp)**；浅色叠色 = 页底色 #F3F3F3 @**0.650**(顶)→0(**122.4dp**)；深色叠色不动（设置页顶部不透明黑）。材质盒高仍 `scrimHeight` 128.9。
+  - **材质 = 渐进磨砂 + 叠色**（亮色「我的」页录屏 1220×2656@24.26fps 实测；旧结论「纯色遮罩、无模糊」已废弃）：栏顶 `blurSigma` **5.37**，实测 σ(y) = 5.37(0…35dp) → 4.96(50) → 4.34(67.5) → 1.85(90) → 0.76(103) → **0(119dp)**；**实现 = 8 段定 σ 阶梯**（`MiTopBarPalette.blurBands`，每段 `ClipRect + BackdropFilter`，σ 取实测曲线段中点插值；`blurMask` 已删除）。浅色叠色 = 页底色 #F3F3F3 @**0.650**(顶)→0(**122.4dp**)；深色叠色不动（设置页顶部不透明黑）。材质盒高仍 `scrimHeight` 128.9。
   - **纯材质形态**：`title` 可空 → 顶栏不内嵌任何组件，高度收到 `scrimHeight`；`showBack` 可单独用。
   - 折叠：大标题**属于滚动内容**（质心位移 = 滚动位移，1:1 上移）+ 独立淡出曲线（0→19.97dp 归零），紧凑标题 19.97→29.31dp 才淡入，两段不重叠。
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 
 ## 已知坑
+- **`BackdropFilter` 一旦被半透明遮罩包住，backdrop 立刻变空、模糊整段消失**（2026-10-17 探针实证）：`ShaderMask`（任何 alpha<1 的 gradient）/ `Opacity` 都会引入新的 saveLayer，模糊读不到下层内容。判据实验：同一 260×120 黑白色条底，`ClipRect+BackdropFilter` 有糊；套一层「alpha 恒 1」的 ShaderMask **仍有糊**（Skia 把恒定不透明优化掉了）；换成任何含 <1 alpha 的 gradient（哪怕顶部就是 1）**完全恢复锐利**。所以「渐进模糊」不能用遮罩调强度 → 只能**分段定 σ 并列**（`MiTopBarPalette.blurBands`：段间 σ 比 ≤1.5、段高 ≤17dp 时台阶不可见）。写回归测试就断言「MiTopBar 下不得出现 ShaderMask」。
+- **测试字体的 CJK 字面 advance 不是 1em**：本 SDK 里「关注」13dp 两字实测宽 **26.5**（1.019em/字），所以别把按钮宽写死成 `2*13 + 2*17 = 60`（实测会 60.5 挂）。要锁「内边距 + 收缩到内容」就断言 `btn.width == text.width + 2*padding`。
+- **golden 里 backdrop 模糊是生效的**，别再把「预览图看不出来」当成环境不支持：`matchesGoldenFile(finder)` 只截该子树，**模糊源必须也在被截子树内**（顶栏单独截会拿到空 backdrop）。判断有没有糊要量高频内容（条纹/照片边缘）的对比度幅度，平坦色块与渐变圆在模糊下几乎不变。
 - `Container`/`Align` 带 `alignment` 在**有界**父级（Center/Column）会拉满宽；需要「内容自适应」的控件用 `Center(widthFactor: 1.0)` 收缩。
 - `const` 构造断言不能求值 `.length`（数量校验放 initState，见玻璃导航栏）。
 - 样式改动后必须重跑 `flutter test --update-goldens test/preview_capture_test.dart`，否则 `doc/preview/*.png` 预览测试挂。

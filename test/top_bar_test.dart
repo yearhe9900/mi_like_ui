@@ -196,7 +196,9 @@ void main() {
     testWidgets('静止态：大标题行盒 / 紧凑标题隐形 / 遮罩 / 圆钮位置', (tester) async {
       _size(tester);
 
-      await tester.pumpWidget(harness());
+      // 必须给 onBack：`onBack == null` 时圆钮退化为 `IgnorePointer`
+      // （无 GestureDetector 命中层），`_backHitArea` 会找不到控件。
+      await tester.pumpWidget(harness(onBack: () {}));
 
       // 大标题：行盒左 27.6、基线钉在 144.2（= 墨心 132.9 + 0.355em）
       final large = tester.getRect(_large);
@@ -385,7 +387,10 @@ void main() {
       _size(tester);
 
       var background = 0;
-      await tester.pumpWidget(harness(onBackgroundTap: () => background++));
+      await tester.pumpWidget(harness(
+        onBack: null, // 显式声明：本用例正是要验证 null 的降级行为
+        onBackgroundTap: () => background++,
+      ));
 
       expect(_backHitArea, findsNothing);
       expect(
@@ -517,52 +522,70 @@ void main() {
   });
 
   group('磨砂材质（亮色「我的」页录屏实测）', () {
-    Finder blurLayer() => find.descendant(
+    Finder blurLayers() => find.descendant(
           of: find.byType(MiTopBar),
           matching: find.byType(BackdropFilter),
         );
 
-    Finder maskLayer() => find.descendant(
-          of: find.byType(MiTopBar),
-          matching: find.byType(ShaderMask),
-        );
-
-    test('token：σ = 5.37dp；遮罩 / 叠色 stop 与实测表一致', () {
+    test('token：栏顶 σ = 5.37dp；阶梯按实测 σ(y) 单调递减、无缝铺满 0…119dp', () {
       expect(MiTopBarPalette.blurSigma, 5.37);
 
-      // 磨砂遮罩：9 个 stop，覆盖 0…119dp（按 scrimHeight 归一化），
-      // m 由 1.0 单调降到 0（0 之后完全锐利）。
-      const mask = MiTopBarPalette.blurMask;
-      expect(mask.stops!.length, 9);
-      expect(mask.colors.length, 9);
-      expect(mask.stops!.first, 0.0);
-      expect(mask.stops!.last, closeTo(119.0 / MiTopBarMetrics.scrimHeight, 1e-5));
-      expect(mask.colors.first.a, 1.0);
-      expect(mask.colors.last.a, 0.0);
-      for (var i = 1; i < mask.colors.length; i++) {
+      const bands = MiTopBarPalette.blurBands;
+      expect(bands, isNotEmpty);
+      // 首段从 0 起、末段到 119dp 收（下缘完全锐利）
+      expect(bands.first.top, 0);
+      expect(bands.last.bottom, 119.0);
+      // 段间无缝、无重叠
+      for (var i = 1; i < bands.length; i++) {
         expect(
-          mask.colors[i].a <= mask.colors[i - 1].a,
-          isTrue,
-          reason: '磨砂遮罩必须单调不增（第 $i 个 stop 反而变强了）',
+          bands[i].top,
+          closeTo(bands[i - 1].bottom, 1e-9),
+          reason: '第 $i 段与上一段之间不能有空隙/重叠（会露出未模糊的横条）',
         );
       }
-      // 实测锚点：m(67.5dp) = 0.670、m(90dp) = 0.300
-      double mAt(double dp) {
-        final t = dp / MiTopBarMetrics.scrimHeight;
-        final s = mask.stops!;
-        for (var i = 1; i < s.length; i++) {
-          if (t <= s[i]) {
-            final f = (t - s[i - 1]) / (s[i] - s[i - 1]);
-            return mask.colors[i - 1].a +
-                (mask.colors[i].a - mask.colors[i - 1].a) * f;
-          }
-        }
-        return mask.colors.last.a;
+      // σ 单调不增，且首段 = 平台段实测值、末段已到肉眼不可辨
+      expect(bands.first.sigma, MiTopBarPalette.blurSigma);
+      for (var i = 1; i < bands.length; i++) {
+        expect(
+          bands[i].sigma <= bands[i - 1].sigma,
+          isTrue,
+          reason: '磨砂强度必须向下单调不增（第 $i 段反而更强了）',
+        );
+        // 相邻 σ 比过大 = 段边界会出现可见的"锐度台阶"
+        expect(
+          bands[i - 1].sigma / bands[i].sigma,
+          lessThan(2.4),
+          reason: '第 ${i - 1}→$i 段 σ 落差过大，台阶会显形',
+        );
+      }
+      expect(bands.last.sigma, lessThan(0.5));
+
+      // 段高不宜过大：实测曲线在 90dp 附近变化最快
+      for (final band in bands) {
+        expect(band.height, lessThanOrEqualTo(35.0));
+        expect(band.height, greaterThan(0));
       }
 
-      expect(mAt(67.5), closeTo(0.670, 0.01));
-      expect(mAt(90.0), closeTo(0.300, 0.01));
-      expect(mAt(130.0), 0.0);
+      // 与实测 σ(y) 曲线对齐（分段线性插值，容差 1.2dp）
+      double sigmaAt(double dp) {
+        const ys = [0.0, 35.0, 50.0, 67.5, 90.0, 103.0, 119.0];
+        const ss = [5.37, 5.37, 4.96, 4.34, 1.85, 0.76, 0.0];
+        for (var i = 1; i < ys.length; i++) {
+          if (dp <= ys[i]) {
+            final f = (dp - ys[i - 1]) / (ys[i] - ys[i - 1]);
+            return ss[i - 1] + (ss[i] - ss[i - 1]) * f;
+          }
+        }
+        return 0;
+      }
+
+      for (final band in bands) {
+        expect(
+          band.sigma,
+          closeTo(sigmaAt((band.top + band.bottom) / 2), 1.2),
+          reason: '${band.top}…${band.bottom}dp 段的 σ 偏离实测曲线',
+        );
+      }
 
       // 浅色叠色：页底色 #F3F3F3，α 顶部 0.650 → 122.4dp 归零
       final light = MiTopBarPalette.light.scrimGradient as LinearGradient;
@@ -579,37 +602,52 @@ void main() {
       expect(dark.stops!.last, 1.0);
     });
 
-    testWidgets('磨砂层：定 σ 的 BackdropFilter + dstIn 遮罩，满宽、只高 scrimHeight', (tester) async {
+    testWidgets('磨砂层：每段一个定 σ 的 BackdropFilter，满宽、拼起来正好 scrimHeight', (tester) async {
       _size(tester);
 
       await tester.pumpWidget(harness());
 
       // 忠实度关键：必须有 backdrop 模糊（上一版缺失的正是这层）
-      expect(blurLayer(), findsOneWidget);
-      final filter = tester.widget<BackdropFilter>(blurLayer()).filter;
-      expect(
-        filter,
-        ImageFilter.blur(
-          sigmaX: MiTopBarPalette.blurSigma,
-          sigmaY: MiTopBarPalette.blurSigma,
-        ),
-      );
+      final finder = blurLayers();
+      expect(finder, findsNWidgets(MiTopBarPalette.blurBands.length));
 
-      // 遮罩：dstIn（m=0 处只留原内容 → 渐进模糊，而非整片糊）
-      expect(maskLayer(), findsOneWidget);
-      expect(
-        tester.widget<ShaderMask>(maskLayer()).blendMode,
-        BlendMode.dstIn,
-      );
+      // 每一段：σ 用该段的值、几何与 token 一致
+      for (var i = 0; i < MiTopBarPalette.blurBands.length; i++) {
+        final band = MiTopBarPalette.blurBands[i];
+        final widget = tester.widgetList<BackdropFilter>(finder).elementAt(i);
+        expect(
+          widget.filter,
+          ImageFilter.blur(sigmaX: band.sigma, sigmaY: band.sigma),
+          reason: '第 $i 段 σ 与 token 不一致',
+        );
 
-      // 尺寸：与叠色层同盒（满宽 × scrimHeight），且都不是整页
-      for (final finder in [blurLayer(), maskLayer()]) {
-        final rect = tester.getRect(finder);
+        final rect = tester.getRect(finder.at(i));
         expect(rect.left, 0);
         expect(rect.width, 393);
-        expect(rect.top, 0);
-        expect(rect.height, closeTo(MiTopBarMetrics.scrimHeight, 0.01));
+        expect(rect.top, closeTo(band.top, 0.01));
+        expect(rect.height, closeTo(band.height, 0.01));
       }
+
+      // 各段拼起来正好覆盖 [0, scrimHeight) —— 中间不能留缝
+      final rects = [
+        for (var i = 0; i < MiTopBarPalette.blurBands.length; i++)
+          tester.getRect(finder.at(i)),
+      ];
+      expect(rects.first.top, 0);
+      expect(rects.last.bottom, closeTo(119.0, 0.01));
+      for (var i = 1; i < rects.length; i++) {
+        expect(rects[i].top, closeTo(rects[i - 1].bottom, 0.01));
+      }
+
+      // 不能用半透明遮罩削弱模糊：那会让 backdrop 变空（实测过）
+      expect(
+        find.descendant(
+          of: find.byType(MiTopBar),
+          matching: find.byType(ShaderMask),
+        ),
+        findsNothing,
+        reason: 'ShaderMask 会切断 backdrop，磨砂会整段失效',
+      );
 
       // 叠色层仍在（磨砂之上的着色，不是替代关系）
       expect(_scrimDark, findsOneWidget);
@@ -624,7 +662,7 @@ void main() {
         find.descendant(of: find.byType(MiTopBar), matching: find.byType(Text)),
         findsNothing,
       );
-      expect(blurLayer(), findsOneWidget);
+      expect(blurLayers(), findsNWidgets(MiTopBarPalette.blurBands.length));
       expect(_scrimDark, findsOneWidget);
       expect(
         tester.getRect(find.byType(MiTopBar)).height,
@@ -642,7 +680,7 @@ void main() {
     testWidgets('无标题也可显示返回圆钮（材质 + 圆钮的次级页形态）', (tester) async {
       _size(tester);
 
-      await tester.pumpWidget(harness(title: null, showBack: true));
+      await tester.pumpWidget(harness(title: null, showBack: true, onBack: () {}));
       expect(find.byType(Text), findsNothing);
       final hit = tester.getRect(_backHitArea);
       expect(hit.center.dx, closeTo(MiTopBarMetrics.backCenterX, 0.01));
