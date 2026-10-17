@@ -1,5 +1,20 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
+
+/// 页面内容左右页边距。
+///
+/// * compact / medium：沿用 1:1 实测值（首页 11.9 / 「我的」20）；
+/// * expanded（窗口 ≥ 1024，示例外壳已把画面加宽成内容舞台）：
+///   收到 [MiDimens.spaceXxl] 24 —— 宽画布上继续贴 11.9 会让内容顶到边。
+double _pageInset(BuildContext context, double measured) =>
+    MiViewport.of(context).isExpanded ? MiDimens.spaceXxl : measured;
+
+/// 顶部状态栏让位：参考页实测 56dp；真机/平板安全区更大时取更大者，
+/// 避免大标题被刘海压住（桌面窗口 padding 为 0 → 仍是 56）。
+double _statusBarInset(BuildContext context) =>
+    math.max(56.0, MediaQuery.paddingOf(context).top);
 
 /// Simple mock pages (theme-store style) so the glass bar has
 /// colorful content behind it — the pages themselves are not the
@@ -28,12 +43,13 @@ class MockPage extends StatelessWidget {
         // 内缩与之同列起排。
         // 顶层页形态：**无返回圆钮**（`showBack` 默认 false）。首行是搜索栏，
         // 其顶缘实测 168.5dp（比卡片档少一档 14.5dp）→ 用搜索栏档上内边距。
-        return const _MockPageShell(
+        final inset = _pageInset(context, 11.9);
+        return _MockPageShell(
           title: '首页',
           padding: EdgeInsets.fromLTRB(
-            11.9,
+            inset,
             MiTopBarMetrics.searchBarTopInset,
-            11.9,
+            inset,
             20,
           ),
           children: _homeItems,
@@ -44,13 +60,24 @@ class MockPage extends StatelessWidget {
       default:
         // 次级页形态：**带返回圆钮**（`showBack: true`），首行是卡片 →
         // 用卡片档上内边距（183，即 `_MockPageShell` 默认值）。
-        return _MockPageShell(title: '我的', showBack: true, children: [
-          // 模式切换入口（demo 功能，放在「我的」里）
-          if (onThemeModeChanged != null)
-            _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
-          if (onThemeModeChanged != null) const SizedBox(height: 12),
-          ..._mineItems,
-        ]);
+        final inset = _pageInset(context, 20);
+        return _MockPageShell(
+          title: '我的',
+          showBack: true,
+          padding: EdgeInsets.fromLTRB(
+            inset,
+            MiTopBarMetrics.contentTopInset,
+            inset,
+            20,
+          ),
+          children: [
+            // 模式切换入口（demo 功能，放在「我的」里）
+            if (onThemeModeChanged != null)
+              _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
+            if (onThemeModeChanged != null) const SizedBox(height: 12),
+            ..._mineItems,
+          ],
+        );
     }
   }
 }
@@ -279,11 +306,19 @@ const List<Widget> _homeItems = [
   _GradientCard(height: 90, colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '查看全部主题  ›'),
 ];
 
-/// 「精选主题」卡片网格（示例层）：3 列 x 2 行竖向预览卡 [MiThemeCard]。
+/// 「精选主题」卡片网格（示例层）：竖向预览卡 [MiThemeCard]。
+///
+/// 列数按**容器可用宽**断点切换（[MiResponsiveGrid]，局部断点 —— 外壳把
+/// 画面加宽后才生效；393 设计宽下恒为 3 列，与参考截图一致）：
+///  * compact（< 600）→ 3 列；
+///  * medium（600…1023）→ 4 列；
+///  * expanded（≥ 1024）→ 6 列。
 ///
 /// 几何对齐参考截图实测：列距取 [MiThemeCardMetrics.columnGap]（11.9，
 /// 页边距同值）、行距取 [MiThemeCardMetrics.rowGap]（15）；标题经卡片
 /// 自身 8.8dp 内缩与区块标题「精选主题」（11.9 + 8.6 ≈ 20.5）同列起排。
+/// 卡片宽度由网格等分，预览图按 259:472 定比 → 列数变化时卡片整体缩放，
+/// 不会被横向拉伸。
 /// 预览图为实测 6 张卡壁纸主色上→下渐变占位（截图采样均值，顺序左→右、
 /// 上→下）；标题为示例命名（参考图卡名字迹不作字面复刻）。
 class _ThemeCardGrid extends StatelessWidget {
@@ -309,34 +344,30 @@ class _ThemeCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return MiResponsiveGrid(
+      compactColumns: 3,
+      mediumColumns: 4,
+      expandedColumns: 6,
+      // 内容宽断点（不是窗口断点）：393 设计宽下内容宽 369 → 3 列；
+      // 舞台加宽到 1000 后内容宽 952 → 6 列。
+      compactMax: 520,
+      mediumMax: 800,
+      itemSpacing: MiThemeCardMetrics.columnGap,
+      runSpacing: MiThemeCardMetrics.rowGap,
       children: [
-        for (var row = 0; row < 2; row++) ...[
-          if (row > 0) const SizedBox(height: MiThemeCardMetrics.rowGap),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var col = 0; col < 3; col++) ...[
-                if (col > 0)
-                  const SizedBox(width: MiThemeCardMetrics.columnGap),
-                Expanded(
-                  child: MiThemeCard(
-                    title: _titles[row * 3 + col],
-                    preview: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: _wallpapers[row * 3 + col],
-                        ),
-                      ),
-                    ),
-                  ),
+        for (var i = 0; i < _titles.length; i++)
+          MiThemeCard(
+            title: _titles[i],
+            preview: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: _wallpapers[i],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
-        ],
       ],
     );
   }
@@ -362,10 +393,17 @@ class _ShowcasePage extends StatefulWidget {
 }
 
 class _ShowcasePageState extends State<_ShowcasePage> {
-  /// 吸顶头部高度 = 状态栏让位 56 + 搜索框 44.1 + 间距 16 + 胶囊行 39.9；
+  /// 吸顶头部高度 = 状态栏让位 + 搜索框 44.1 + 间距 16 + 胶囊行 39.9；
   /// 滚动网格初始让出头部 + 12（胶囊行底 → 内容的实测间距）。
-  static const double _headerHeight =
-      56 + 44.1 + 16 + MiPillTabMetrics.pillHeight;
+  ///
+  /// 状态栏让位在真机取安全区上边距（参考页实测 56，见 [_statusBarInset]），
+  /// 因此不再是编译期常量 —— 头部高度与吸顶内边距共用同一个值，改一处即
+  /// 同步，不会出现「搜索框下移而网格没让位」的错位。
+  double _headerHeight(BuildContext context) =>
+      _statusBarInset(context) +
+      MiSearchBarMetrics.barHeight +
+      16 +
+      MiPillTabMetrics.pillHeight;
 
   /// 分类胶囊标签（对应截图 推荐/背屏/小部件/主题 的位置）：前两个按
   /// 分组内容命名（Logo 展示 / 按钮展示），后两个仍是占位示例。
@@ -426,7 +464,10 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     final logos = logoMode ? _logos(Colors.white) : const <CustomPainter>[];
     final count = _counts[_tab];
     // 页底色与内容边距按完整截图实测：亮 #F3F3F3 / 暗 #000000，
-    // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）
+    // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）；
+    // 外壳加宽成内容舞台（expanded）时页边距收到 24。
+    final inset = _pageInset(context, 11.9);
+    final statusTop = _statusBarInset(context);
     return Container(
       color: widget.themeMode == MiThemeMode.light
           ? const Color(0xFFF3F3F3)
@@ -437,8 +478,12 @@ class _ShowcasePageState extends State<_ShowcasePage> {
           // 胶囊的半透明磨砂把透上来的网格磨出毛玻璃感。
           Positioned.fill(
             child: ListView(
-              padding:
-                  const EdgeInsets.fromLTRB(11.9, _headerHeight + 12, 11.9, 0),
+              padding: EdgeInsets.fromLTRB(
+                inset,
+                _headerHeight(context) + 12,
+                inset,
+                0,
+              ),
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,24 +495,23 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                       const _SectionTitle('组件展示'),
                     ] else
                       _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
-                    for (var row = 0; row * 4 < count; row++) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (var col = 0; col < 4; col++) ...[
-                              if (col > 0) const SizedBox(width: 12),
-                              Expanded(
-                                child: row * 4 + col < count
-                                    ? _tileAt(row * 4 + col, logoMode, logos)
-                                    : const SizedBox.shrink(),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                    // 展示位网格：列数按容器宽断点切换（4 / 6 / 8），
+                    // 行距 18 沿用原「每行 bottom: 18」的节奏。
+                    MiResponsiveGrid(
+                      compactColumns: 4,
+                      mediumColumns: 6,
+                      expandedColumns: 8,
+                      // 内容宽断点（同主题卡网格）：369 → 4 列、776 → 6 列、
+                      // 舞台 952 → 8 列。
+                      compactMax: 520,
+                      mediumMax: 800,
+                      itemSpacing: 12,
+                      runSpacing: 18,
+                      children: [
+                        for (var i = 0; i < count; i++)
+                          _tileAt(i, logoMode, logos),
+                      ],
+                    ),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -484,18 +528,24 @@ class _ShowcasePageState extends State<_ShowcasePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(11.9, 56, 11.9, 0),
+                  padding: EdgeInsets.fromLTRB(inset, statusTop, inset, 0),
                   child: MiSearchBar(
                     hint: '搜索主题 / 壁纸 / 图标',
                     themeMode: widget.themeMode,
                   ),
                 ),
                 const SizedBox(height: 16), // 实测搜索框底 → 标签行 49px ≈ 15.8dp
-                MiPillTabBar(
-                  labels: _tabs,
-                  selectedIndex: _tab,
-                  onTap: (i) => setState(() => _tab = i),
-                  themeMode: widget.themeMode,
+                // 左对齐：胶囊行自身宽度只到内容（4 个胶囊 + 边距），宽屏舞台
+                // 下若不显式左对齐，会因 Column 默认居中而飘到页面中间，
+                // 与搜索框、下方网格的左缘失配。
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: MiPillTabBar(
+                    labels: _tabs,
+                    selectedIndex: _tab,
+                    onTap: (i) => setState(() => _tab = i),
+                    themeMode: widget.themeMode,
+                  ),
                 ),
               ],
             ),

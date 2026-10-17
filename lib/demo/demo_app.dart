@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
@@ -32,6 +34,112 @@ class _DemoAppState extends State<DemoApp> {
   }
 }
 
+/// 舞台尺寸解算结果：逻辑尺寸（内容按它布局）+ 渲染尺寸（实际占位）。
+///
+/// 两者只在 `rendered` 被等比缩小时不同；`scale == 1` 表示 1:1 原尺寸。
+@immutable
+class DemoStageSize {
+  const DemoStageSize({required this.logical, required this.rendered});
+
+  /// 画面布局用的逻辑尺寸（≤ 1x 时恒为设计画布）。
+  final Size logical;
+
+  /// 画面在窗口里实际占据的尺寸（= `logical × scale`）。
+  final Size rendered;
+
+  /// 统一缩放比（宽高共用）。
+  double get scale => logical.width > 0 ? rendered.width / logical.width : 0;
+
+  /// 是否需要缩放（false = 1:1，渲染路径不加变换层）。
+  bool get isScaled => (rendered.width - logical.width).abs() > 0.01;
+
+  @override
+  String toString() =>
+      'DemoStageSize(logical: $logical, rendered: $rendered, scale: ${scale.toStringAsFixed(3)})';
+}
+
+/// 示例舞台：把「物理手机画面」摆进任意窗口的自适应外壳。
+///
+/// ## 覆盖的布局区域
+///
+/// 只负责**外壳**这一层（窗口背景 + 手机画面的外部几何与缩放），不介入
+/// 画面内部的组件几何 —— 内部由各页面的局部断点负责（见 [MockPage]）。
+///
+/// ## 断点与缩放策略（按**窗口**逻辑宽判档，见 [MiBreakpoints]）
+///
+/// | 档位 | 窗口宽 | 策略 |
+/// |------|--------|------|
+/// | compact | < 600dp | 设计画布 393×856 **等比缩小**到放得下（无外边距，手机全屏时恰好 1:1） |
+/// | medium | 600…1023dp | 同上，但四周留 [gutter]；空间够时按 **1x**（不放大）居中 |
+/// | expanded | ≥ 1024dp | 画面**加宽**成内容舞台：宽 = 可用宽（上限 [wideMaxWidth]），高 = 可用高（下限 [minStageHeight]）；此时是重新布局而非拉伸 |
+///
+/// 三档都过同一道兜底：[DemoStageSize.rendered] 由
+/// `min(1, 可用宽/逻辑宽, 可用高/逻辑高)` 得出 ——
+///  * **不溢出**：窗口再小（哪怕 200×200）也只会继续缩小；
+///  * **不变形**：宽高乘同一个比例，画面内部不会被宽高各自拉伸；
+///  * **实时响应**：`LayoutBuilder` 随窗口/分屏/浏览器缩放自动重排，
+///    无需 `setState` 或监听。
+///
+/// 缩放走 `FittedBox`（Skia 变换 + 矢量重绘），文字与图标不会糊；`scale == 1`
+/// 时**不加任何变换层**，黄金图逐像素稳定。
+class DemoStage extends StatelessWidget {
+  const DemoStage({super.key, required this.child});
+
+  /// 参考机设计画布：1220×2656 录屏 @ 393dp 设计宽（393:856 ≈ 0.459）。
+  static const Size designCanvas = Size(393, 856);
+
+  /// 加宽舞台的最大宽度（桌面端不让内容无限拉宽）。
+  static const double wideMaxWidth = 1000;
+
+  /// 加宽舞台的最小高度（更矮的窗口交给兜底缩放）。
+  static const double minStageHeight = 480;
+
+  /// medium / expanded 档的四周留白；compact（手机全屏）为 0，保证 1:1。
+  static const double gutter = 24;
+
+  /// 画面内容：拿到 [DemoStageSize.logical] 的 **tight** 约束。
+  final Widget child;
+
+  /// 纯函数解算（可直接单测，不需要 widget 树）。
+  static DemoStageSize sizeFor(Size available) {
+    final sizeClass = MiBreakpoints.ofWidth(available.width);
+    final inset = sizeClass.isCompact ? 0.0 : gutter;
+    final availW = math.max(0.0, available.width - 2 * inset);
+    final availH = math.max(0.0, available.height - 2 * inset);
+
+    var logicalW = designCanvas.width;
+    var logicalH = designCanvas.height;
+    if (sizeClass.isExpanded) {
+      // 加宽：横向用满（可窄至设计宽），纵向用满（不矮于 minStageHeight）。
+      logicalW = math.min(math.max(availW, designCanvas.width), wideMaxWidth);
+      logicalH = math.max(availH, minStageHeight);
+    }
+
+    final scale = math.min(1.0, math.min(availW / logicalW, availH / logicalH));
+    final logical = Size(logicalW, logicalH);
+    return DemoStageSize(
+      logical: logical,
+      rendered: Size(logicalW * scale, logicalH * scale),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stage = sizeFor(Size(constraints.maxWidth, constraints.maxHeight));
+        final frame = SizedBox.fromSize(size: stage.logical, child: child);
+        final scaled = stage.isScaled
+            ? FittedBox(fit: BoxFit.fill, child: frame)
+            : frame;
+        return Center(
+          child: SizedBox.fromSize(size: stage.rendered, child: scaled),
+        );
+      },
+    );
+  }
+}
+
 class DemoHome extends StatefulWidget {
   const DemoHome({super.key, required this.themeMode, required this.onThemeModeChanged});
 
@@ -55,18 +163,18 @@ class _DemoHomeState extends State<DemoHome> {
       MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
       MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(ink)),
     ];
+    // 加宽舞台时圆角随宽度小幅放粗，避免大画布上 44 显得过于锐利。
+    final viewport = MiViewport.of(context);
+    final radius = viewport.isExpanded ? 56.0 : 44.0;
 
     return Scaffold(
       backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
-      body: Center(
+      body: DemoStage(
         child: Container(
-          // phone frame, aspect follows the reference screen (1220x2656)
-          width: 393,
-          height: 856,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11),
-            borderRadius: BorderRadius.circular(44),
+            borderRadius: BorderRadius.circular(radius),
             boxShadow: const [
               BoxShadow(color: Colors.black54, blurRadius: 40, offset: Offset(0, 16)),
             ],
