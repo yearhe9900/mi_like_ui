@@ -130,11 +130,20 @@ void main() {
           closeTo(393 / 856, 1e-9));
     });
 
-    test('medium 平板：四周留白后按 1x 居中，不放大', () {
+    test('medium 平板：铺成内容舞台（不再是小手机居中）', () {
+      // 800×1000 平板竖屏：可用 752×952 全用上
       final frame = DemoStage.sizeFor(const Size(800, 1000));
-      expect(frame.logical, DemoStage.designCanvas);
-      expect(frame.rendered, DemoStage.designCanvas);
+      expect(frame.logical, const Size(752, 952));
+      expect(frame.rendered, frame.logical);
       expect(frame.isScaled, isFalse);
+
+      // 实机反馈尺寸（2026-10-17 平板截图 650×1138）：可用 602×1090，
+      // 旧策略只画 393×856 的小手机（占屏高 64%，上下各留 170/240px），
+      // 现在铺满 → 舞台 602×1090
+      final pad = DemoStage.sizeFor(const Size(650, 1138));
+      expect(pad.logical, const Size(602, 1090));
+      expect(pad.rendered, pad.logical);
+      expect(pad.isScaled, isFalse);
     });
 
     test('expanded 桌面：加宽舞台（宽度上限 1000）且不超出窗口', () {
@@ -192,6 +201,23 @@ void main() {
       final page = tester.getRect(find.byType(MockPage));
       expect(page.width, closeTo(393, 0.01));
       expect(page.height, closeTo(856, 0.01));
+    });
+
+    testWidgets('650×1138 平板：画面铺满可用空间、无溢出', (tester) async {
+      setWindow(tester, const Size(650, 1138));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final page = tester.getRect(find.byType(MockPage));
+      // 舞台 = 窗口减两侧 24 留白：602×1090（旧策略这里是 393×856 的小手机）
+      expect(page.width, closeTo(602, 0.01));
+      expect(page.height, closeTo(1090, 0.01));
+      expect(page.left, greaterThanOrEqualTo(0));
+      expect(page.right, lessThanOrEqualTo(650.01));
+      expect(page.bottom, lessThanOrEqualTo(1138.01));
     });
 
     testWidgets('窗口尺寸实时变化会重排（无需重建 App）', (tester) async {

@@ -8,8 +8,8 @@
 ## 响应式（2026-10-17，`src/utils/responsive.dart`）
 - **两级断点**：① 窗口宽 `MiViewport.of(context)` / `MiBreakpoints.ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）决定页面形态；② **容器宽** `MiResponsiveGrid.compactMax/mediumMax`（示例 520/800）决定网格列数。
 - `MiScaledCanvas.scaleFor = clamp(min(1, 可用宽/设计宽, 可用高/设计高), minScale, maxScale)`：只缩不放、宽高同比例；`scale == 1` 走原样路径（零变换层，黄金图像素稳定），<1 走 `FittedBox`。
-- 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→DemoStageSize{logical,rendered}` 可单测）：compact 等比缩 393×856（手机全屏 1:1）、medium 四周 24 且 1x、expanded 加宽成 `min(可用宽,1000) × max(可用高,480)`。
-- 内容断点：主题卡 3/4/6 列、展示位 4/6/8 列；expanded 页边距 24（否则 11.9 贴边）。
+- 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→DemoStageSize{logical,rendered}` 可单测）：**只有 compact 才是"物理手机"**（等比缩 393×856，手机全屏 1:1）；**medium / expanded 一律铺成内容舞台** = `min(max(可用宽,393),1000) × max(可用高,480)`。2026-10-17 平板实机反馈：medium 若按 1x 居中，650×1138 屏里手机框只占 64% 高、上下留 170/240px 纯黑，故改为此策略。
+- 内容断点：主题卡 3/4/6 列、展示位 4/6/8 列；非 compact 档页边距统一 24（compact 用实测 11.9/20）。
 
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。

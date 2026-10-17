@@ -163,8 +163,8 @@ void main() {
       const Size(260, 470),
       '../doc/preview/adaptive_small_window.png',
     );
-    // medium：平板竖屏，1x 居中 + 四周留白
-    await capture(const Size(800, 1000), '../doc/preview/adaptive_tablet.png');
+    // medium：平板竖屏（实机反馈尺寸 650×1138），画面铺成内容舞台
+    await capture(const Size(650, 1138), '../doc/preview/adaptive_tablet.png');
     // expanded：桌面，画面加宽成内容舞台（主题卡 6 列）
     await capture(
       const Size(1366, 768),

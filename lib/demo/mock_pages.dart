@@ -5,11 +5,11 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 
 /// 页面内容左右页边距。
 ///
-/// * compact / medium：沿用 1:1 实测值（首页 11.9 / 「我的」20）；
-/// * expanded（窗口 ≥ 1024，示例外壳已把画面加宽成内容舞台）：
-///   收到 [MiDimens.spaceXxl] 24 —— 宽画布上继续贴 11.9 会让内容顶到边。
+/// * compact（手机）：沿用 1:1 实测值（首页 11.9 / 「我的」20）；
+/// * medium / expanded（外壳已把画面铺成内容舞台）：收到 [MiDimens.spaceXxl]
+///   24 —— 宽画布上继续贴 11.9 会让内容顶到边。
 double _pageInset(BuildContext context, double measured) =>
-    MiViewport.of(context).isExpanded ? MiDimens.spaceXxl : measured;
+    MiViewport.of(context).isCompact ? measured : MiDimens.spaceXxl;
 
 /// 顶部状态栏让位：参考页实测 56dp；真机/平板安全区更大时取更大者，
 /// 避免大标题被刘海压住（桌面窗口 padding 为 0 → 仍是 56）。

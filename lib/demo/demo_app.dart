@@ -70,10 +70,16 @@ class DemoStageSize {
 /// | 档位 | 窗口宽 | 策略 |
 /// |------|--------|------|
 /// | compact | < 600dp | 设计画布 393×856 **等比缩小**到放得下（无外边距，手机全屏时恰好 1:1） |
-/// | medium | 600…1023dp | 同上，但四周留 [gutter]；空间够时按 **1x**（不放大）居中 |
-/// | expanded | ≥ 1024dp | 画面**加宽**成内容舞台：宽 = 可用宽（上限 [wideMaxWidth]），高 = 可用高（下限 [minStageHeight]）；此时是重新布局而非拉伸 |
+/// | medium | 600…1023dp | 画面**铺成内容舞台**：宽 = 可用宽（上限 [wideMaxWidth]）、高 = 可用高 —— 平板竖屏不再是一个居中的小手机，而是让步数/列数真正利用屏幕 |
+/// | expanded | ≥ 1024dp | 同上，宽度上限 [wideMaxWidth]（桌面端不让内容无限拉宽） |
 ///
-/// 三档都过同一道兜底：[DemoStageSize.rendered] 由
+/// **为什么 medium 不放大手机、而改成舞台**：平板实测反馈（2026-10-17，
+/// 一张 650×1138 的平板截图）里，1x 手机框只占屏高的 64%，上下各留 170/240px
+/// 纯黑 —— 大屏上「小手机居中」既浪费空间，也让内容列数停在手机档。改成舞台
+/// 后内容宽随屏幕增大 → 网格从 3 列升到 4 列（平板）/ 6 列（桌面），
+/// 是**重新布局**而不是把手机拉大（拉大会让 1dp 实测值失去物理意义）。
+///
+/// 各档都过同一道兜底：[DemoStageSize.rendered] 由
 /// `min(1, 可用宽/逻辑宽, 可用高/逻辑高)` 得出 ——
 ///  * **不溢出**：窗口再小（哪怕 200×200）也只会继续缩小；
 ///  * **不变形**：宽高乘同一个比例，画面内部不会被宽高各自拉伸；
@@ -88,10 +94,10 @@ class DemoStage extends StatelessWidget {
   /// 参考机设计画布：1220×2656 录屏 @ 393dp 设计宽（393:856 ≈ 0.459）。
   static const Size designCanvas = Size(393, 856);
 
-  /// 加宽舞台的最大宽度（桌面端不让内容无限拉宽）。
+  /// 舞台的最大宽度（桌面端不让内容无限拉宽）。
   static const double wideMaxWidth = 1000;
 
-  /// 加宽舞台的最小高度（更矮的窗口交给兜底缩放）。
+  /// 舞台的最小高度（更矮的窗口交给兜底缩放）。
   static const double minStageHeight = 480;
 
   /// medium / expanded 档的四周留白；compact（手机全屏）为 0，保证 1:1。
@@ -109,8 +115,9 @@ class DemoStage extends StatelessWidget {
 
     var logicalW = designCanvas.width;
     var logicalH = designCanvas.height;
-    if (sizeClass.isExpanded) {
-      // 加宽：横向用满（可窄至设计宽），纵向用满（不矮于 minStageHeight）。
+    if (!sizeClass.isCompact) {
+      // 平板/桌面：铺成内容舞台 —— 横向用满（可窄至设计宽），纵向用满
+      //（不矮于 minStageHeight，再矮由下面的兜底缩放处理）。
       logicalW = math.min(math.max(availW, designCanvas.width), wideMaxWidth);
       logicalH = math.max(availH, minStageHeight);
     }
@@ -163,9 +170,9 @@ class _DemoHomeState extends State<DemoHome> {
       MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
       MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(ink)),
     ];
-    // 加宽舞台时圆角随宽度小幅放粗，避免大画布上 44 显得过于锐利。
+    // 舞台档（平板/桌面）圆角随画布尺寸小幅放粗，避免大方块上 44 显得过锐。
     final viewport = MiViewport.of(context);
-    final radius = viewport.isExpanded ? 56.0 : 44.0;
+    final radius = viewport.isCompact ? 44.0 : 56.0;
 
     return Scaffold(
       backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
