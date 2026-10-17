@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,7 +15,7 @@ const String kTitle = '显示与亮度';
 /// 而组件默认值是 false（顶层页无返回），故 harness 显式打开；
 /// 「默认不显示」本身另有专门用例。
 Widget harness({
-  String title = kTitle,
+  String? title = kTitle,
   double offset = 0,
   MiThemeMode? mode = MiThemeMode.dark,
   bool showBack = true,
@@ -511,6 +513,140 @@ void main() {
           0.01,
         ),
       );
+    });
+  });
+
+  group('磨砂材质（亮色「我的」页录屏实测）', () {
+    Finder blurLayer() => find.descendant(
+          of: find.byType(MiTopBar),
+          matching: find.byType(BackdropFilter),
+        );
+
+    Finder maskLayer() => find.descendant(
+          of: find.byType(MiTopBar),
+          matching: find.byType(ShaderMask),
+        );
+
+    test('token：σ = 5.37dp；遮罩 / 叠色 stop 与实测表一致', () {
+      expect(MiTopBarPalette.blurSigma, 5.37);
+
+      // 磨砂遮罩：9 个 stop，覆盖 0…119dp（按 scrimHeight 归一化），
+      // m 由 1.0 单调降到 0（0 之后完全锐利）。
+      const mask = MiTopBarPalette.blurMask;
+      expect(mask.stops!.length, 9);
+      expect(mask.colors.length, 9);
+      expect(mask.stops!.first, 0.0);
+      expect(mask.stops!.last, closeTo(119.0 / MiTopBarMetrics.scrimHeight, 1e-5));
+      expect(mask.colors.first.a, 1.0);
+      expect(mask.colors.last.a, 0.0);
+      for (var i = 1; i < mask.colors.length; i++) {
+        expect(
+          mask.colors[i].a <= mask.colors[i - 1].a,
+          isTrue,
+          reason: '磨砂遮罩必须单调不增（第 $i 个 stop 反而变强了）',
+        );
+      }
+      // 实测锚点：m(67.5dp) = 0.670、m(90dp) = 0.300
+      double mAt(double dp) {
+        final t = dp / MiTopBarMetrics.scrimHeight;
+        final s = mask.stops!;
+        for (var i = 1; i < s.length; i++) {
+          if (t <= s[i]) {
+            final f = (t - s[i - 1]) / (s[i] - s[i - 1]);
+            return mask.colors[i - 1].a +
+                (mask.colors[i].a - mask.colors[i - 1].a) * f;
+          }
+        }
+        return mask.colors.last.a;
+      }
+
+      expect(mAt(67.5), closeTo(0.670, 0.01));
+      expect(mAt(90.0), closeTo(0.300, 0.01));
+      expect(mAt(130.0), 0.0);
+
+      // 浅色叠色：页底色 #F3F3F3，α 顶部 0.650 → 122.4dp 归零
+      final light = MiTopBarPalette.light.scrimGradient as LinearGradient;
+      expect(light.colors.first, const Color.fromRGBO(243, 243, 243, 0.650));
+      expect(
+        light.stops!.last,
+        closeTo(122.4 / MiTopBarMetrics.scrimHeight, 1e-5),
+      );
+      expect(light.colors.last.a, 0.0);
+
+      // 深色叠色沿用既有实测（顶部不透明），未被本轮改动
+      final dark = MiTopBarPalette.dark.scrimGradient as LinearGradient;
+      expect(dark.colors.first.a, 1.0);
+      expect(dark.stops!.last, 1.0);
+    });
+
+    testWidgets('磨砂层：定 σ 的 BackdropFilter + dstIn 遮罩，满宽、只高 scrimHeight', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness());
+
+      // 忠实度关键：必须有 backdrop 模糊（上一版缺失的正是这层）
+      expect(blurLayer(), findsOneWidget);
+      final filter = tester.widget<BackdropFilter>(blurLayer()).filter;
+      expect(
+        filter,
+        ImageFilter.blur(
+          sigmaX: MiTopBarPalette.blurSigma,
+          sigmaY: MiTopBarPalette.blurSigma,
+        ),
+      );
+
+      // 遮罩：dstIn（m=0 处只留原内容 → 渐进模糊，而非整片糊）
+      expect(maskLayer(), findsOneWidget);
+      expect(
+        tester.widget<ShaderMask>(maskLayer()).blendMode,
+        BlendMode.dstIn,
+      );
+
+      // 尺寸：与叠色层同盒（满宽 × scrimHeight），且都不是整页
+      for (final finder in [blurLayer(), maskLayer()]) {
+        final rect = tester.getRect(finder);
+        expect(rect.left, 0);
+        expect(rect.width, 393);
+        expect(rect.top, 0);
+        expect(rect.height, closeTo(MiTopBarMetrics.scrimHeight, 0.01));
+      }
+
+      // 叠色层仍在（磨砂之上的着色，不是替代关系）
+      expect(_scrimDark, findsOneWidget);
+    });
+
+    testWidgets('纯材质形态（title: null）：不内嵌任何组件，高度收到 scrimHeight', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(title: null));
+
+      expect(
+        find.descendant(of: find.byType(MiTopBar), matching: find.byType(Text)),
+        findsNothing,
+      );
+      expect(blurLayer(), findsOneWidget);
+      expect(_scrimDark, findsOneWidget);
+      expect(
+        tester.getRect(find.byType(MiTopBar)).height,
+        closeTo(MiTopBarMetrics.scrimHeight, 0.01),
+      );
+
+      // 无标题时滚动位移不产生任何视觉变化（不崩、不画标题）
+      await tester.pumpWidget(harness(title: null, offset: 40));
+      expect(find.descendant(
+        of: find.byType(MiTopBar),
+        matching: find.byType(Text),
+      ), findsNothing);
+    });
+
+    testWidgets('无标题也可显示返回圆钮（材质 + 圆钮的次级页形态）', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(title: null, showBack: true));
+      expect(find.byType(Text), findsNothing);
+      final hit = tester.getRect(_backHitArea);
+      expect(hit.center.dx, closeTo(MiTopBarMetrics.backCenterX, 0.01));
+      expect(hit.center.dy, closeTo(MiTopBarMetrics.backCenterY, 0.01));
     });
   });
 

@@ -247,28 +247,28 @@ void main() {
     await expectLater(stripFinder, matchesGoldenFile('../doc/preview/button_dark.png'));
   });
 
-  testWidgets('README preview: top bar closeups (top-level & secondary)', (tester) async {
+  testWidgets('README preview: top bar closeups (material & fold states)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
-    tester.view.physicalSize = const Size(393 * 2, 744 * 2);
+    tester.view.physicalSize = const Size(393 * 2, 1100 * 2);
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
-    // 三格形态对照（每格逻辑高 240）：
-    //  ① 顶层页「设置」= **默认形态**（`showBack` 不传 → 无返回圆钮）：首行是
-    //     搜索栏 → 内容顶缘实测 168.5dp；
-    //  ② 次级页「显示与亮度」= `showBack: true`（带返回圆钮）：首行是卡片 →
-    //     内容顶缘实测 183dp，与参考录屏同构；
-    //  ③ 同②但滚动 105dp：大标题已随内容上移并归零、紧凑标题居中浮现，内容
-    //     穿到遮罩里 —— 直接看到「实心段 + 1.5 次幂渐隐裙边」，并佐证它没有
-    //     磨砂（卡片在裙边内是亮度斜坡 + 硬边，不是模糊拖尾）。
+    // 四格形态对照（垂直四等分）：
+    //  ① **纯材质形态**（`title` 不传 → 顶栏不内嵌任何组件，与参考录屏
+    //     「我的」页同构）：背后是头像 + 昵称，滚动 96dp 后头像进入栏内 ——
+    //     直观看到磨砂把它抹开、且越往下越锐利（渐进模糊）；
+    //  ② 顶层页「设置」静止态：无返回圆钮、首行是搜索栏 → 内容顶缘 168.5dp；
+    //  ③ 次级页「显示与亮度」静止态：带返回圆钮、大标题、首行是卡片 → 183dp；
+    //  ④ 同③滚动 105dp：大标题已随内容上移并归零、紧凑标题居中浮现。
     Widget frame(MiThemeMode mode) {
       final light = mode == MiThemeMode.light;
       Widget panel({
-        required String title,
+        String? title,
         required bool showBack,
         required double shift,
         double topInset = MiTopBarMetrics.contentTopInset,
         Widget? first,
+        bool header = false,
       }) =>
           Stack(
             children: [
@@ -278,6 +278,7 @@ void main() {
                   shift,
                   topInset: topInset,
                   first: first,
+                  header: header,
                 ),
               ),
               // 与 demo 同样用 Positioned 钉顶（顶栏若作非定位子级，外层
@@ -307,6 +308,10 @@ void main() {
             key: const ValueKey('topBarPreview'),
             children: [
               Expanded(
+                child: panel(showBack: false, shift: 96, header: true),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
                 child: panel(
                   title: '设置',
                   showBack: false,
@@ -315,11 +320,11 @@ void main() {
                   first: MiSearchBar(hint: '搜索设置项', themeMode: mode),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Expanded(
                 child: panel(title: '显示与亮度', showBack: true, shift: 0),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Expanded(
                 child: panel(title: '显示与亮度', showBack: true, shift: 105),
               ),
@@ -400,11 +405,16 @@ void main() {
 ///
 /// 行卡只是**预览用的 mock 内容**（非框架组件）：首行顶缘取实测 [topInset]
 /// （静止态与对应参考页同构）、行距取参考页实测 53.2dp、饱和蓝 #3B6BF5
-/// 最能显形遮罩的亮度斜坡。[first] 可换掉首行（顶层页是搜索栏，
+/// 最能显形叠色的亮度斜坡。[first] 可换掉首行（顶层页是搜索栏，
 /// 用框架组件 [MiSearchBar] 顶替第一张行卡）。
 ///
+/// [header] 在行卡之上加一屏"头像 + 昵称"（复刻亮色「我的」页的页头，静止态
+/// 位于 110…170dp）：它同时是**磨砂的判据内容** —— 平坦色块在模糊下不变，
+/// 只有这种高频内容才能看出"有没有糊"。第一格预览把 [shift] 拉到 96dp，
+/// 让头像滑进栏内，直接看到它被抹开、且越往下越锐利。
+///
 /// 逐行用 `Positioned` 摆进 `Stack`（而不是 `Column` + `Transform`）：这些
-/// 行天然比面板高（首行顶缘 168.5/183 + 5 行 257 ≫ 面板 240），`Column`
+/// 行天然比面板高（首行顶缘 168.5/183 + 5 行 257 ≫ 面板 263），`Column`
 /// 会报 RenderFlex 溢出，`Stack` 只按自身边界裁剪、不报错；滚动位移直接
 /// 并进每行 `top`，连 `Transform` 都省了。
 Widget _topBarBackdrop(
@@ -412,10 +422,50 @@ Widget _topBarBackdrop(
   double shift, {
   double topInset = MiTopBarMetrics.contentTopInset,
   Widget? first,
+  bool header = false,
 }) {
   final light = mode == MiThemeMode.light;
   final neutral = light ? const Color(0xFFFFFFFF) : const Color(0xFF242424);
+  final fg = light ? const Color(0xFF2E2E2E) : const Color(0xFFE8E8E8);
+  final sub = light ? const Color(0xFF9A9A9A) : const Color(0xFF8A8A8A);
   final rows = <Widget>[];
+  if (header) {
+    // 页头静止位置 110…170dp（参考录屏「我的」页实测），头像 ⌀60。
+    final hy = 110 - shift;
+    rows.add(
+      Positioned(
+        left: 19.9,
+        top: hy,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF7C8B6B), Color(0xFF3E4A33)],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(width: 118, height: 18, color: fg),
+                const SizedBox(height: 8),
+                Container(width: 156, height: 12, color: sub),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   var y = topInset - shift;
   if (first != null) {
     rows.add(Positioned(left: 11.9, right: 11.9, top: y, child: first));

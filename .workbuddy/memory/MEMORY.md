@@ -14,7 +14,8 @@
   - **内容首行顶缘分两档**（都实测，不归一）：卡片类 `contentTopInset` **183.0**（录屏卡片填充硬边 568px）、搜索栏类 `searchBarTopInset` **168.5**（「设置」首页搜索栏 523px）；demo 首页用后者。
   - **返回圆钮 `showBack` 默认 false**（顶层页无返回）→ true 才绘制，可点性另由 `onBack`（null = 只显示不可点）决定；`showBack` 也决定紧凑标题的对称内缩（`backInset + backDiameter`，false 时 0）。
   - **标题墨心落点靠 `Baseline` 钉死**：`Baseline(baselineType: alphabetic, baseline: 墨心 + 0.355em)`，组件高度取「大标题墨心 + 一整行」定值（`componentHeight`）。**本 SDK（C:\src\flutter @3.47.5）的 `StrutStyle` 没有 `ascent`/`descent` 参数**（`height` 只按比例缩放 ascent/descent，改不了二者之比），所以「钉行盒内基线」这条路走不通；`TextStyle.height` 同理。行盒中心反推的老换算（`largeTitleBoxCenterY` 等）已删除。
-  - **顶栏遮挡 = 纯色遮罩（实心段 63.6 + 1.5 次幂渐隐到 128.9），实测无 backdrop 模糊** —— 刻意不复用磨砂语言。
+  - **材质 = 渐进磨砂 + 叠色**（亮色「我的」页录屏 1220×2656@24.26fps 实测；旧结论「纯色遮罩、无模糊」已废弃）：`blurSigma` **5.37**、模糊遮罩 m(y) 1.00(0…35dp)→0.85(50)→0.67(67.5)→0.30(90)→0.14(109)→**0(119dp)**；浅色叠色 = 页底色 #F3F3F3 @**0.650**(顶)→0(**122.4dp**)；深色叠色不动（设置页顶部不透明黑）。材质盒高仍 `scrimHeight` 128.9。
+  - **纯材质形态**：`title` 可空 → 顶栏不内嵌任何组件，高度收到 `scrimHeight`；`showBack` 可单独用。
   - 折叠：大标题**属于滚动内容**（质心位移 = 滚动位移，1:1 上移）+ 独立淡出曲线（0→19.97dp 归零），紧凑标题 19.97→29.31dp 才淡入，两段不重叠。
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 
@@ -27,6 +28,9 @@
 - **全屏页壳的 `Stack` 子级一律用 `Positioned`**：只要有**非定位子级**（如叠在顶部的顶栏），Stack 就不再撑满父级、而是收缩到该子级尺寸；一旦上级给的是 loose 约束（`Center`、`AnimatedSwitcher` 内部那个 `alignment: center` 的 Stack），整页会被居中 → 顶栏跑到屏幕正中。2026-10-16 实机截图实测偏移 =（856 − 152.8）/ 2 = 351.6dp。
 - **文字的墨心落点依赖字体族 → 已用 `Baseline` 解决**：墨心在**基线上方** `k ≈ 0.355em` 跨字体很稳（simhei/msyh/simsun 实测 0.350~0.360），但**基线在行盒内的位置**只能由字体度量决定（`StrutStyle` 在本 SDK 无 `ascent`/`descent`；`TextStyle.height` 只按比例缩放），字体间可差 0.14em（参考录屏 MiSans ≈0.807 vs Android CJK 回退字体 ≈0.95；0.14em × 31.83 ≈ 4.5dp）。2026-10-16 实机实测大标题墨心比模型低 **6.9dp**（chevron 是 CustomPainter、字体无关，精确吻合 0.5dp 内 → 组件几何没问题）；字号经墨盒宽度交叉验证仍为 31.83dp。修法 = 标题外包 `Baseline(baselineType: alphabetic, baseline: 墨心 + 0.355em)`，由框架在布局期求解，**别再退回 em 经验换算/行盒中心反推**。
 - **`Baseline` 的定位语义**：`RenderBaseline` 把子级基线放到「距**它自己 box 顶端** N 处」，`size.height = (N − 子级基线距) + 子级高`、无 clamp（可负）。所以用法是 `Positioned(left:/top: 0) → (Padding) → Center/Align → Baseline → Text`：`top` 必须给 0（基线从 box 顶量起），`Center` 在**无界高**约束下 shrink-wrap 且 dy 偏移为 0（`maxHeight == ∞` → `shrinkWrapHeight`），所以水平居中不会破坏垂直落点。
+- **平坦色块判不了「有没有模糊」**：模糊不改变平坦区的亮度，所以「沿均匀色块取样看有没有亮度斜坡」这种判据既不能证明、也不能否定 backdrop 模糊（上一版据此误判顶栏「无磨砂」）。要判模糊必须用**高频内容**（照片边缘 / 圆角方块的竖直边缘 / 文字笔画），并量**边缘宽度**而不是亮度。
+- **σ 与叠色 α 在窄窗口上耦合退化**：把「同行锐利剖面模糊后与带内剖面做最小二乘」时若窗口太窄（< 3σ），衰减幅值会被 α 吸收 → 解出偏小的 σ + 偏大的 α（本机实测就解出假的 α≈0.6）。三种可靠替代：① **频谱比** `log(S₁/S₀) = −2π²σ²f² + 2log(1−α)`（斜率只含 σ，α 只进常数项）；② 只用**带外帧做 α 的平坦区硬判据**（如白卡 255→249 反解 α=0.5）；③ 由边缘宽度反解 m 时注意 **m<1 的混合剖面 10-90 宽度会收敛到 2.08σ**（不随 m 变），故 m 只能在 m≳0.13 之外反解。
+- **纵向滚动的录屏里，竖直边缘（水平剖面）不受运动模糊影响**：测模糊优先取「图标的左右缘、头像左右测点」，避开水平边缘；静止帧（滚动停止后）当然更好。
 - **判据别被描边骗**：测「卡片填充顶缘」时用 `(B−R)>15` 之类的色差阈值会先撞上**卡片描边**（录屏帧因此在 177.17dp 误报，真值是 183.0dp）。要沿列剖面找**单行内的硬跳变**（亮度 0 → 135）才可靠。
 - **`test/` 不参与 app 构建**：`flutter build` 只编译 app，测试代码里的编译错误（如 `AnimatedSwitcher` 缺必填 `duration`）不会暴露 → 动过 `test/` 后至少跑一次 `dart analyze`（`C:\src\flutter\bin\dart.bat`，**0 error 才算过**；`flutter analyze` 同级）。教训来自 2026-10-16：`flutter build` 只报了 `StrutStyle.ascent` 那一处，测试里另一处错误是 `dart analyze` 才翻出来的。
 - **`getDistanceToBaseline` 不能在测试体里调**：本 SDK 的 `RenderBox.getDistanceToBaseline`（无 `dry` 参数）有「只能在父级 layout / paint 期调用」的断言 → 测试里调必抛。要验「文字落点」就断言组件的**输入契约**：`tester.widget<Baseline>(find.ancestor(of: text, matching: find.byType(Baseline))).baseline`（`RenderBaseline` 保证落点 = 该入参）。
