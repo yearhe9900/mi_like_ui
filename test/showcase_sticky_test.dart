@@ -26,6 +26,10 @@ void main() {
     final pillTop = tester.getTopLeft(find.byType(MiPillTabBar)).dy;
     expect(pillTop, closeTo(56 + 44.1 + 16, 0.01));
 
+    // 内容让位由顶栏自己算（occupiedHeight 156 + 胶囊行底 → 内容 12）
+    final list = tester.widget<ListView>(find.byType(ListView));
+    expect((list.padding as EdgeInsets).top, closeTo(168, 0.01));
+
     // 上滚网格：标题滚进胶囊行后方，胶囊行原地不动
     await tester.drag(find.byType(ListView), const Offset(0, -300));
     await tester.pumpAndSettle();

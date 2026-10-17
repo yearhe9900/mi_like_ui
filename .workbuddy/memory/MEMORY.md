@@ -22,6 +22,10 @@
   - **标题墨心落点靠 `Baseline` 钉死**：`Baseline(baselineType: alphabetic, baseline: 墨心 + 0.355em)`，组件高度取「大标题墨心 + 一整行」定值（`componentHeight`）。**本 SDK（C:\src\flutter @3.47.5）的 `StrutStyle` 没有 `ascent`/`descent` 参数**（`height` 只按比例缩放 ascent/descent，改不了二者之比），所以「钉行盒内基线」这条路走不通；`TextStyle.height` 同理。行盒中心反推的老换算（`largeTitleBoxCenterY` 等）已删除。
   - **材质 = 渐进磨砂 + 叠色**（亮色「我的」页录屏 1220×2656@24.26fps 实测；旧结论「纯色遮罩、无模糊」已废弃）：栏顶 `blurSigma` **5.37**，实测 σ(y) = 5.37(0…35dp) → 4.96(50) → 4.34(67.5) → 1.85(90) → 0.76(103) → **0(119dp)**；**实现 = 8 段定 σ 阶梯**（`MiTopBarPalette.blurBands`，每段 `ClipRect + BackdropFilter`，σ 取实测曲线段中点插值；`blurMask` 已删除）。浅色叠色 = 页底色 #F3F3F3 @**0.650**(顶)→0(**122.4dp**)；深色叠色不动（设置页顶部不透明黑）。材质盒高仍 `scrimHeight` 128.9。
   - **纯材质形态**：`title` 可空 → 顶栏不内嵌任何组件，高度收到 `scrimHeight`；`showBack` 可单独用。
+  - **头部插槽（2026-10-17）**：顶栏 = 标题区（定高）+ 头部区（插槽），`searchBar` / `tabBar` / `header`（`PreferredSizeWidget`）三者互斥（构造期断言）。几何走 `MiTopBarMetrics`：`headerTopInset` 56（`headerTopInsetFor(safeAreaTop)` 取大者）、`searchBarGap` 16、`headerContentGap` 12、`headerInset` 11.9、`searchBarSlotHeight` 44.1、`tabBarSlotHeight` 39.9（后两个与 `MiSearchBarMetrics.barHeight` / `MiPillTabMetrics.pillHeight` 同值，跨层一致由测试钉住）。
+    - **插槽高度是声明值**：组件按它排版，宿主用 `bar.occupiedHeight(context)` 给滚动内容让位 —— 两侧同源才不会错位。
+    - **胶囊行必须满宽**（不套 `headerInset`）：它自带 11.9 `edgeInset` 且要横向出血滚动，套内边距会把末尾胶囊多裁一截；搜索栏才吃 `headerInset`。
+    - `showSurface: false` 关磨砂 + 叠色（头部自带 backdrop 时必传，否则多叠 8 层模糊、且间隙被染叠色）。分类页即 `showSurface: false + searchBar + tabBar`，迁移后逐像素不变。
   - 折叠：大标题**属于滚动内容**（质心位移 = 滚动位移，1:1 上移）+ 独立淡出曲线（0→19.97dp 归零），紧凑标题 19.97→29.31dp 才淡入，两段不重叠。
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../icons/nav_icons.dart';
@@ -42,7 +41,49 @@ import 'top_bar_metrics.dart';
 ///  * 返回圆钮按压反馈 = ⌀44.1 圆盘、白 @9.4%，0.42s easeOut 淡入 /
 ///    0.3s 淡出。
 ///
-/// ## 用法
+/// ## 形态与插槽
+///
+/// 顶栏由「**标题区**」（材质 + 大/紧凑标题 + 返回圆钮，定高）与
+/// 「**头部区**」（插槽，按需）上下拼成，两区可自由组合：
+///
+/// | 形态 | `title` | `showSurface` | 插槽 | 典型用法 |
+/// |------|---------|---------------|------|----------|
+/// | 大标题折叠 | 有 | `true` | — | 首页 / 「我的」/ 设置页 |
+/// | 纯材质 | `null` | `true` | — | 参考录屏「我的」页（顶栏不内嵌组件） |
+/// | 吸顶头部 | `null` | `false` | `searchBar` + `tabBar` | 分类页（搜索栏 + 胶囊行吸顶） |
+/// | 材质 + 头部 | `null` | `true` | 任意 | 需要磨砂底的自定义头部 |
+///
+/// 头部插槽自上而下排列，**三者互斥**（构造期断言保证）：
+///
+/// | 插槽 | 类型 | 高度来源 | 布局 |
+/// |------|------|----------|------|
+/// | [searchBar] | `Widget` | [searchBarHeight]（默认 44.1） | 左右 [headerInset]、顶部状态栏让位 |
+/// | [tabBar] | `Widget` | [tabBarHeight]（默认 39.9） | **满宽**（自带 11.9 边距，需横向出血滚动），与搜索栏隔 16 |
+/// | [header] | `PreferredSizeWidget` | `preferredSize.height` | 左右 [headerInset]，整块自定义头部的逃生口 |
+///
+/// 插槽高度是**声明值**：组件按它分配高度，宿主也按它（经 [occupiedHeight]）
+/// 给滚动内容让位 —— 两侧同源，不会出现「头部下移而列表没让位」的错位。
+/// 换成自定义高度的组件时记得同步传高度。
+///
+/// ## 用法 —— 吸顶头部（分类页形态）
+///
+/// ```dart
+/// final bar = MiTopBar(
+///   themeMode: mode,
+///   showSurface: false,             // 头部自带磨砂，不再叠一层材质
+///   searchBar: MiSearchBar(hint: '搜索主题 / 壁纸 / 图标'),
+///   tabBar: MiPillTabBar(labels: tabs, selectedIndex: i, onTap: ...),
+/// );
+///
+/// Stack(children: [
+///   ListView(padding: EdgeInsets.only(
+///     top: bar.occupiedHeight(context) + MiTopBarMetrics.headerContentGap,
+///   ), children: [...]),
+///   Positioned(top: 0, left: 0, right: 0, child: bar),
+/// ])
+/// ```
+///
+/// ## 用法 —— 大标题折叠
 ///
 /// 本组件**不自带滚动**，由宿主提供当前滚动位移（受控组件，与
 /// [MiPillTabBar] 的 `selectedIndex` 同风格），叠在滚动内容之上：
@@ -71,12 +112,13 @@ import 'top_bar_metrics.dart';
 /// 居中到屏幕正中：顶栏跑到屏幕中间、页底与滚动内容只剩 152.8dp 高。
 /// 2026-10-16 实机截图实测该偏移 = (856 − 152.8) / 2 = 351.6dp。
 ///
-/// 磨砂层只覆盖顶部 [MiTopBarMetrics.scrimHeight]，其下内容照常透出。
-/// 除返回圆钮外整体不参与手势，滚动内容可从顶栏下方正常拖动。
+/// 材质层只覆盖顶部 [MiTopBarMetrics.scrimHeight]，其下内容照常透出。
+/// 除返回圆钮与插槽本身外整体不参与手势，滚动内容可从顶栏下方正常拖动。
 ///
 /// **坐标原点 = 屏幕顶端**：实测几何已包含 [MiTopBarMetrics.statusBarHeight]
 /// 的状态栏让位，宿主把它铺在屏幕顶部即可，顶部不要再叠加 `SafeArea` 内边距
-/// （否则整体会下移、大标题与圆钮的实测垂心失效）。
+/// （否则整体会下移、大标题与圆钮的实测垂心失效）。头部插槽区自带状态栏
+/// 让位（[MiTopBarMetrics.headerTopInsetFor]，安全区更高时取安全区）。
 ///
 /// [themeMode] 为空时跟随环境 `Theme.of(context).brightness`。
 ///
@@ -94,12 +136,32 @@ class MiTopBar extends StatelessWidget {
     this.onBack,
     this.themeMode,
     this.scrollOffset = 0,
-  }) : assert(scrollOffset >= 0, 'scrollOffset 不能为负（未滚动时传 0）');
+    this.searchBar,
+    this.searchBarHeight = MiTopBarMetrics.searchBarSlotHeight,
+    this.tabBar,
+    this.tabBarHeight = MiTopBarMetrics.tabBarSlotHeight,
+    this.header,
+    this.headerInset = MiTopBarMetrics.headerInset,
+    this.showSurface = true,
+  })  : assert(scrollOffset >= 0, 'scrollOffset 不能为负（未滚动时传 0）'),
+        assert(header == null || (searchBar == null && tabBar == null),
+            'header 与 searchBar / tabBar 互斥：给了整块头部就不要再给零件'),
+        assert(searchBarHeight > 0, 'searchBarHeight 必须为正'),
+        assert(tabBarHeight > 0, 'tabBarHeight 必须为正'),
+        assert(headerInset >= 0, 'headerInset 不能为负'),
+        assert(
+          title != null ||
+              showSurface ||
+              searchBar != null ||
+              tabBar != null ||
+              header != null,
+          '空顶栏没有意义：title / showSurface / 插槽至少要给一个',
+        );
 
   /// 标题文案（大标题与紧凑标题同源）。
   ///
-  /// **null = 纯材质形态**：不内嵌任何组件，只画磨砂 + 叠色
-  /// （与参考录屏「我的」页的顶栏一致）。
+  /// **null = 无标题**：不画两条标题，此时高度只剩材质层（纯材质形态）与
+  /// 头部插槽区。
   final String? title;
 
   /// 是否显示返回圆钮（默认 false —— 顶层页无返回）。
@@ -114,6 +176,79 @@ class MiTopBar extends StatelessWidget {
 
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
+
+  // ── 头部插槽（searchBar / tabBar / header 三者互斥） ────────────────────
+  /// 搜索栏插槽：头部区首行，左右留 [headerInset]、顶部留状态栏让位。
+  ///
+  /// 分类页传 `MiSearchBar`；只给它不给 [tabBar] 时头部区只有一行。
+  final Widget? searchBar;
+
+  /// 搜索栏插槽的高度（**布局用**，须与传入组件的实际高度一致）。
+  final double searchBarHeight;
+
+  /// 胶囊标签行插槽：渲染在搜索栏下方，隔
+  /// [MiTopBarMetrics.searchBarGap]（16dp）。
+  ///
+  /// **满宽铺开、左右不内缩** —— 标签行自带 11.9 的 `edgeInset`，且要能
+  /// 横向出血滚动到屏幕边缘；再套一层外边距会把末尾胶囊多裁一截。
+  final Widget? tabBar;
+
+  /// 胶囊标签行插槽的高度（**布局用**，须与传入组件的实际高度一致）。
+  final double tabBarHeight;
+
+  /// 整块自定义头部的逃生口（与 [searchBar] / [tabBar] 互斥）。
+  ///
+  /// 高度取 `preferredSize.height`，左右仍走 [headerInset]。
+  final PreferredSizeWidget? header;
+
+  /// 头部插槽的左右页边距（默认 [MiTopBarMetrics.headerInset] 11.9）。
+  ///
+  /// 宽屏舞台下页面边距会放大（示例层用 24），由宿主传同值以保持与滚动
+  /// 内容左缘对齐。
+  final double headerInset;
+
+  /// 是否绘制磨砂 + 叠色材质层（默认 true）。
+  ///
+  /// 头部插槽自带磨砂（`MiSearchBar` / `MiPillTabBar` 都有自己的 backdrop）
+  /// 时传 `false`：否则材质会在它们后方再叠一层，多出若干层 backdrop 模糊，
+  /// 且搜索栏 / 胶囊之间的间隙被染上叠色，与参考页不符。
+  final bool showSurface;
+
+  /// 头部区是否有插槽。
+  bool get hasHeaderSlot =>
+      searchBar != null || tabBar != null || header != null;
+
+  /// 标题区高度：有标题 = 大标题墨心 + 一整行；无标题 = 只剩材质盒
+  /// （不画材质则为 0）。
+  double titleExtent(double largeTitleFontSize) => title != null
+      ? MiTopBarMetrics.componentHeight(largeTitleFontSize)
+      : (showSurface ? MiTopBarMetrics.scrimHeight : 0);
+
+  /// 头部区高度（含状态栏让位；无插槽为 0）。
+  ///
+  /// 与 [occupiedHeight]、`build` 三处共用同一套声明值，改一处同步生效。
+  double headerExtent(BuildContext context) {
+    if (!hasHeaderSlot) return 0;
+    var extent = MiTopBarMetrics.headerTopInsetFor(
+      MediaQuery.paddingOf(context).top,
+    );
+    if (header != null) return extent + header!.preferredSize.height;
+    if (searchBar != null) extent += searchBarHeight;
+    if (searchBar != null && tabBar != null) {
+      extent += MiTopBarMetrics.searchBarGap;
+    }
+    if (tabBar != null) extent += tabBarHeight;
+    return extent;
+  }
+
+  /// 顶栏**自身**占用的总高（标题区 + 头部区，不含与滚动内容的间距）。
+  ///
+  /// 宿主给滚动内容让位就用它：
+  /// `padding.top = occupiedHeight(context) + MiTopBarMetrics.headerContentGap`。
+  /// 与组件内部署用的是同一套声明值，故不会出现「头部下移、列表没让位」。
+  double occupiedHeight(BuildContext context) =>
+      titleExtent(MiTypography.topBarLargeTitle.fontSize!) +
+      headerExtent(context);
 
   /// 渲染时真正要绘制的模糊段：剔除两类**视觉上不存在**的段。
   ///
@@ -175,115 +310,160 @@ class MiTopBar extends StatelessWidget {
       compactSize,
     );
 
-    final bands = visibleBlurBands(palette);
+    final bands =
+        showSurface ? visibleBlurBands(palette) : const <MiTopBarBlurBand>[];
 
     return SizedBox(
-      // 有标题时到大标题墨心 + 一整行（够高不裁标题）；纯材质形态只需盖住
-      // 遮罩盒本身。遮罩之外的部分保持透明。
-      height: title == null
-          ? MiTopBarMetrics.scrimHeight
-          : MiTopBarMetrics.componentHeight(largeSize),
+      // 上下拼装：标题区定高 + 头部区按插槽声明高度；无插槽时整体高度即
+      // 标题区，与首版行为一致。
       width: double.infinity,
-      child: Stack(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
-          //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
-          //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
-          //    见 MiTopBarPalette.blurBands 的说明。）
-          for (final band in bands)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: band.top,
-              height: band.height,
-              child: IgnorePointer(
-                child: ClipRect(
-                  child: BackdropFilter(
-                    // σ 来自固定 token → 复用缓存的 native filter，
-                    // 避免每帧重建（滚动时每帧都会走这里）。
-                    filter: MiFilterCache.blur(band.sigma),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-              ),
-            ),
-          // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
-          //    @1→0，两页各自实测，见 MiTopBarPalette 文档）
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: MiTopBarMetrics.scrimHeight,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(gradient: palette.scrimGradient),
-              ),
-            ),
-          ),
-          // 3) 大标题：随滚动 1:1 上移 + 按实测表淡出（钉基线 → top 恒为 0）
-          if (title != null)
-            Positioned(
-              left: MiTopBarMetrics.largeTitleLeadingInset,
-              top: 0,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: MiTopBarMetrics.largeTitleOpacity(offset),
-                  child: Baseline(
-                    baseline: largeTitleBaseline - offset,
-                    baselineType: TextBaseline.alphabetic,
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: MiTypography.topBarLargeTitleFor(mode),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // 4) 紧凑标题：与返回圆钮同一行、屏内水平居中（实测 609.5px ≈ 屏心）
-          if (title != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: MiTopBarMetrics.compactTitleOpacity(offset),
-                  child: Padding(
-                    // 显示圆钮时对称内缩（圆钮右缘），长标题居中且不与圆钮相撞；
-                    // 不显示圆钮时不留内缩，居中标题可用满整屏宽。
-                    padding: EdgeInsets.symmetric(
-                      horizontal: showBack
-                          ? MiTopBarMetrics.backInset +
-                              MiTopBarMetrics.backDiameter
-                          : 0,
-                    ),
-                    child: Center(
-                      child: Baseline(
-                        baseline: compactTitleBaseline,
-                        baselineType: TextBaseline.alphabetic,
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: MiTypography.topBarCompactTitleFor(mode),
+          SizedBox(
+            // 有标题时到大标题墨心 + 一整行（够高不裁标题）；纯材质形态只需
+            // 盖住遮罩盒本身。遮罩之外的部分保持透明。
+            height: titleExtent(largeSize),
+            child: Stack(
+              children: [
+                // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
+                //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
+                //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
+                //    见 MiTopBarPalette.blurBands 的说明。）
+                for (final band in bands)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: band.top,
+                    height: band.height,
+                    child: IgnorePointer(
+                      child: ClipRect(
+                        child: BackdropFilter(
+                          // σ 来自固定 token → 复用缓存的 native filter，
+                          // 避免每帧重建（滚动时每帧都会走这里）。
+                          filter: MiFilterCache.blur(band.sigma),
+                          child: const SizedBox.expand(),
                         ),
                       ),
                     ),
                   ),
+                // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
+                //    @1→0，两页各自实测，见 MiTopBarPalette 文档）
+                if (showSurface)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    height: MiTopBarMetrics.scrimHeight,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration:
+                            BoxDecoration(gradient: palette.scrimGradient),
+                      ),
+                    ),
+                  ),
+                // 3) 大标题：随滚动 1:1 上移 + 按实测表淡出（钉基线 → top 恒为 0）
+                if (title != null)
+                  Positioned(
+                    left: MiTopBarMetrics.largeTitleLeadingInset,
+                    top: 0,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: MiTopBarMetrics.largeTitleOpacity(offset),
+                        child: Baseline(
+                          baseline: largeTitleBaseline - offset,
+                          baselineType: TextBaseline.alphabetic,
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: MiTypography.topBarLargeTitleFor(mode),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // 4) 紧凑标题：与返回圆钮同一行、屏内水平居中（实测 609.5px ≈ 屏心）
+                if (title != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    child: IgnorePointer(
+                      child: Opacity(
+                        opacity: MiTopBarMetrics.compactTitleOpacity(offset),
+                        child: Padding(
+                          // 显示圆钮时对称内缩（圆钮右缘），长标题居中且不与圆钮相撞；
+                          // 不显示圆钮时不留内缩，居中标题可用满整屏宽。
+                          padding: EdgeInsets.symmetric(
+                            horizontal: showBack
+                                ? MiTopBarMetrics.backInset +
+                                    MiTopBarMetrics.backDiameter
+                                : 0,
+                          ),
+                          child: Center(
+                            child: Baseline(
+                              baseline: compactTitleBaseline,
+                              baselineType: TextBaseline.alphabetic,
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: MiTypography.topBarCompactTitleFor(mode),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // 5) 返回圆钮（可选，标题区内唯一的可交互元素）
+                if (showBack)
+                  Positioned(
+                    left: MiTopBarMetrics.backInset,
+                    top: MiTopBarMetrics.backCenterY -
+                        MiTopBarMetrics.backDiameter / 2,
+                    child: _MiTopBarBackButton(
+                      palette: palette,
+                      onTap: onBack,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // 6) 头部区：搜索栏 / 胶囊标签行 / 自定义头部（自上而下）
+          if (hasHeaderSlot)
+            Padding(
+              padding: EdgeInsets.only(
+                top: MiTopBarMetrics.headerTopInsetFor(
+                  MediaQuery.paddingOf(context).top,
                 ),
               ),
-            ),
-          // 5) 返回圆钮（可选，组件唯一的可交互元素）
-          if (showBack)
-            Positioned(
-              left: MiTopBarMetrics.backInset,
-              top: MiTopBarMetrics.backCenterY -
-                  MiTopBarMetrics.backDiameter / 2,
-              child: _MiTopBarBackButton(
-                palette: palette,
-                onTap: onBack,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (header != null)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: headerInset),
+                      child: SizedBox(
+                        height: header!.preferredSize.height,
+                        child: header,
+                      ),
+                    ),
+                  if (searchBar != null)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: headerInset),
+                      child: SizedBox(height: searchBarHeight, child: searchBar),
+                    ),
+                  if (searchBar != null && tabBar != null)
+                    const SizedBox(height: MiTopBarMetrics.searchBarGap),
+                  // 胶囊行满宽：靠自身 11.9 的 edgeInset 与搜索栏左缘对齐，
+                  // 同时保留横向出血滚动（再套内边距会把末尾胶囊多裁一截）。
+                  if (tabBar != null)
+                    SizedBox(height: tabBarHeight, child: tabBar),
+                ],
               ),
             ),
         ],

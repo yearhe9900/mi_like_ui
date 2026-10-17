@@ -158,6 +158,49 @@ class MiTopBarMetrics {
   /// 搜索栏比卡片类首行高 14.5dp，两个值都来自整机实测，故分档给出。
   static const double searchBarTopInset = 168.5;
 
+  // ── 头部插槽区（内容形态） ─────────────────────────────────────────────
+  //
+  // 顶栏除了「大标题 + 材质」，还可以**内嵌头部组件**（搜索栏 / 胶囊标签行 /
+  // 任意自定义头部）—— 分类页就是这种形态：搜索栏 + 胶囊行吸顶悬浮，网格
+  // 从胶囊后方滚过。这一区的几何全部实测自分类页完整截图（1220×2656，
+  // s = 393/1220 = 0.32213）。
+
+  /// 插槽区相对**屏幕顶端**的起始位置 = 状态栏让位（实测 56dp）。
+  ///
+  /// 与 [statusBarHeight]（53.8，由大标题墨心反推的行垂心让位）是两回事：
+  /// 那个服务于大标题几何，这个服务于「搜索栏顶缘 y = 56」的实测值。
+  /// 真机 / 平板安全区更高时取更大者，见 [headerTopInsetFor]。
+  static const double headerTopInset = 56.0;
+
+  /// 插槽区起始位置：安全区高于 [headerTopInset] 时取安全区。
+  ///
+  /// 让刘海屏不压住头部内容；桌面窗口（padding = 0）仍是 56。
+  static double headerTopInsetFor(double safeAreaTop) =>
+      safeAreaTop > headerTopInset ? safeAreaTop : headerTopInset;
+
+  /// 搜索栏底 → 胶囊标签行顶（实测 49px ≈ 15.8dp，取 16）。
+  static const double searchBarGap = 16.0;
+
+  /// 胶囊标签行底 → 滚动内容首行（分类页实测间距 12dp）。
+  static const double headerContentGap = 12.0;
+
+  /// 插槽左右页边距（实测 37px = 11.9dp，与页面内容边距同档）。
+  ///
+  /// 只作用于 [MiTopBar.searchBar] / [MiTopBar.header]：胶囊标签行要能
+  /// 横向出血滚动到屏幕边缘（它在内部自带同值的 `edgeInset`），套内外边距
+  /// 会把第 4 个胶囊多裁一截。
+  static const double headerInset = 11.9;
+
+  /// 搜索栏插槽默认高度 = `MiSearchBarMetrics.barHeight`（44.1）。
+  ///
+  /// 两个常量同值是有意的重复：`navigation/` 不依赖 `inputs/`，
+  /// 跨层一致由测试 `top_bar_test.dart` 钉住（改一处漏另一处会红）。
+  static const double searchBarSlotHeight = 44.1;
+
+  /// 胶囊标签行插槽默认高度 = `MiPillTabMetrics.pillHeight`（39.9）；同上，
+  /// 跨层同值由测试钉住。
+  static const double tabBarSlotHeight = 39.9;
+
   // ── 折叠动效（逐帧实测查找表） ─────────────────────────────────────────
   /// 大标题不透明度：`(滚动位移 dp, 墨迹峰值比)`。
   ///

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
@@ -10,11 +8,6 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 ///   24 —— 宽画布上继续贴 11.9 会让内容顶到边。
 double _pageInset(BuildContext context, double measured) =>
     MiViewport.of(context).isCompact ? measured : MiDimens.spaceXxl;
-
-/// 顶部状态栏让位：参考页实测 56dp；真机/平板安全区更大时取更大者，
-/// 避免大标题被刘海压住（桌面窗口 padding 为 0 → 仍是 56）。
-double _statusBarInset(BuildContext context) =>
-    math.max(56.0, MediaQuery.paddingOf(context).top);
 
 /// Simple mock pages (theme-store style) so the glass bar has
 /// colorful content behind it — the pages themselves are not the
@@ -375,14 +368,21 @@ class _ThemeCardGrid extends StatelessWidget {
 
 /// 「分类」tab = 组件展示库（示例层）。
 ///
-/// 顶部胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），
-/// 用来切分组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位
-/// 展示 `nav_icons.dart` 的全部 logo（真实框架 logo），「按钮展示」组先
-/// 陈列 `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位
-/// 补足可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+/// 顶部吸顶头部（搜索框 + 胶囊分类标签行）由框架组件 [MiTopBar] 的插槽
+/// 统一渲染：`searchBar` / `tabBar` 的页边距、两者间距、状态栏让位、以及
+/// 给滚动内容让位的高度全部由顶栏算（[MiTopBar.occupiedHeight]），本页
+/// 不再手算 `状态栏 + 搜索框 + 间距 + 胶囊行`。顶栏在此页**不画材质**
+/// （`showSurface: false`）—— 搜索栏与胶囊行各自带 backdrop 磨砂，参考页
+/// 也没有整条磨砂底。
 ///
-/// 吸顶展示：搜索框 + 标签行悬浮吸顶，网格上滚时从胶囊后方经过，
-/// 借胶囊的半透明磨砂直观展示透明/透射效果。
+/// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），用来切分
+/// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位展示
+/// `nav_icons.dart` 的全部 logo（真实框架 logo），「按钮展示」组先陈列
+/// `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位补足
+/// 可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+///
+/// 吸顶展示：网格上滚时从胶囊后方经过，借胶囊的半透明磨砂直观展示
+/// 透明/透射效果。
 class _ShowcasePage extends StatefulWidget {
   const _ShowcasePage({required this.themeMode});
 
@@ -393,18 +393,6 @@ class _ShowcasePage extends StatefulWidget {
 }
 
 class _ShowcasePageState extends State<_ShowcasePage> {
-  /// 吸顶头部高度 = 状态栏让位 + 搜索框 44.1 + 间距 16 + 胶囊行 39.9；
-  /// 滚动网格初始让出头部 + 12（胶囊行底 → 内容的实测间距）。
-  ///
-  /// 状态栏让位在真机取安全区上边距（参考页实测 56，见 [_statusBarInset]），
-  /// 因此不再是编译期常量 —— 头部高度与吸顶内边距共用同一个值，改一处即
-  /// 同步，不会出现「搜索框下移而网格没让位」的错位。
-  double _headerHeight(BuildContext context) =>
-      _statusBarInset(context) +
-      MiSearchBarMetrics.barHeight +
-      16 +
-      MiPillTabMetrics.pillHeight;
-
   /// 分类胶囊标签（对应截图 推荐/背屏/小部件/主题 的位置）：前两个按
   /// 分组内容命名（Logo 展示 / 按钮展示），后两个仍是占位示例。
   static const List<String> _tabs = ['Logo 展示', '按钮展示', '示例三', '示例四'];
@@ -467,20 +455,40 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）；
     // 外壳加宽成内容舞台（expanded）时页边距收到 24。
     final inset = _pageInset(context, 11.9);
-    final statusTop = _statusBarInset(context);
+    // 吸顶头部交给 MiTopBar 的插槽：它负责状态栏让位、搜索栏左右页边距、
+    // 搜索栏↔胶囊行间距，以及给下面滚动内容让位的高度。本页只提供两个
+    // 组件本体与页边距，别的一律不再手算。
+    final bar = MiTopBar(
+      themeMode: widget.themeMode,
+      // 搜索栏/胶囊行各自带 backdrop 磨砂，参考页也没有整条磨砂底 ——
+      // 再叠一层材质会多出 8 层模糊、且把两者之间的间隙染上叠色。
+      showSurface: false,
+      headerInset: inset,
+      searchBar: MiSearchBar(
+        hint: '搜索主题 / 壁纸 / 图标',
+        themeMode: widget.themeMode,
+      ),
+      tabBar: MiPillTabBar(
+        labels: _tabs,
+        selectedIndex: _tab,
+        onTap: (i) => setState(() => _tab = i),
+        themeMode: widget.themeMode,
+      ),
+    );
     return Container(
       color: widget.themeMode == MiThemeMode.light
           ? const Color(0xFFF3F3F3)
           : const Color(0xFF000000),
       child: Stack(
         children: [
-          // 滚动网格：初始让出吸顶头部高度；上滚后内容从胶囊行后方经过，
-          // 胶囊的半透明磨砂把透上来的网格磨出毛玻璃感。
+          // 滚动网格：初始让出顶栏高度 + 胶囊行底 → 内容的实测间距 12dp；
+          // 上滚后内容从胶囊行后方经过，胶囊的半透明磨砂把透上来的网格
+          // 磨出毛玻璃感。
           Positioned.fill(
             child: ListView(
               padding: EdgeInsets.fromLTRB(
                 inset,
-                _headerHeight(context) + 12,
+                bar.occupiedHeight(context) + MiTopBarMetrics.headerContentGap,
                 inset,
                 0,
               ),
@@ -520,36 +528,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
           ),
           // 吸顶头部：搜索框 + 胶囊分类标签悬浮在滚动内容之上
           //（标签行吸附搜索框下方，网格从胶囊后方滚过）。
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(inset, statusTop, inset, 0),
-                  child: MiSearchBar(
-                    hint: '搜索主题 / 壁纸 / 图标',
-                    themeMode: widget.themeMode,
-                  ),
-                ),
-                const SizedBox(height: 16), // 实测搜索框底 → 标签行 49px ≈ 15.8dp
-                // 左对齐：胶囊行自身宽度只到内容（4 个胶囊 + 边距），宽屏舞台
-                // 下若不显式左对齐，会因 Column 默认居中而飘到页面中间，
-                // 与搜索框、下方网格的左缘失配。
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: MiPillTabBar(
-                    labels: _tabs,
-                    selectedIndex: _tab,
-                    onTap: (i) => setState(() => _tab = i),
-                    themeMode: widget.themeMode,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          Positioned(left: 0, right: 0, top: 0, child: bar),
         ],
       ),
     );

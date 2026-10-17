@@ -21,6 +21,11 @@ Widget harness({
   bool showBack = true,
   VoidCallback? onBack,
   VoidCallback? onBackgroundTap,
+  Widget? searchBar,
+  Widget? tabBar,
+  PreferredSizeWidget? header,
+  bool showSurface = true,
+  double headerInset = MiTopBarMetrics.headerInset,
 }) {
   return MaterialApp(
     home: Scaffold(
@@ -39,6 +44,11 @@ Widget harness({
             scrollOffset: offset,
             themeMode: mode,
             onBack: onBack,
+            searchBar: searchBar,
+            tabBar: tabBar,
+            header: header,
+            showSurface: showSurface,
+            headerInset: headerInset,
           ),
         ],
       ),
@@ -694,6 +704,250 @@ void main() {
     });
   });
 
+  group('头部插槽（搜索栏 / 胶囊行 / 自定义头部）', () {
+    /// 真实搜索栏（分类页同款），用于几何与高度集成断言。
+    Widget realSearchBar() => const MiSearchBar(
+          hint: '搜索主题 / 壁纸 / 图标',
+          themeMode: MiThemeMode.dark,
+        );
+
+    Widget realTabBar() => MiPillTabBar(
+          labels: const ['Logo 展示', '按钮展示', '示例三', '示例四'],
+          selectedIndex: 0,
+          onTap: (_) {},
+          themeMode: MiThemeMode.dark,
+        );
+
+    test('跨层常量同值：插槽默认高度 = 搜索栏 / 胶囊行的实测高度', () {
+      // navigation/ 不依赖 inputs/，两个常量是有意重复，改一处漏另一处会红
+      expect(MiTopBarMetrics.searchBarSlotHeight, MiSearchBarMetrics.barHeight);
+      expect(MiTopBarMetrics.tabBarSlotHeight, MiPillTabMetrics.pillHeight);
+    });
+
+    testWidgets('搜索栏 + 胶囊行：56 让位、搜索栏 11.9 边距、胶囊行满宽、两者隔 16', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchBar: realSearchBar(),
+        tabBar: realTabBar(),
+      ));
+
+      // 搜索栏：顶部状态栏让位 56、左右页边距 11.9
+      final search = tester.getRect(find.byType(MiSearchBar));
+      expect(search.top, closeTo(MiTopBarMetrics.headerTopInset, 0.01));
+      expect(search.left, closeTo(MiTopBarMetrics.headerInset, 0.01));
+      expect(
+        search.width,
+        closeTo(393 - 2 * MiTopBarMetrics.headerInset, 0.01),
+      );
+      expect(search.height, closeTo(MiSearchBarMetrics.barHeight, 0.01));
+
+      // 胶囊行：**满宽**（左右都不内缩 —— 靠自身 11.9 edgeInset 与搜索栏
+      // 左缘对齐，同时保留横向出血滚动）
+      final tabs = tester.getRect(find.byType(MiPillTabBar));
+      expect(tabs.left, 0);
+      expect(tabs.width, 393);
+      expect(tabs.height, closeTo(MiPillTabMetrics.pillHeight, 0.01));
+      expect(
+        tabs.top,
+        closeTo(
+          MiTopBarMetrics.headerTopInset +
+              MiSearchBarMetrics.barHeight +
+              MiTopBarMetrics.searchBarGap,
+          0.01,
+        ),
+      );
+
+      // 顶栏自身高度 = 56 + 44.1 + 16 + 39.9（分类页吸顶头部的实测总高）
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(156.0, 0.01),
+      );
+    });
+
+    testWidgets('occupiedHeight 与实际布局高度一致（两种形态）', (tester) async {
+      _size(tester);
+
+      // 大标题形态：只有标题区
+      await tester.pumpWidget(harness());
+      var bar = tester.widget<MiTopBar>(find.byType(MiTopBar));
+      var context = tester.element(find.byType(MiTopBar));
+      expect(
+        bar.occupiedHeight(context),
+        closeTo(
+          MiTopBarMetrics.componentHeight(
+            MiTypography.topBarLargeTitle.fontSize!,
+          ),
+          0.01,
+        ),
+      );
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(bar.occupiedHeight(context), 0.01),
+      );
+
+      // 吸顶头部形态：标题区 0 + 头部区
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchBar: realSearchBar(),
+        tabBar: realTabBar(),
+      ));
+      bar = tester.widget<MiTopBar>(find.byType(MiTopBar));
+      context = tester.element(find.byType(MiTopBar));
+      expect(bar.occupiedHeight(context), closeTo(156.0, 0.01));
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(bar.occupiedHeight(context), 0.01),
+        reason: '宿主按 occupiedHeight 给滚动内容让位，两者必须一致',
+      );
+    });
+
+    testWidgets('showSurface: false 不画磨砂与叠色（头部自带磨砂）', (tester) async {
+      // 画材质时 128.9 + 156 = 284.9dp，默认 240 高的测试窗口装不下
+      _size(tester, const Size(393, 400));
+
+      // 占位插槽：自身不含任何 backdrop，磨砂层数量即材质层数量
+      Finder blurLayers() => find.descendant(
+            of: find.byType(MiTopBar),
+            matching: find.byType(BackdropFilter),
+          );
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchBar: const SizedBox.expand(),
+        tabBar: const SizedBox.expand(),
+      ));
+      expect(blurLayers(), findsNothing, reason: '头部自带磨砂，不该再叠一层');
+      expect(_scrimDark, findsNothing, reason: '叠色也不该出现');
+      expect(find.byType(ShaderMask), findsNothing);
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(156.0, 0.01),
+        reason: '不画材质后高度只剩头部区',
+      );
+
+      // 打开材质：磨砂段与叠色都回来，高度 = scrimHeight + 头部区
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        searchBar: const SizedBox.expand(),
+        tabBar: const SizedBox.expand(),
+      ));
+      expect(
+        blurLayers(),
+        findsNWidgets(MiTopBar.visibleBlurBands(MiTopBarPalette.dark).length),
+      );
+      expect(_scrimDark, findsOneWidget);
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(MiTopBarMetrics.scrimHeight + 156.0, 0.01),
+      );
+    });
+
+    testWidgets('header 插槽：高度取 preferredSize，左右同 headerInset', (tester) async {
+      _size(tester);
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        header: const _FixedHeader(height: 30),
+      ));
+
+      final rect = tester.getRect(find.byType(_FixedHeader));
+      expect(rect.top, closeTo(MiTopBarMetrics.headerTopInset, 0.01));
+      expect(rect.left, closeTo(MiTopBarMetrics.headerInset, 0.01));
+      expect(rect.width, closeTo(393 - 2 * MiTopBarMetrics.headerInset, 0.01));
+      expect(rect.height, closeTo(30, 0.01));
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(MiTopBarMetrics.headerTopInset + 30, 0.01),
+      );
+    });
+
+    testWidgets('headerInset 可覆盖（宽屏舞台放大页边距）', (tester) async {
+      _size(tester, const Size(1000, 240));
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        headerInset: 24,
+        searchBar: realSearchBar(),
+        tabBar: realTabBar(),
+      ));
+
+      final search = tester.getRect(find.byType(MiSearchBar));
+      expect(search.left, closeTo(24, 0.01));
+      expect(search.width, closeTo(1000 - 48, 0.01));
+      // 胶囊行仍满宽 —— 左右页边距只作用于搜索栏 / 自定义头部
+      expect(tester.getRect(find.byType(MiPillTabBar)).width, 1000);
+    });
+
+    testWidgets('插槽内组件照常收手势（顶栏不吃点击）', (tester) async {
+      _size(tester);
+
+      var taps = 0;
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchBar: MiSearchBar(
+          hint: '搜索',
+          themeMode: MiThemeMode.dark,
+          onTap: () => taps++,
+        ),
+      ));
+
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      expect(taps, 1);
+    });
+
+    test('非法组合在构造期断言', () {
+      // 空顶栏：没有标题、不画材质、也没插槽
+      expect(
+        () => harness(title: null, showSurface: false),
+        throwsA(isA<AssertionError>()),
+      );
+      // header 与 searchBar / tabBar 互斥
+      expect(
+        () => harness(header: const _FixedHeader(height: 20), searchBar: const SizedBox()),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => harness(header: const _FixedHeader(height: 20), tabBar: const SizedBox()),
+        throwsA(isA<AssertionError>()),
+      );
+      // 页边距不能为负
+      expect(
+        () => harness(title: null, headerInset: -1),
+        throwsA(isA<AssertionError>()),
+      );
+      // 合法：只有插槽
+      expect(
+        () => harness(title: null, showSurface: false, searchBar: const SizedBox()),
+        returnsNormally,
+      );
+      // 合法：材质 + 插槽
+      expect(
+        () => harness(
+          title: null,
+          searchBar: const SizedBox(),
+          tabBar: const SizedBox(),
+        ),
+        returnsNormally,
+      );
+    });
+  });
+
   test('const 构造保持可用', () {
     const bar = MiTopBar(title: kTitle);
     expect(bar.title, kTitle);
@@ -701,8 +955,27 @@ void main() {
     expect(bar.themeMode, isNull);
     expect(bar.showBack, isFalse);
     expect(bar.onBack, isNull);
+    // 插槽默认值：不画插槽、画材质、页边距取实测 11.9
+    expect(bar.searchBar, isNull);
+    expect(bar.tabBar, isNull);
+    expect(bar.header, isNull);
+    expect(bar.showSurface, isTrue);
+    expect(bar.headerInset, MiTopBarMetrics.headerInset);
 
     const withBack = MiTopBar(title: kTitle, showBack: true);
     expect(withBack.showBack, isTrue);
   });
+}
+
+/// 定高自定义头部（`header` 插槽的测试替身）。
+class _FixedHeader extends StatelessWidget implements PreferredSizeWidget {
+  const _FixedHeader({required this.height});
+
+  final double height;
+
+  @override
+  Size get preferredSize => Size.fromHeight(height);
+
+  @override
+  Widget build(BuildContext context) => const ColoredBox(color: Color(0xFF123456));
 }
