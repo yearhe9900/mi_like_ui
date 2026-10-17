@@ -126,7 +126,9 @@ void main() {
 
   testWidgets('demo light mode golden on 我的 page', (tester) async {
     tester.view.devicePixelRatio = 2.0;
-    tester.view.physicalSize = const Size(520, 940);
+    // 参考机逻辑尺寸（393×856）：示例外壳在 compact 档按 1:1 铺满，
+    // 黄金图即完整手机画面（不再是被窗口裁掉一半的 260×470）。
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(const DemoApp());

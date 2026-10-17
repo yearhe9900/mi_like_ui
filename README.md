@@ -71,6 +71,36 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 > 预览图由 `test/preview_capture_test.dart` 生成，样式变更后重新执行
 > `flutter test --update-goldens test/preview_capture_test.dart` 刷新。
 
+### 自适应（响应式）
+
+框架层 `src/utils/responsive.dart` 提供断点判定与等比缩放画布，示例层
+`DemoStage` 用它们把「物理手机画面」摆进任意窗口。**两级断点**分工明确：
+
+| 档位 | 窗口逻辑宽 | 示例外壳（`DemoStage`） | 内容网格列数（主题卡 / 展示位） |
+|---|---|---|---|
+| compact | < 600dp | 393×856 设计画布**等比缩小**到放得下（手机全屏时正好 1:1、零留白） | 3 / 4 |
+| medium | 600…1023dp | 同上，四周留 24dp；空间够时按 **1x** 居中（不放大） | 4 / 6 |
+| expanded | ≥ 1024dp | 画面**加宽**成 1000 × 可用高 的内容舞台（重新布局，不是拉伸） | 6 / 8 |
+
+- **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）决定页面形态；
+  **容器断点**（`MiResponsiveGrid.compactMax / mediumMax`，示例取 520 / 800）
+  决定网格列数 —— 限宽画布里的容器永远够不到窗口断点，两者混用会让宽屏换不到列。
+- **只缩不放、宽高同比例**：`MiScaledCanvas.scaleFor` 取
+  `min(1, 可用宽/设计宽, 可用高/设计高)` → 不溢出、不变形；`scale == 1` 时走
+  原样路径、不加任何变换层（黄金图逐像素稳定），缩小走 `FittedBox` 矢量重绘。
+- **实时响应**：`MediaQuery.sizeOf` + `LayoutBuilder` 依赖注入，窗口/分屏/浏览器
+  缩放一变即重排，不需要 `setState` 或尺寸监听。
+- **不丢内容**：网格行内 `Expanded` 等分、末行留空不拉伸；长文案一律
+  `maxLines: 1 + ellipsis`；分类页胶囊行显式左对齐（否则宽屏会被 `Column`
+  默认居中、与搜索框/网格左缘失配）。
+
+验证：`test/responsive_test.dart` —— 断点边界、`scaleFor` 纯函数、三档外壳尺寸、
+260×470 小窗与 1366×768 桌面端的实际渲染（无溢出 + 关键部件在窗口内 + 宽高比
+不变）、窗口尺寸热切换、网格 3/4/6 与 4/6/8 列。
+
+<img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856：1:1" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470：整机等比缩小" /> <img src="doc/preview/adaptive_tablet.png" width="180" alt="平板 800×1000：1x 居中" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768：加宽舞台，主题卡 6 列" />
+
+
 ## 设计原则
 
 - **实测优先** — 视觉与动效参数以像素测量值为准，黄金图回归锁行为
@@ -99,7 +129,7 @@ lib/
     │   └── cards/
     │       └── theme_card/
     ├── icons/               # nav_icons.dart：导航栏 logo 合集（含加号 logo）
-    └── utils/               # 工具函数层（纯函数）
+    └── utils/               # 工具函数层（纯函数 + 断点/缩放/响应式网格）
 
 test/                        # 黄金图 + 交互测试
 ```
@@ -142,6 +172,7 @@ flutter test     # 回归测试
 - [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
 - [x] `MiTopBar` — 大标题折叠顶部导航栏（渐进磨砂材质）
 - [x] `MiThemeCard` — 竖向预览卡片（主题商店精选卡）
+- [x] `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` — 断点与等比缩放（桌面/平板/手机自适应）
 - [ ] `MiDialog` — 弹窗
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合

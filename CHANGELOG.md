@@ -8,6 +8,12 @@
 
 ### Added
 
+- **响应式 / 自适应能力**（桌面、平板、手机三档）
+  - `src/utils/responsive.dart`：`MiBreakpoints`（窗口三档 compact <600 / medium 600…1023 / expanded ≥1024，纯函数）、`MiViewport`（`MediaQuery.sizeOf` 派生的窗口快照，随尺寸变化自动重建）、`MiScaledCanvas`（把固定设计画布按 contain 等比缩放：只缩不放、宽高同比例、`scale == 1` 时零变换层）、`MiResponsiveGrid`（按**容器宽**断点切列数，行内 `Expanded` 等分、末行留空不拉伸）
+  - 示例外壳 `DemoStage`：compact 按 393×856 设计画布等比缩小（手机全屏正好 1:1）；medium 四周留 24dp、1x 居中；expanded 加宽成 1000×可用高 的内容舞台（重新布局而非拉伸）；三档统一过 `min(1, 可用宽/设计宽, 可用高/设计高)` 兜底，窗口再小也不溢出、不变形
+  - 内容层断点：主题卡网格 3/4/6 列、展示位网格 4/6/8 列，断点按**内容宽** 520/800 标定（限宽画布里的容器够不到窗口断点）；分类页顶部状态栏让位改用 `max(56, 安全区)`，胶囊行显式左对齐
+  - **修正**：demo 此前固定 393×856 手机框，在 260×470 这类小窗口下被裁掉一半（README 预览图即此状态）；现在整机完整可见
+  - 回归见 `test/responsive_test.dart`（断点边界 / `scaleFor` / 三档尺寸 / 小窗与桌面实际渲染无溢出 / 窗口热切换 / 列数）
 - **MiSearchBar** 搜索栏（亮/暗分类页完整截图 1:1 实测）
   - **透明参数与底部导航栏同源**：backdrop 磨砂取 `MiTransparencyTokens.blurSigma`（与 `MiGlassNavBar` / 胶囊同一磨砂强度），填充为半透明表面 —— 平底合成 = 截图实测实色（亮 #E7E7E7 / 暗 #242424，实测反推 黑@13 / 白@36；非胶囊 subtle(15) 档，代入会得 #E5/#0F 偏离截图）
   - 几何实测：高 44.1、stadium、图标 17.8dp 起于左缘 15.4、图文间距 12、占位 16.5dp CJK advance、放大镜墨色明暗同值 #9A9A9A、占位墨色 亮 #848484 / 暗 #6D6D6D

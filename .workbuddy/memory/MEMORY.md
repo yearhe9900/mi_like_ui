@@ -5,6 +5,12 @@
 - **实测优先**：视觉参数 1:1 从参考截图像素测量；参考图没有的样式（如按钮禁用态）只能推导，并必须在 doc comment 标注「推导（非实测）」+ 写明取值来源。
 - 变更节奏：每个任务完成即 git commit；`flutter analyze` / `flutter test` **由 agent 执行**（2026-10-17 用户明确「你自己执行命令」）；工作区不得留未提交改动。
 
+## 响应式（2026-10-17，`src/utils/responsive.dart`）
+- **两级断点**：① 窗口宽 `MiViewport.of(context)` / `MiBreakpoints.ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）决定页面形态；② **容器宽** `MiResponsiveGrid.compactMax/mediumMax`（示例 520/800）决定网格列数。
+- `MiScaledCanvas.scaleFor = clamp(min(1, 可用宽/设计宽, 可用高/设计高), minScale, maxScale)`：只缩不放、宽高同比例；`scale == 1` 走原样路径（零变换层，黄金图像素稳定），<1 走 `FittedBox`。
+- 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→DemoStageSize{logical,rendered}` 可单测）：compact 等比缩 393×856（手机全屏 1:1）、medium 四周 24 且 1x、expanded 加宽成 `min(可用宽,1000) × max(可用高,480)`。
+- 内容断点：主题卡 3/4/6 列、展示位 4/6/8 列；expanded 页边距 24（否则 11.9 贴边）。
+
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
 - 胶囊标签行 MiPillTabBar：pill 87.6×39.9、gap/edge 11.9、标签 13.85dp w500。
@@ -20,6 +26,8 @@
 - MiThemeCard（竖向主题卡）：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 radiusLg 20（拟合 19.6）、标题 13.85dp w500 **左对齐内缩 8.8**（与区块标题同列，非居中）、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）；themeMode 可空跟随环境（同 MiSearchBar，保 const 用法）。
 
 ## 已知坑
+- **网格断点必须按"容器宽"标定，不能沿用窗口断点**：示例舞台 1000 宽减两侧 24 页边距只剩 952 < 1024，沿用窗口断点的网格会永远停在 medium 档、宽屏换不到 expanded 列数（2026-10-17 实拍发现首页仍是 4 列）。修法 = 给网格自己的 `compactMax/mediumMax`（示例 520/800 ≈ 设计宽 1.3/2 倍）。
+- **`MiPillTabBar` 在宽父级里会居中**：它是横向 `SingleChildScrollView`，拿到 loose 宽时 shrink-wrap 到内容宽（4×87.6+3×11.9+2×11.9 ≈ 410），再被 `Column`（默认 `crossAxisAlignment.center`）居中 → 与左对齐的搜索框/网格错位。宽屏场景要包 `Align(centerStart)`（393 下内容 410 > 视口，行为与原来一致、黄金图不变）。
 - **`BackdropFilter` 一旦被半透明遮罩包住，backdrop 立刻变空、模糊整段消失**（2026-10-17 探针实证）：`ShaderMask`（任何 alpha<1 的 gradient）/ `Opacity` 都会引入新的 saveLayer，模糊读不到下层内容。判据实验：同一 260×120 黑白色条底，`ClipRect+BackdropFilter` 有糊；套一层「alpha 恒 1」的 ShaderMask **仍有糊**（Skia 把恒定不透明优化掉了）；换成任何含 <1 alpha 的 gradient（哪怕顶部就是 1）**完全恢复锐利**。所以「渐进模糊」不能用遮罩调强度 → 只能**分段定 σ 并列**（`MiTopBarPalette.blurBands`：段间 σ 比 ≤1.5、段高 ≤17dp 时台阶不可见）。写回归测试就断言「MiTopBar 下不得出现 ShaderMask」。
 - **测试字体的 CJK 字面 advance 不是 1em**：本 SDK 里「关注」13dp 两字实测宽 **26.5**（1.019em/字），所以别把按钮宽写死成 `2*13 + 2*17 = 60`（实测会 60.5 挂）。要锁「内边距 + 收缩到内容」就断言 `btn.width == text.width + 2*padding`。
 - **golden 里 backdrop 模糊是生效的**，别再把「预览图看不出来」当成环境不支持：`matchesGoldenFile(finder)` 只截该子树，**模糊源必须也在被截子树内**（顶栏单独截会拿到空 backdrop）。判断有没有糊要量高频内容（条纹/照片边缘）的对比度幅度，平坦色块与渐变圆在模糊下几乎不变。

@@ -114,7 +114,9 @@ void main() {
 
   testWidgets('README preview: dark & light demo pages', (tester) async {
     tester.view.devicePixelRatio = 2.0;
-    tester.view.physicalSize = const Size(520, 940);
+    // 参考机逻辑尺寸：示例外壳在 393×856 下 1:1 铺满，预览图即完整手机画面
+    //（此前 260×470 的窗口会把 393×856 的手机框裁掉一半）。
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
@@ -134,6 +136,45 @@ void main() {
     await expectLater(
       find.byType(DemoHome),
       matchesGoldenFile('../doc/preview/demo_light.png'),
+    );
+  });
+
+  testWidgets('README preview: adaptive stage across breakpoints', (tester) async {
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    Future<void> capture(Size logical, String file, {bool showcase = false}) async {
+      // 每次换窗口尺寸都重建 App，避免复用上一档的 State（_index / _tab）。
+      tester.view.devicePixelRatio = 2.0;
+      tester.view.physicalSize = logical * 2;
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      if (showcase) {
+        await tester.tap(find.text('分类').last);
+        await tester.pumpAndSettle();
+      }
+      await expectLater(find.byType(DemoHome), matchesGoldenFile(file));
+    }
+
+    // compact：参考机 1:1
+    await capture(const Size(393, 856), '../doc/preview/adaptive_phone.png');
+    // compact：桌面小窗，整机等比缩小（不再被裁掉一半）
+    await capture(
+      const Size(260, 470),
+      '../doc/preview/adaptive_small_window.png',
+    );
+    // medium：平板竖屏，1x 居中 + 四周留白
+    await capture(const Size(800, 1000), '../doc/preview/adaptive_tablet.png');
+    // expanded：桌面，画面加宽成内容舞台（主题卡 6 列）
+    await capture(
+      const Size(1366, 768),
+      '../doc/preview/adaptive_desktop.png',
+    );
+    // expanded：展示位网格 8 列
+    await capture(
+      const Size(1366, 768),
+      '../doc/preview/adaptive_desktop_showcase.png',
+      showcase: true,
     );
   });
 
