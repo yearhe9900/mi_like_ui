@@ -30,6 +30,7 @@ Widget harness({
   VoidCallback? onSearchTap,
   PreferredSizeWidget? header,
   bool showSurface = true,
+  bool showBlur = true,
   double headerInset = MiTopBarMetrics.headerInset,
 }) {
   return MaterialApp(
@@ -58,6 +59,7 @@ Widget harness({
             onSearchTap: onSearchTap,
             header: header,
             showSurface: showSurface,
+            showBlur: showBlur,
             headerInset: headerInset,
           ),
         ],
@@ -651,11 +653,13 @@ void main() {
         expect(rect.height, closeTo(band.height, 0.01));
       }
 
-      // 深色：第一段从不透明叠色下沿开始，段间无缝隙、最后一段止于 109dp
-      //（σ 曲线尾部 σ=0.30 的段 < minVisibleBlurSigma，落在亚像素、不绘制）
+      // 深色：第一段从不透明叠色下沿开始，段间无缝隙；最后一段止于曲线尾部
+      // 折算到材质盒后的位置（σ=0.30 的尾段 < minVisibleBlurSigma，亚像素、
+      // 不绘制）—— 曲线按「119dp → 材质盒 128.9dp」等比拉伸
+      const tailScale = MiTopBarMetrics.scrimHeight / 119.0;
       final rects = [for (var i = 0; i < bands.length; i++) tester.getRect(finder.at(i))];
       expect(rects.first.top, closeTo(MiTopBarMetrics.scrimSolidBottom, 0.01));
-      expect(rects.last.bottom, closeTo(109.0, 0.01));
+      expect(rects.last.bottom, closeTo(109.0 * tailScale, 0.01));
       for (var i = 1; i < rects.length; i++) {
         expect(rects[i].top, closeTo(rects[i - 1].bottom, 0.01));
       }
@@ -818,16 +822,50 @@ void main() {
       );
     });
 
-    testWidgets('材质开关 showSurface：关掉即零磨砂零叠色，打开则铺满整条顶栏', (tester) async {
-      // 材质铺满 156dp，默认 240 高的窗口够用；留宽裕防状态栏让位变化
+    testWidgets('材质两个开关各自独立：showBlur 只控磨砂、showSurface 只控叠色', (tester) async {
+      // 材质铺满 156dp，窗口留宽裕防状态栏让位变化
       _size(tester, const Size(393, 400));
 
-      // 占位插槽：自身不含任何 backdrop，磨砂层数量即材质层数量
       Finder blurLayers() => find.descendant(
             of: find.byType(MiTopBar),
             matching: find.byType(BackdropFilter),
           );
 
+      // ① 两个都关：零磨砂、零叠色，高度只由头部区决定
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        showBlur: false,
+        searchBar: const SizedBox.expand(),
+        tabBar: const SizedBox.expand(),
+      ));
+      expect(blurLayers(), findsNothing, reason: '关掉磨砂就不该有模糊层');
+      expect(_scrimDark, findsNothing, reason: '关掉叠色就不该有压色');
+      expect(find.byType(ShaderMask), findsNothing, reason: '渐进模糊不得用遮罩实现');
+      expect(
+        tester.getSize(find.byType(MiTopBar)).height,
+        closeTo(156.0, 0.01),
+        reason: '高度只由头部区决定，材质层不占布局高度',
+      );
+
+      // ② 只开叠色：有压色、无磨砂
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showBlur: false,
+        searchBar: const SizedBox.expand(),
+        tabBar: const SizedBox.expand(),
+      ));
+      expect(blurLayers(), findsNothing, reason: 'showBlur 关了，叠色不该带出模糊');
+      expect(_scrimDark, findsOneWidget);
+      expect(
+        tester.getRect(_scrimDark).height,
+        closeTo(156.0, 0.01),
+        reason: '头部区形态的叠色铺满整条顶栏（否则搜索栏 / 胶囊四周会断层）',
+      );
+
+      // ③ 只开磨砂：有模糊、无压色；曲线拉到整条栏 156dp（形状不变）
       await tester.pumpWidget(harness(
         title: null,
         showBack: false,
@@ -835,43 +873,25 @@ void main() {
         searchBar: const SizedBox.expand(),
         tabBar: const SizedBox.expand(),
       ));
-      expect(blurLayers(), findsNothing, reason: '关掉材质就不该有磨砂层');
-      expect(_scrimDark, findsNothing, reason: '叠色也不该出现');
-      expect(find.byType(ShaderMask), findsNothing);
-      expect(
-        tester.getSize(find.byType(MiTopBar)).height,
-        closeTo(156.0, 0.01),
-        reason: '高度只由头部区决定',
-      );
-
-      // 打开材质：材质层**铺满整条顶栏**（156dp），不额外占高
-      await tester.pumpWidget(harness(
-        title: null,
-        showBack: false,
-        searchBar: const SizedBox.expand(),
-        tabBar: const SizedBox.expand(),
-      ));
-      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
       expect(
         blurLayers(),
         findsNWidgets(
-          MiTopBar.uniformBlurBands(
+          MiTopBar.visibleBlurBands(
             MiTopBarPalette.dark,
-            156.0,
-            scale: scale,
+            extent: 156.0,
+            underSurface: false,
           ).length,
         ),
-        reason: '头部区形态是整条栏一个恒定 σ 的材质段',
       );
-      expect(_scrimDark, findsOneWidget);
+      expect(_scrimDark, findsNothing);
       expect(
         tester.getSize(find.byType(MiTopBar)).height,
         closeTo(156.0, 0.01),
-        reason: '材质是盖在顶栏上的底层，不再把头部区往下推（旧版会多出 128.9dp）',
+        reason: '材质是盖在顶栏上的底层，不把头部区往下推',
       );
     });
 
-    testWidgets('材质铺满整条顶栏：搜索栏与胶囊行落在同一块均匀磨砂里', (tester) async {
+    testWidgets('磨砂曲线固定 0…119dp：不随栏高拉伸，关掉叠色时上半段不跳段', (tester) async {
       _size(tester);
 
       await tester.pumpWidget(harness(
@@ -881,43 +901,48 @@ void main() {
         tabBar: const SizedBox.expand(),
       ));
 
-      final surface = _scrimDark;
-      // 叠色层高度 = 整条顶栏（156），不是实测材质盒 128.9 ——
-      // 否则胶囊行下半截会露出锐利的内容。
-      final scrim = tester.getRect(surface);
-      expect(scrim.top, 0);
-      expect(scrim.height, closeTo(156.0, 0.01));
-
-      // 模糊是**恒定 σ**：整条栏只有一段，σ 取栏顶实测值，且覆盖到栏底
-      // （对照分类页截图：搜索栏行与胶囊行后方的模糊强度一致，糊到栏底
-      //  才切回清晰内容，没有「越往下越清晰」）。
-      const scale = 156.0 / MiTopBarMetrics.scrimHeight;
-      final bands = MiTopBar.uniformBlurBands(
+      // 磨砂两处形态（纯标题 128.9 / 头部区 156）用**同一条**实测 σ(y) 曲线，
+      // 但范围拉伸到各自材质盒底 —— 曲线是内容区自己的（无顶栏的「每日精选」
+      // 页顶部照样糊、到 ~120dp 自然收尾；分类页则糊到胶囊行下方），
+      // 形状固定、范围跟栏高走。
+      //
+      // 关掉叠色时上半段裸露，必须**从 0 开始糊**（实机踩过：跳过它栏顶一片清晰）
+      final bare = MiTopBar.visibleBlurBands(
         MiTopBarPalette.dark,
-        156.0,
-        scale: scale,
+        underSurface: false,
       );
-      expect(bands, hasLength(1));
-      expect(bands.single.sigma, MiTopBarPalette.blurSigma);
-      expect(
-        bands.single.bottom,
-        closeTo(156.0, 0.01),
-        reason: '一直糊到栏底',
-      );
-      // 深色配方仍跳过被不透明叠色盖住的段（按同一比例拉伸）
-      expect(
-        bands.single.top,
-        closeTo(
-          MiTopBarPalette.dark.scrimOpaqueBottom * scale,
-          0.01,
-        ),
-      );
+      expect(bare.first.top, 0);
+      expect(bare.first.sigma, MiTopBarPalette.blurSigma);
+      expect(bare.last.sigma, lessThan(bare.first.sigma), reason: 'σ 沿 y 递减');
+      // 纯标题形态按材质盒 128.9 拉伸：曲线名义终点 119dp → 128.9，末段
+      // σ = 0.30 < minVisibleBlurSigma 已被剔除（亚像素、无视觉差），
+      // 所以**实际绘制的**下沿是 109 × 128.9 / 119
+      const k = MiTopBarMetrics.scrimHeight / 119.0;
+      expect(bare.last.bottom, closeTo(109.0 * k, 0.01));
+      expect(MiTopBarPalette.blurBands.last.bottom, closeTo(119.0, 0.01));
 
-      // 纯标题形态不受影响：仍是实测渐进阶梯（多段、σ 递减）
-      final ladder = MiTopBar.visibleBlurBands(MiTopBarPalette.dark);
-      expect(ladder.length, greaterThan(1));
-      expect(ladder.first.sigma, lessThanOrEqualTo(MiTopBarPalette.blurSigma));
-      expect(ladder.last.sigma, lessThan(ladder.first.sigma));
+      // 深色叠色 0…63.6dp 是 α=1 纯黑：有叠色时跳过这段省帧
+      final covered = MiTopBar.visibleBlurBands(MiTopBarPalette.dark);
+      expect(
+        covered.first.top,
+        closeTo(MiTopBarPalette.dark.scrimOpaqueBottom, 0.01),
+        reason: '被不透明压色盖住的段不必算模糊（纯标题形态盒高不缩放）',
+      );
+      expect(covered.length, lessThan(bare.length));
+      expect(covered.last.bottom, closeTo(109.0 * k, 0.01));
+
+      // 头部区形态：同一条曲线拉到 156 才归零，且 0 起糊（那页没有压色）
+      final tall = MiTopBar.visibleBlurBands(
+        MiTopBarPalette.dark,
+        extent: 156.0,
+        underSurface: false,
+      );
+      expect(tall.first.top, 0);
+      expect(tall.last.bottom, closeTo(109.0 * 156.0 / 119.0, 0.01));
+
+      // 纯标题形态的叠色仍到实测材质盒 128.9
+      await tester.pumpWidget(harness(offset: 40));
+      expect(tester.getRect(_scrimDark).height, closeTo(128.9, 0.01));
     });
 
     testWidgets('header 插槽：高度取 preferredSize，左右同 headerInset', (tester) async {
@@ -981,9 +1006,9 @@ void main() {
     });
 
     test('非法组合在构造期断言', () {
-      // 空顶栏：没有标题、不画材质、也没插槽
+      // 空顶栏：没有标题、磨砂叠色都关、也没插槽
       expect(
-        () => harness(title: null, showSurface: false),
+        () => harness(title: null, showSurface: false, showBlur: false),
         throwsA(isA<AssertionError>()),
       );
       // header 与 searchBar / tabBar 互斥
@@ -1189,15 +1214,33 @@ void main() {
       );
       expect(
         barBlurs(),
-        findsOneWidget,
-        reason: '全栏只剩一段恒定 σ 的材质模糊，没有零件私货',
+        findsNWidgets(
+          // 头部区形态：材质盒 = 整条栏 156，叠色在（默认 showSurface: true）
+          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, extent: 156.0).length,
+        ),
+        reason: '全栏只有顶栏那几条 σ(y) 段，没有零件私货',
+      );
+      expect(
+        find.descendant(
+          of: find.byType(MiSearchBar),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(MiPillTabBar),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsNothing,
       );
 
-      // 关材质：零件各自带 backdrop（旧形态，仅作对照）
+      // 关掉磨砂：零件各自带 backdrop（旧形态，仅作对照）
       await tester.pumpWidget(harness(
         title: null,
         showBack: false,
         showSurface: false,
+        showBlur: false,
         searchHint: hint,
         tabs: labels,
       ));

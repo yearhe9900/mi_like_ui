@@ -18,12 +18,13 @@
 
 ### Changed
 
-- **顶栏材质统一：头部区（搜索栏 / 胶囊行）共用顶栏那条材质**（2026-10-17 用户两次反馈：先「在导航栏内就该有导航栏的模糊效果」，后附真机截图「模糊效果应该这样才对」）
-  - 材质层从「标题区里的 128.9dp 盒子」改成**盖在整条顶栏上的底**：有头部区时高度 = `occupiedHeight`，不占布局高度（旧的「材质 + 头部」形态会算成 128.9 + 156 = 284.9dp，现在就是 156）
-  - **头部区形态的模糊是恒定 σ = 5.37dp**（新增 `MiTopBar.uniformBlurBands`）：实测自分类页截图（881×1920）—— 搜索栏行与胶囊行后方的模糊强度一致，一直糊到栏底才切回清晰内容，**没有**「越往下越清晰 / 到栏底渐隐」的过渡（那是纯标题形态的实测规律，两种形态各走各的）。叠色梯度仍按实测比例随盒高拉伸
-  - `MiSearchBar` / `MiPillTabBar` 新增 `frosted`（默认 true）：`MiTopBar` 自己画材质时自动给内置组件传 `false`，整条栏只糊一次。此前是「零件各自 σ=28 玻璃 + 两者间隙与四周锐利」，与顶栏材质不是一套
-  - 分类页去掉 `showSurface: false`，改由顶栏统一供材质；静态截图基本不变（页底与叠色同色，仅胶囊填充差 1~2 级），滚动时才看得出「整条头部区一块材质」
-  - 性能预算：深色平板分类页 **6 层 / 53,953dp² → 2 层 / 71,294dp²**（材质恒定 σ 只剩 1 段 + 导航 1；层数大减、面积因盖满整条栏而增大，并在跳过被不透明叠色盖住的 0…77dp 之后）
+- **顶栏材质拆成「内容区的渐进磨砂」+「顶栏自己的压色」两个开关**（2026-10-17 用户提出关键判断 ——「会不会这个模糊效果和顶部导航栏无关，而是内容区自己加了顶部渐进的模糊效果」，并附了一张**完全没有顶栏**的「每日精选」截图；逐行水平梯度实测证实：无顶栏页 44dp `0.05` → 75dp `0.97` → 116dp `4.32` → **120dp 后不再上升**，即内容顶部自己糊、到 ~120dp 自然收尾）
+  - **结论修正**：上一版「头部区形态整条栏一个恒定 σ、一直糊到栏底」的判据被推翻 —— 那页低梯度一直持续到 156dp，是**搜索栏 / 胶囊这些大块半透明填充**把梯度压平了，不是模糊更深；模糊的真实成因是内容区顶部的渐进曲线。同时真机「上半段一片纯黑」的元凶是**叠色**（深色配方 0…63.6dp α = 1.000），与模糊无关
+  - **磨砂 `showBlur`**（默认 true）：σ 沿 y 从 5.37dp 递减到**栏底归零**。曲线**形状固定、范围跟栏高走** —— 参照页的 119dp 曲线等比拉伸到材质盒（无头部区 128.9 / 头部区 156），对照分类页截图：糊到胶囊行下方、横幅底缘才变清晰
+  - **叠色 `showSurface`**（默认 true）：只控顶部那层压色。分类页实测参考页**没有**这层压色（整条栏都能看见被模糊的背景），改为 `showSurface: false`
+  - `MiSearchBar` / `MiPillTabBar` 新增 `frosted`（默认 true）：`showBlur` 开着时顶栏给内置组件传 `false`，整条栏只糊一次
+  - **只开磨砂时必须保留 0…63.6dp 的模糊**：`visibleBlurBands` 新增 `underSurface`，跳过「被 α = 1 压色盖住」的省帧规则只在有压色时成立（否则栏顶一片清晰，实机踩过）
+  - 性能预算：深色平板分类页 **6 层 / 53,953dp² → 8 层 / 117,274dp²**（无压色可省，7 段从栏顶画满 + 导航 1）；首页 10 → 6~7 层 / 83,245dp²、我的 6 层 / 53,610dp²（曲线拉伸 119 → 128.9 带来的 ~8% 面积增量）
 - **分类页的搜索栏 + 胶囊标签行改由 `MiTopBar` 内部产出**：页面里手写的「吸顶 `Column`（搜索栏 + 16dp + 胶囊行）」、`_headerHeight`（`状态栏 + 44.1 + 16 + 39.9`）以及两个组件的 `new` 全部删除，改为 `MiTopBar(showSurface: false, searchHint: …, tabs: …, selectedTab: …, onTabChanged: …)` —— 页面只给数据，`MiSearchBar` / `MiPillTabBar` 由顶栏自己构造，滚动内容让位取 `bar.occupiedHeight(context) + headerContentGap`。渲染结果与迁移前**逐像素一致**（`doc/preview/showcase_*.png` 未变），吸顶/透射/点按行为不变；`showcase_sticky_test` 追加「搜索栏与胶囊行必须是 `MiTopBar` 的子树」「内容让位 = 168dp」两条断言
 - **平板档（medium）改铺内容舞台**（2026-10-17 实机反馈修正）：原先 medium 按 1x 画 393×856 小手机居中，平板竖屏（650×1138）上画面只占 64% 屏高、上下各留 170/240px 纯黑，内容列数也停在手机档。现与 expanded 同策略：画面宽 = 可用宽（上限 1000）、高 = 可用高，四周留 24 —— 平板 650×1138 即 602×1090 舞台，主题卡 3→4 列。仍然只缩不放（`min(1, …)`），不靠放大手机来填满，避免 1dp 实测值失去物理意义。`MockPage` 页边距在非 compact 档统一 24。
 
@@ -33,7 +34,7 @@
   - **声明式入参（默认路径，调用方不 new 组件）**：`searchHint` / `onSearchTap` → 顶栏内部构造 `MiSearchBar`；`tabs` / `selectedTab` / `onTabChanged` → 内部构造 `MiPillTabBar`。明暗配方由顶栏解析后的 `themeMode` 统一下发（页面不必再各传一遍 `themeMode`），`onTabChanged` 为空时胶囊只展示不可切换
   - **同名插槽（逃生口，与声明式入参二选一）**：`searchBar` / `tabBar` 传现成组件换皮，排版与让位完全相同；`searchBarHeight` / `tabBarHeight` 用于声明插槽高度（默认 44.1 / 39.9，声明式入参时恒等于组件自身高度）
   - `header`：`PreferredSizeWidget` 整块自定义头部，高度取 `preferredSize.height`；与搜索栏 / 胶囊行**互斥**，`searchBar`↔`searchHint`、`tabBar`↔`tabs` 也各自互斥（构造期断言）
-  - `showSurface`：是否绘制磨砂 + 叠色（默认 true）。头部自带 backdrop（如 `MiSearchBar` / `MiPillTabBar`）时传 false，避免多叠若干层模糊、并把头部间隙染上叠色
+  - `showSurface`：是否绘制顶部**压色**（默认 true）；`showBlur`：是否绘制**顶部渐进磨砂**（默认 true）。二者独立 —— 分类页形态是 `showBlur: true` + `showSurface: false`，都传 false 才回到「零件各自玻璃」的旧形态
   - `occupiedHeight(context)`：顶栏自身占用的总高（= 声明插槽高 + 标题区），宿主据此给滚动内容让位 —— 与组件内部排版同源，不会「头部下移而列表没让位」
   - 新增 `hasSearchBar` / `hasTabBar` / `hasHeaderSlot` 三个只读判断（声明式入参与插槽合并判断）
   - `MiTopBarMetrics` 新增头部件几何：`headerTopInset` 56 / `searchBarGap` 16 / `headerContentGap` 12 / `headerInset` 11.9 / `searchBarSlotHeight` 44.1 / `tabBarSlotHeight` 39.9，以及 `headerTopInsetFor(safeAreaTop)`

@@ -473,6 +473,10 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
+      // 参考截图里分类页**没有**顶上那层压色：整条栏都能看见被模糊的背景，
+      // 压色只在大标题形态需要（保证标题可读）。磨砂保留 —— 它是内容区的
+      // 顶部渐进模糊，到这里只是顺带复用。
+      showSurface: false,
     );
     return Container(
       color: widget.themeMode == MiThemeMode.light

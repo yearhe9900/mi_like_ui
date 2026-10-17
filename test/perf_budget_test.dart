@@ -57,20 +57,22 @@ void main() {
     final home = await measure(tester, const Size(768, 1280));
     // 顶栏 5 段 + 导航栏 1（优化前：顶栏 8 段 + 导航 1 + 搜索 1 = 10 段 / 100,073）
     expect(home.count, lessThanOrEqualTo(7), reason: '首页 $home');
-    expect(home.area, lessThanOrEqualTo(82000), reason: '首页 $home');
+    // 磨砂曲线按材质盒等比拉伸（119dp → 128.9dp），面积比不拉伸时多约 8%
+    expect(home.area, lessThanOrEqualTo(85000), reason: '首页 $home');
 
     final showcase = await measure(tester, const Size(768, 1280), tab: '分类');
-    // 顶栏材质 **1 段恒定 σ**（铺满 156dp；深色跳过被不透明叠色盖住的
-    // 0…77dp）+ 导航栏 1 = 2 层。搜索栏 / 胶囊行不再各自挂 backdrop，
-    // 换成整条头部区一块均匀材质 —— 层数比旧形态少，但模糊面积更大
-    // （材质本来就该盖满整条栏）。
-    // 亮色配方没有实心段可省，是 1 段 156dp 全高 + 导航 1（本用例只测深色）。
-    expect(showcase.count, lessThanOrEqualTo(2), reason: '分类页 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(72000), reason: '分类页 $showcase');
+    // 分类页只开**磨砂**、关掉叠色（参考页整条栏都能看见被模糊的背景）：
+    // 于是「深色 0…63.6dp 被 α=1 压色盖住、可以不算」这条省帧规则不成立 ——
+    // 实测 σ(y) 阶梯从栏顶 0 起画并拉到整条栏 156dp，7 段（末段 σ=0.30 亚像素
+    // 已剔除）+ 导航 1 = 8 层 / 117,274dp²。搜索栏 / 胶囊行本身不再各挂
+    // backdrop，全栏只糊一次；这条**没有压色可省的整栏模糊**是这一形态的代价。
+    expect(showcase.count, lessThanOrEqualTo(8), reason: '分类页 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(120000), reason: '分类页 $showcase');
 
     final mine = await measure(tester, const Size(768, 1280), tab: '我的');
     expect(mine.count, lessThanOrEqualTo(6), reason: '我的 $mine');
-    expect(mine.area, lessThanOrEqualTo(51000), reason: '我的 $mine');
+    // 同一处拉伸：6 段 / 53,610dp²（拉伸前 50,0xx）
+    expect(mine.area, lessThanOrEqualTo(55000), reason: '我的 $mine');
   });
 
   testWidgets('深色·手机 393×856：模糊层数 / 面积预算', (tester) async {
