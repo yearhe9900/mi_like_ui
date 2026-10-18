@@ -54,11 +54,11 @@ void main() {
   testWidgets('深色·平板 768×1280：每帧模糊层数 / 面积预算', (tester) async {
     addTearDown(tester.view.reset);
 
-    // 2026-10-18 起平板也用侧栏（导航断点 600，照 MReader），页面列从 720
-    // 收窄到 599.1 —— 顶栏磨砂面积随之变小，侧栏自己只挂 1 层。
+    // 2026-10-18 起平板：铺满窗口（768，无外围卡片）+ 用侧栏（导航断点 600，
+    // 照 MReader）→ 页面列 647.1，顶栏磨砂比"卡片舞台"时代（720−48）宽一档。
     final home = await measure(tester, const Size(768, 1280));
     expect(home.count, lessThanOrEqualTo(7), reason: '首页 $home');
-    expect(home.area, lessThanOrEqualTo(76000), reason: '首页 $home');
+    expect(home.area, lessThanOrEqualTo(81000), reason: '首页 $home');
 
     final showcase = await measure(tester, const Size(768, 1280), tab: '分类');
     // 分类页只开**磨砂**、关掉叠色（参考页整条栏都能看见被模糊的背景）：
@@ -67,11 +67,11 @@ void main() {
     // 已剔除）+ 侧栏 1 = 8 层。搜索栏 / 胶囊行本身不再各挂 backdrop，
     // 全栏只糊一次；这条**没有压色可省的整栏模糊**是这一形态的代价。
     expect(showcase.count, lessThanOrEqualTo(8), reason: '分类页 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(105000), reason: '分类页 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(113000), reason: '分类页 $showcase');
 
     final mine = await measure(tester, const Size(768, 1280), tab: '我的');
     expect(mine.count, lessThanOrEqualTo(6), reason: '我的 $mine');
-    expect(mine.area, lessThanOrEqualTo(51000), reason: '我的 $mine');
+    expect(mine.area, lessThanOrEqualTo(55000), reason: '我的 $mine');
   });
 
   testWidgets('深色·手机 393×856：模糊层数 / 面积预算', (tester) async {
@@ -83,18 +83,18 @@ void main() {
 
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
-    // 桌面档：页面让出侧栏列（1000 − 120.9 = 879.1 宽），顶栏磨砂随之变窄，
-    // 侧栏自己只挂 1 层（95.4 × 177.1 = 16,896dp²）。首页合计
-    // 7 层 / 101,430dp² —— 与平板的 6~7 层同量级，说明「换形态」不是靠多加
-    // 磨砂实现的。
+    // 桌面档：铺满窗口（1366 宽）+ 侧栏 → 页面列 1245.1，顶栏磨砂面积随
+    // 宽度线性增长（5 段 × 1245 × 128.9 量级），侧栏自己只挂 1 层
+    //（95.4 × 177.1 = 16,896dp²）。首页 7 层 / 137,506dp² —— 层数没变多，
+    // 只是每段更宽（edge-to-edge 的必然代价）。
     final desktop = await measure(tester, const Size(1366, 768));
     expect(desktop.count, lessThanOrEqualTo(7), reason: '桌面 $desktop');
-    expect(desktop.area, lessThanOrEqualTo(105000), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(141000), reason: '桌面 $desktop');
 
-    // 分类页（无压色可省的整栏磨砂）：8 层 / 142,511dp²
+    // 分类页（无压色可省的整栏磨砂）：8 层 / 194,809dp²
     final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
     expect(showcase.count, lessThanOrEqualTo(8), reason: '桌面分类 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(146000), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(199000), reason: '桌面分类 $showcase');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // 框架 API 走公共 barrel；demo 层直接引示例代码。
@@ -257,6 +258,88 @@ void main() {
     });
   });
 
+  group('铺满窗口 / 边到边（平板、桌面）', () {
+    testWidgets('平板：画面 = 窗口，没有外围卡片（页面顶到 0、铺满高）',
+        (tester) async {
+      setWindow(tester, const Size(768, 1280));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final page = tester.getRect(find.byType(MockPage));
+      expect(page.top, closeTo(0, 0.01), reason: '页面顶缘应贴窗口顶（无 24dp 卡片留白）');
+      expect(page.height, closeTo(1280, 0.01));
+      expect(page.right, closeTo(768, 0.01));
+
+      // 外壳不再画圆角卡片：装饰的圆角为 0、无投影
+      final box = tester.widget<Container>(
+        find
+            .ancestor(of: find.byType(MockPage), matching: find.byType(Container))
+            .last,
+      );
+      final decoration = box.decoration! as BoxDecoration;
+      expect(decoration.borderRadius, BorderRadius.zero);
+      expect(decoration.boxShadow ?? const [], isEmpty);
+    });
+
+    testWidgets('状态栏：透明 + 图标亮度随明暗翻转', (tester) async {
+      setWindow(tester, const Size(393, 856));
+      addTearDown(tester.view.reset);
+
+      SystemUiOverlayStyle overlay() => tester
+          .widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+            find
+                .descendant(
+                  of: find.byType(DemoHome),
+                  matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+                )
+                .first,
+          )
+          .value;
+
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      // 深色：透明状态栏 + 浅色图标
+      expect(overlay().statusBarColor, Colors.transparent);
+      expect(overlay().statusBarIconBrightness, Brightness.light);
+      expect(overlay().systemNavigationBarColor, Colors.transparent);
+
+      // 切浅色：图标翻成深色（否则浅底上看不见）
+      await tester.tap(find.text('我的').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+      expect(overlay().statusBarIconBrightness, Brightness.dark);
+    });
+
+    testWidgets('边到边：侧栏让开状态栏、底栏让开手势条', (tester) async {
+      addTearDown(tester.view.reset);
+
+      // 平板 + 40dp 状态栏：侧栏顶 = 40 + 25.5
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(768, 1280);
+      tester.view.padding = FakeViewPadding(top: 40);
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byType(MiGlassSideNavBar)).top,
+        closeTo(40 + MiGlassSideNavMetrics.railMargin, 0.01),
+      );
+
+      // 手机 + 20dp 手势条：底栏仍浮起 24.2，再叠加安全区
+      tester.view.physicalSize = const Size(393, 856);
+      tester.view.padding = FakeViewPadding(bottom: 20);
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byType(MiGlassNavBar)).bottom,
+        closeTo(856 - 24.2 - 20, 0.01),
+      );
+    });
+  });
+
   group('宽屏模式（DemoHome 导航形态切换）', () {
     /// 在给定窗口尺寸下渲染示例，返回该窗口下画面的**容器宽**。
     Future<double> frameWidth(WidgetTester tester, Size window) async {
@@ -267,13 +350,13 @@ void main() {
       return DemoStage.sizeFor(window).logical.width;
     }
 
-    testWidgets('手机（画面 ≤ 600）：仍是底部导航栏', (tester) async {
+    testWidgets('手机 / 窄窗（画面 ≤ 600）：仍是底部导航栏', (tester) async {
       addTearDown(tester.view.reset);
 
       for (final window in const [
-        Size(393, 856), // 参考机竖屏：画面 393
-        Size(260, 470), // 桌面小窗：画面等比缩到 260 宽
-        Size(648, 900), // 边界：画面正好 600 → 仍底栏
+        Size(393, 856), // 参考机竖屏：手机画布 393
+        Size(260, 470), // 桌面小窗：手机画布等比缩小
+        Size(600, 900), // 边界：画面正好 600 → 仍底栏（严格大于才切）
       ]) {
         final width = await frameWidth(tester, window);
         expect(
@@ -290,10 +373,11 @@ void main() {
       addTearDown(tester.view.reset);
 
       for (final window in const [
-        Size(650, 900), // 边界上沿：画面 602 → 侧栏
-        Size(768, 1280), // 平板竖屏：画面 720
-        Size(1023, 768), // 中等宽：画面 975
-        Size(1366, 768), // 桌面：画面 1000（舞台上宽）
+        Size(601, 900), // 边界上沿：画面 601 → 侧栏
+        Size(650, 900), // 平板窄窗
+        Size(768, 1280), // 平板竖屏（实机尺寸）
+        Size(1023, 768), // 中等宽
+        Size(1366, 768), // 桌面
       ]) {
         final width = await frameWidth(tester, window);
         expect(
@@ -315,7 +399,8 @@ void main() {
       }
     });
 
-    testWidgets('桌面 1366×768：侧栏姿势（贴顶 / 左留白）与页面尺寸', (tester) async {
+    testWidgets('桌面 1366×768：画面铺满窗口（无外围卡片）、侧栏贴顶留白',
+        (tester) async {
       const window = Size(1366, 768);
       setWindow(tester, window);
       addTearDown(tester.view.reset);
@@ -325,29 +410,23 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
-      // 舞台水平居中、宽度上限 1000；侧栏与页面都相对舞台定位
-      final stageLeft = (window.width - DemoStage.wideMaxWidth) / 2;
       final rail = tester.getRect(find.byType(MiGlassSideNavBar));
       final page = tester.getRect(find.byType(MockPage));
 
-      expect(rail.left - stageLeft, closeTo(MiGlassSideNavMetrics.railMargin, 0.01));
+      // 铺满：画面 = 窗口，四周没有留白 / 圆角卡片
+      expect(rail.left, closeTo(MiGlassSideNavMetrics.railMargin, 0.01));
       expect(rail.width, closeTo(MiGlassSideNavMetrics.railWidth, 0.01));
-      // 舞台在窗口里垂直居中（上下各 gutter），侧栏再距舞台顶一档留白
-      const stageTop = DemoStage.gutter;
       expect(
-        rail.top - stageTop,
+        rail.top,
         closeTo(MiGlassSideNavMetrics.railMargin, 0.01),
-        reason: '侧栏应贴顶、距画面顶缘一档留白',
+        reason: '侧栏应贴顶、距窗口顶缘一档留白（测试环境安全区为 0）',
       );
-      expect(
-        page.left - stageLeft,
-        closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01),
-        reason: '页面左缘应为侧栏列宽',
-      );
-      expect(
-        page.width,
-        closeTo(DemoStage.wideMaxWidth - MiGlassSideNavMetrics.gutterWidth, 0.01),
-      );
+      expect(page.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01),
+          reason: '页面左缘应为侧栏列宽');
+      expect(page.top, closeTo(0, 0.01));
+      expect(page.width,
+          closeTo(window.width - MiGlassSideNavMetrics.gutterWidth, 0.01));
+      expect(page.height, closeTo(window.height, 0.01));
       // 内容完整落在窗口内
       expect(rail.right, lessThanOrEqualTo(window.width + 0.01));
       expect(page.right, lessThanOrEqualTo(window.width + 0.01));

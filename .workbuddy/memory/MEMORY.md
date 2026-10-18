@@ -9,14 +9,15 @@
 ## 响应式（`src/utils/responsive.dart`）
 - **三处断点各管一件事**：① 窗口宽 `MiViewport` / `ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）→ 外壳是否把画面加宽；② **画面容器宽** `MiBreakpoints.usesSideNav(w) = w > 600` → 导航形态（底栏 vs 侧栏，见下）；③ **内容容器宽** `MiResponsiveGrid.compactMax/mediumMax` → 网格列数。混用会出错（限宽画布够不到窗口断点；手机框嵌宽窗口不该摆侧栏）。
 - `MiScaledCanvas.scaleFor = clamp(min(1, 可用宽/设计宽, 可用高/设计高), minScale, maxScale)`：只缩不放、宽高同比例；`scale == 1` 走原样路径（零变换层，黄金图像素稳定）。
-- 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→{logical,rendered}` 可单测）：**只有 compact 是"物理手机"**（等比缩 393×856，手机全屏 1:1）；**medium/expanded 铺成内容舞台** = `min(max(可用宽,393),1000) × max(可用高,480)`。2026-10-17 平板实机：medium 若 1x 居中，屏里手机只占 64% 高、上下留 170/240px 纯黑。
+- 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→{logical,rendered}` 可单测）：**只有 compact 是"物理手机"**（等比缩 393×856，手机全屏 1:1）；**medium/expanded = 铺满窗口**（画面 = 可用尺寸，2026-10-18 平板实拍反馈「应该铺满屏幕，不需要外围卡片」后去掉 24 留白 / 圆角 56 / 投影 / 宽度上限 1000，`wideMaxWidth`·`minStageHeight`·`gutter` 已删）。
 - 内容断点：主题卡 3/4/6 列、展示位 4/6/8 列；非 compact 页边距统一 24（compact 用实测 11.9/20）。
 - **宽屏模式（2026-10-18，`MiGlassSideNavBar`）**：判定照 MReader 主壳层（`MReader/lib/ui/home_shell.dart`）—— `LayoutBuilder` 读**外壳自己的 `constraints.maxWidth`**，`> kShellRailBreakpoint`（**600**）切侧栏（`MiBreakpoints.navRail` + `usesSideNav(width)`，严格大于；`MiWindowSize.usesSideNav` 是枚举口径）。所以**平板也用侧栏**、只有手机/窄窗留底栏；`MiBreakpoints.desktop`（1024）只留给桌面专属样式（舞台加宽/网格 6-8 列）。侧栏与底部栏**共用 `MiGlassNavItem` / `selectedIndex` / `onTap`**（示例传同一份 items）→ 图标、选中态、跳转零差异；动效 token 也全复用（只把轴换纵向）。
   - **几何全部「推导（非实测）」**（无侧栏样张）：栏宽 95.4 = 实测格宽 82.2 + 2×内边距 6.6、条目高 49.3 = 实测胶囊高、条目间距 8（spaceSm）、左/顶留白 25.5 = `barMarginH`；图标墨盒/间距与底栏一字不改。`railHeightFor(n) = 2×6.6 + n×49.3 + (n−1)×8`（3 项 = 177.1）。
   - 胶囊中心 = `railInnerPad + itemHeight/2 + pitch×pos`（**不是** `pitch×(pos+0.5)`，否则整体下移 gap/2 = 4dp）；pitch = itemHeight + gap；首尾按 `railInnerPad` 夹紧。
   - 刻意的两处差异：**不做 fab**（横向空位腾挪无纵向等价语义）；**栏体收缩到内容高、位置由宿主给**（示例贴顶 25.5 + 左 25.5）。
   - 示例布局：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned`（`left: sideNav ? gutterWidth : 0`），仅改左缘 → 跨断点切换 `Element` 不重建、滚动位置保留；侧栏档外壳底色改成页底色（否则深色下 gutter 与页面之间有一道竖缝）。手机 Home 指示条只在底栏形态出现。
-  - 预算：桌面 1366×768 深色 **7 层 / 101,430 dp²**（页面列 879.1 + 侧栏 1 层 16,896）；平板 768×1280（页面列 599.1）首页 7/73,831、我的 6/49,527、分类 8/102,501。
+  - 预算（铺满后）：桌面 1366×768 深色首页 **7 层 / 137,506**、分类 8/194,809（页面列 1245.1 + 侧栏 1 层 16,896）；平板 768×1280（页面列 647.1）首页 7/78,562、我的 6/52,142、分类 8/109,360。层数不变，**面积随宽度线性增长**（edge-to-edge 的必然代价）。
+  - **edge-to-edge**：`main.dart` 调 `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`（透明状态栏/手势条 + 图标亮度随明暗）。不做的话应用窗口从状态栏下方开始，那一条是系统画的底色+压色（实测 250→183）= 平板上的「灰带」。代价：侧栏顶 = `padding.top + 25.5`、底栏底 = `24.2 + padding.bottom`、Home 指示条同款；顶栏本来读 `MediaQuery.padding.top`。
 
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
@@ -60,6 +61,7 @@
 - `Container`/`Align` 带 `alignment` 在有界父级会拉满宽；要内容自适应用 `Center(widthFactor: 1.0)`。
 - 叠在内容之上的透明层要包 `IgnorePointer`，否则吃掉下层点击（顶栏整体只有返回圆钮吃手势）。
 - **布局类断言别用 `Column` 撑溢出**：比容器高的 mock 内容用 `Stack`+`Positioned` 逐行摆（Stack 只裁剪不报 `RenderFlex overflowed`），行距并进 `top`。
+- **`Container` 的 `clipBehavior` 不要在两种状态间切**：`Clip.antiAlias ↔ Clip.none` 会让 Container 内部增删裁剪层 → widget 结构变化 → 子级 `Element` 重建（本项目里表现为跨断点后页面**滚动位置归零**）。要"有时圆角有时不圆"就固定 `Clip.antiAlias`、用 `BorderRadius.zero` + 空 `boxShadow` 表达"无卡片"（像素无差）。
 - **给已截图界面加"外壳层"要零新增 render object**：给页面套 `Padding` / 垫 `ColoredBox` 会让黄金图出现 195px、1 级灰度的噪声差（2026-10-18 实测 `light_mode_golden_test` 挂）。正确做法 = 用 `Positioned(left: desktop ? gutter : 0)` 改几何、用容器自身颜色改底色 —— 紧凑档逐像素不变。
 
 ## 已知坑：字体与基线

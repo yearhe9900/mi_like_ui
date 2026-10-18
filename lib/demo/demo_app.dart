@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
 import 'mock_pages.dart';
@@ -58,26 +59,25 @@ class DemoStageSize {
       'DemoStageSize(logical: $logical, rendered: $rendered, scale: ${scale.toStringAsFixed(3)})';
 }
 
-/// 示例舞台：把「物理手机画面」摆进任意窗口的自适应外壳。
+/// 示例舞台：把「画面」摆进任意窗口的自适应外壳。
 ///
 /// ## 覆盖的布局区域
 ///
-/// 只负责**外壳**这一层（窗口背景 + 手机画面的外部几何与缩放），不介入
-/// 画面内部的组件几何 —— 内部由各页面的局部断点负责（见 [MockPage]）。
+/// 只负责**外壳**这一层（画面的外部几何与缩放），不介入画面内部的组件
+/// 几何 —— 内部由各页面的局部断点负责（见 [MockPage]）。
 ///
 /// ## 断点与缩放策略（按**窗口**逻辑宽判档，见 [MiBreakpoints]）
 ///
 /// | 档位 | 窗口宽 | 策略 |
 /// |------|--------|------|
-/// | compact | < 600dp | 设计画布 393×856 **等比缩小**到放得下（无外边距，手机全屏时恰好 1:1） |
-/// | medium | 600…1023dp | 画面**铺成内容舞台**：宽 = 可用宽（上限 [wideMaxWidth]）、高 = 可用高 —— 平板竖屏不再是一个居中的小手机，而是让步数/列数真正利用屏幕 |
-/// | expanded | ≥ 1024dp | 同上，宽度上限 [wideMaxWidth]（桌面端不让内容无限拉宽） |
+/// | compact | < 600dp | **物理手机画布** 393×856，等比缩到放得下（手机全屏时恰好 1:1、零留白） |
+/// | medium | 600…1023dp | **铺满窗口**（edge-to-edge）：画面 = 可用尺寸，不再有外边距 / 圆角卡片 —— 平板就是一个真实平板 App 的样子 |
+/// | expanded | ≥ 1024dp | 同上，铺满窗口 |
 ///
-/// **为什么 medium 不放大手机、而改成舞台**：平板实测反馈（2026-10-17，
-/// 一张 650×1138 的平板截图）里，1x 手机框只占屏高的 64%，上下各留 170/240px
-/// 纯黑 —— 大屏上「小手机居中」既浪费空间，也让内容列数停在手机档。改成舞台
-/// 后内容宽随屏幕增大 → 网格从 3 列升到 4 列（平板）/ 6 列（桌面），
-/// 是**重新布局**而不是把手机拉大（拉大会让 1dp 实测值失去物理意义）。
+/// **为什么大屏不再做「背景 + 圆角卡片」**：那是模拟手机外壳的产物。真机上
+/// 平板/桌面本来就是整个窗口的 App，卡片外那圈底色 + 圆角既不是 UI 的一部分，
+/// 还会让内容（以及状态栏后面那一条）与页面底色对不上 —— 2026-10-18 平板
+/// 实拍反馈「应该铺满屏幕，不需要外围卡片效果」。
 ///
 /// 各档都过同一道兜底：[DemoStageSize.rendered] 由
 /// `min(1, 可用宽/逻辑宽, 可用高/逻辑高)` 得出 ——
@@ -86,47 +86,38 @@ class DemoStageSize {
 ///  * **实时响应**：`LayoutBuilder` 随窗口/分屏/浏览器缩放自动重排，
 ///    无需 `setState` 或监听。
 ///
-/// 缩放走 `FittedBox`（Skia 变换 + 矢量重绘），文字与图标不会糊；`scale == 1`
-/// 时**不加任何变换层**，黄金图逐像素稳定。
+/// 缩放只发生在 compact 档（窗口比设计画布还小）；大屏 `scale == 1`，
+/// **不加任何变换层**，黄金图逐像素稳定。
 class DemoStage extends StatelessWidget {
   const DemoStage({super.key, required this.child});
 
   /// 参考机设计画布：1220×2656 录屏 @ 393dp 设计宽（393:856 ≈ 0.459）。
   static const Size designCanvas = Size(393, 856);
 
-  /// 舞台的最大宽度（桌面端不让内容无限拉宽）。
-  static const double wideMaxWidth = 1000;
-
-  /// 舞台的最小高度（更矮的窗口交给兜底缩放）。
-  static const double minStageHeight = 480;
-
-  /// medium / expanded 档的四周留白；compact（手机全屏）为 0，保证 1:1。
-  static const double gutter = 24;
-
   /// 画面内容：拿到 [DemoStageSize.logical] 的 **tight** 约束。
   final Widget child;
 
   /// 纯函数解算（可直接单测，不需要 widget 树）。
   static DemoStageSize sizeFor(Size available) {
-    final sizeClass = MiBreakpoints.ofWidth(available.width);
-    final inset = sizeClass.isCompact ? 0.0 : gutter;
-    final availW = math.max(0.0, available.width - 2 * inset);
-    final availH = math.max(0.0, available.height - 2 * inset);
-
-    var logicalW = designCanvas.width;
-    var logicalH = designCanvas.height;
-    if (!sizeClass.isCompact) {
-      // 平板/桌面：铺成内容舞台 —— 横向用满（可窄至设计宽），纵向用满
-      //（不矮于 minStageHeight，再矮由下面的兜底缩放处理）。
-      logicalW = math.min(math.max(availW, designCanvas.width), wideMaxWidth);
-      logicalH = math.max(availH, minStageHeight);
+    final available0 = Size(
+      math.max(0.0, available.width),
+      math.max(0.0, available.height),
+    );
+    if (available0.width == 0 || available0.height == 0) {
+      return const DemoStageSize(logical: Size.zero, rendered: Size.zero);
     }
 
-    final scale = math.min(1.0, math.min(availW / logicalW, availH / logicalH));
-    final logical = Size(logicalW, logicalH);
+    final sizeClass = MiBreakpoints.ofWidth(available0.width);
+    // compact：物理手机画布（只缩不放）；medium / expanded：画面 = 窗口。
+    final logical = sizeClass.isCompact ? designCanvas : available0;
+
+    final scale = math.min(
+      1.0,
+      math.min(available0.width / logical.width, available0.height / logical.height),
+    );
     return DemoStageSize(
       logical: logical,
-      rendered: Size(logicalW * scale, logicalH * scale),
+      rendered: Size(logical.width * scale, logical.height * scale),
     );
   }
 
@@ -172,143 +163,170 @@ class _DemoHomeState extends State<DemoHome> {
       MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
       MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(ink)),
     ];
-    // 舞台档（平板/桌面）圆角随画布尺寸小幅放粗，避免大方块上 44 显得过锐。
+    // 只有 **compact（手机档）** 是"物理手机"：给圆角 + 投影，模拟设备外观。
+    // 平板 / 桌面铺满窗口，不加任何外围卡片效果（见 [DemoStage] 类注释）。
     final viewport = MiViewport.of(context);
-    final radius = viewport.isCompact ? 44.0 : 56.0;
+    final framed = viewport.isCompact;
     // 页底色（侧栏那一列与页面同底，避免宽屏上出现一道拼接缝）。
     final pageBg = light ? const Color(0xFFF3F3F3) : const Color(0xFF000000);
+    // edge-to-edge 下内容会铺到状态栏 / 手势条下面，浮层类元素要让开安全区。
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
 
-    return Scaffold(
-      backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
-      body: DemoStage(
-        // 导航形态按**画面自己的容器宽**判（`LayoutBuilder` 的
-        // `constraints.maxWidth`），不读窗口宽 —— 与 MReader 主壳层
-        // （`lib/ui/home_shell.dart`：`LayoutBuilder` + `maxWidth > 600`）
-        // 同一做法。差别只在这里的画布可能被等比缩小或嵌在手机框里：
-        // 手机框 393 再宽的窗口也不摆侧栏，舞台 720/1000 就摆。
-        // 断点 `MiBreakpoints.navRail` = 600，**严格大于**才切侧栏。
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final sideNav = MiBreakpoints.usesSideNav(constraints.maxWidth);
-            return Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                // 侧栏形态：侧栏那一列改用**页底色**（页面只占右侧内容列），
-                // 否则深色下这一列会是 #0E0E11、与页面 #000000 之间出现竖缝。
-                color: sideNav
-                    ? pageBg
-                    : (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11)),
-                borderRadius: BorderRadius.circular(radius),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black54,
-                    blurRadius: 40,
-                    offset: Offset(0, 16),
-                  ),
-                ],
-              ),
-              // Stack 子级一律 Positioned，且页面恒为第一个子级（索引稳定）：
-              // 底栏 ⇄ 侧栏切换时 MockPage 的 Element 不重建（滚动位置与页内
-              // 状态保留），只是左缘从 0 变成侧栏列宽。
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: sideNav ? MiGlassSideNavMetrics.gutterWidth : 0,
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
-                    //  `FadeTransition` 会给整页套一层 `Opacity` → 引入
-                    //  saveLayer，而 saveLayer 会让下层 `BackdropFilter` 的
-                    //  backdrop 变空（本项目已实测的坑）—— 切页的 260ms 里旧页
-                    //  磨砂直接消失、还多算一份 5 段全宽高斯（实测模糊层
-                    //  7 → 9、另有 6 层 opacity）。底部 tab 惯例也是瞬时切换，
-                    //  参考 App 同款。
-                    child: MockPage(
-                      _index,
-                      key: ValueKey(_index),
-                      themeMode: widget.themeMode,
-                      onThemeModeChanged: widget.onThemeModeChanged,
-                    ),
-                  ),
-                  if (sideNav)
-                    // 侧栏贴顶对齐、距画面左缘与顶缘各一档留白（与底部栏距
-                    // 屏底一档留白同一口径）；栏体自身收缩到内容高。
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: MiGlassSideNavMetrics.gutterWidth,
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          left: MiGlassSideNavMetrics.railMargin,
-                          top: MiGlassSideNavMetrics.railMargin,
-                        ),
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: MiGlassSideNavBar(
-                            items: items,
-                            selectedIndex: _index,
-                            onTap: (i) => setState(() => _index = i),
-                            themeMode: widget.themeMode,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // 状态栏透明 + 图标随明暗翻转：状态栏背后就是页面自己的底色 / 顶栏磨砂，
+      // 系统不再加那层灰压色（2026-10-18 平板实拍「状态栏灰带」的成因）。
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: light ? Brightness.dark : Brightness.light,
+        statusBarBrightness: light ? Brightness.light : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarIconBrightness:
+            light ? Brightness.dark : Brightness.light,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
+        body: DemoStage(
+          // 导航形态按**画面自己的容器宽**判（`LayoutBuilder` 的
+          // `constraints.maxWidth`），不读窗口宽 —— 与 MReader 主壳层
+          // （`lib/ui/home_shell.dart`：`LayoutBuilder` + `maxWidth > 600`）
+          // 同一做法。差别只在这里的画布可能被等比缩小或嵌在手机框里：
+          // 手机框 393 再宽的窗口也不摆侧栏，平板/桌面画面就摆。
+          // 断点 `MiBreakpoints.navRail` = 600，**严格大于**才切侧栏。
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sideNav = MiBreakpoints.usesSideNav(constraints.maxWidth);
+              return Container(
+                // `clipBehavior` 恒为 antiAlias（圆角在铺满时给 `zero`）：
+                // 切换 framed 若增删裁剪层，`Container` 内部的 widget 结构会变，
+                // 页面 Element 被重建 → 跨断点时滚动位置会丢。
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  // 手机档用设备底色；铺满窗口时用**页底色**（页面只占右侧
+                  // 内容列，侧栏那一列若不是页底色，深色下会与页面之间出现
+                  // 一道竖缝）。
+                  color: framed
+                      ? (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11))
+                      : pageBg,
+                  borderRadius:
+                      framed ? BorderRadius.circular(44) : BorderRadius.zero,
+                  boxShadow: framed
+                      ? const [
+                          BoxShadow(
+                            color: Colors.black54,
+                            blurRadius: 40,
+                            offset: Offset(0, 16),
                           ),
-                        ),
-                      ),
-                    )
-                  else ...[
-                    // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起
-                    // 24.2dp，与参考 App 一致）。
+                        ]
+                      : const [],
+                ),
+                // Stack 子级一律 Positioned，且页面恒为第一个子级（索引稳定）：
+                // 底栏 ⇄ 侧栏切换时 MockPage 的 Element 不重建（滚动位置与页内
+                // 状态保留），只是左缘从 0 变成侧栏列宽。
+                child: Stack(
+                  children: [
                     Positioned(
-                      left: 0,
+                      left: sideNav ? MiGlassSideNavMetrics.gutterWidth : 0,
+                      top: 0,
                       right: 0,
-                      bottom: 24.2, // measured: bar sits 24.2 dp above bottom
-                      child: MiGlassNavBar(
-                        items: items,
-                        selectedIndex: _index,
-                        onTap: (i) => setState(() => _index = i),
+                      bottom: 0,
+                      // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
+                      //  `FadeTransition` 会给整页套一层 `Opacity` → 引入
+                      //  saveLayer，而 saveLayer 会让下层 `BackdropFilter` 的
+                      //  backdrop 变空（本项目已实测的坑）—— 切页的 260ms 里旧页
+                      //  磨砂直接消失、还多算一份 5 段全宽高斯（实测模糊层
+                      //  7 → 9、另有 6 层 opacity）。底部 tab 惯例也是瞬时切换，
+                      //  参考 App 同款。
+                      child: MockPage(
+                        _index,
+                        key: ValueKey(_index),
                         themeMode: widget.themeMode,
-                        // 预留空位圆钮：仅选中「首页」时显示（切走收起）
-                        fab: MiGlassNavFab(
-                          tabIndex: 0,
-                          onTap: () =>
-                              ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('圆形按钮被点击'),
-                              duration: Duration(milliseconds: 800),
+                        onThemeModeChanged: widget.onThemeModeChanged,
+                      ),
+                    ),
+                    if (sideNav)
+                      // 侧栏贴顶对齐、距画面左缘与安全区各一档留白（与底部栏
+                      // 距屏底一档留白同一口径）；栏体自身收缩到内容高。
+                      // 一定要让开状态栏：铺满窗口后侧栏顶就在状态栏那一带。
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: MiGlassSideNavMetrics.gutterWidth,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            left: MiGlassSideNavMetrics.railMargin,
+                            top: safeTop + MiGlassSideNavMetrics.railMargin,
+                          ),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: MiGlassSideNavBar(
+                              items: items,
+                              selectedIndex: _index,
+                              onTap: (i) => setState(() => _index = i),
+                              themeMode: widget.themeMode,
                             ),
                           ),
-                          child: CustomPaint(
-                            painter: GridDotsIconPainter(Colors.white),
-                            size: const Size.square(18.2),
+                        ),
+                      )
+                    else ...[
+                      // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起
+                      // 24.2dp，与参考 App 一致；edge-to-edge 下再让开手势条）。
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 24.2 +
+                            (framed ? safeBottom : 0), // measured: 24.2 dp
+                        child: MiGlassNavBar(
+                          items: items,
+                          selectedIndex: _index,
+                          onTap: (i) => setState(() => _index = i),
+                          themeMode: widget.themeMode,
+                          // 预留空位圆钮：仅选中「首页」时显示（切走收起）
+                          fab: MiGlassNavFab(
+                            tabIndex: 0,
+                            onTap: () =>
+                                ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('圆形按钮被点击'),
+                                duration: Duration(milliseconds: 800),
+                              ),
+                            ),
+                            child: CustomPaint(
+                              painter: GridDotsIconPainter(Colors.white),
+                              size: const Size.square(18.2),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    // home indicator (phone chrome, not part of the nav bar)
-                    // 侧栏形态没有手机 Home 指示条（那一档不是"物理手机"
-                    // 画面）——只有底栏形态才是。
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 9,
-                      child: Center(
-                        child: Container(
-                          width: 138,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: light
-                                ? const Color(0xFF959595)
-                                : const Color(0xD9FFFFFF),
-                            borderRadius: BorderRadius.circular(2.5),
+                      // home indicator (phone chrome, not part of the nav bar)
+                      // 侧栏形态没有手机 Home 指示条（那一档不是"物理手机"
+                      // 画面）——只有底栏形态才是。
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 9 + (framed ? safeBottom : 0),
+                        child: Center(
+                          child: Container(
+                            width: 138,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: light
+                                  ? const Color(0xFF959595)
+                                  : const Color(0xD9FFFFFF),
+                              borderRadius: BorderRadius.circular(2.5),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
-              ),
-            );
-          },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

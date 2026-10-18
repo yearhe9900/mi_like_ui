@@ -130,36 +130,36 @@ void main() {
           closeTo(393 / 856, 1e-9));
     });
 
-    test('medium 平板：铺成内容舞台（不再是小手机居中）', () {
-      // 800×1000 平板竖屏：可用 752×952 全用上
+    test('medium 平板：铺满窗口（不再有小手机框 / 外围卡片）', () {
+      // 800×1000 平板竖屏：画面 = 窗口
       final frame = DemoStage.sizeFor(const Size(800, 1000));
-      expect(frame.logical, const Size(752, 952));
+      expect(frame.logical, const Size(800, 1000));
       expect(frame.rendered, frame.logical);
       expect(frame.isScaled, isFalse);
 
-      // 实机反馈尺寸（2026-10-17 平板截图 1536×2560 @2x → 768×1280 逻辑）：
-      // 可用 720×1232。旧策略下只画 393×856 小手机（占屏高 67%，上下各留
-      // 188/236px 纯黑），现在铺满 → 舞台 720×1232
+      // 实机尺寸（2026-10-18 平板截图 1536×2560 @2x → 768×1280 逻辑）：
+      // 画面 = 768×1280（此前是居中的 720×1232 卡片）
       final pad = DemoStage.sizeFor(const Size(768, 1280));
-      expect(pad.logical, const Size(720, 1232));
+      expect(pad.logical, const Size(768, 1280));
       expect(pad.rendered, pad.logical);
       expect(pad.isScaled, isFalse);
     });
 
-    test('expanded 桌面：加宽舞台（宽度上限 1000）且不超出窗口', () {
+    test('expanded 桌面：铺满窗口且不超出', () {
       final wide = DemoStage.sizeFor(const Size(1366, 768));
-      expect(wide.logical.width, closeTo(DemoStage.wideMaxWidth, 0.01));
-      expect(wide.logical.height, closeTo(768 - 2 * DemoStage.gutter, 0.01));
+      expect(wide.logical, const Size(1366, 768));
       expect(wide.rendered, wide.logical); // 1x，不缩放
       expect(wide.rendered.width, lessThanOrEqualTo(1366.001));
       expect(wide.rendered.height, lessThanOrEqualTo(768.001));
 
-      // 刚好过断点：宽度用满可用宽（不足上限）
+      // 刚好过断点：同样铺满
       final edge = DemoStage.sizeFor(const Size(1024, 768));
-      expect(edge.logical.width, closeTo(1024 - 2 * DemoStage.gutter, 0.01));
+      expect(edge.logical, const Size(1024, 768));
 
-      // 宽而极矮：高不足时按 contain 兜底缩放，不溢出
+      // 宽而极矮：不再有"最小舞台高"，画面就是窗口，内容自己滚动
       final squat = DemoStage.sizeFor(const Size(1400, 420));
+      expect(squat.logical, const Size(1400, 420));
+      expect(squat.rendered, squat.logical);
       expect(squat.rendered.height, lessThanOrEqualTo(420.001));
       expect(squat.rendered.width, lessThanOrEqualTo(1400.001));
     });
@@ -214,13 +214,14 @@ void main() {
       expect(tester.takeException(), isNull);
 
       final page = tester.getRect(find.byType(MockPage));
-      // 舞台 = 窗口减两侧 24 留白：720×1232（旧策略这里是 393×856 的小手机）。
-      // 平板画面宽 720 > 导航断点 600 → 用侧栏，页面让出 120.9 的侧栏列。
+      // 画面 = 窗口 768×1280（铺满、无外围卡片）；画面宽 > 导航断点 600 →
+      // 用侧栏，页面让出 120.9 的侧栏列。
       expect(
         page.width,
-        closeTo(720 - MiGlassSideNavMetrics.gutterWidth, 0.01),
+        closeTo(768 - MiGlassSideNavMetrics.gutterWidth, 0.01),
       );
-      expect(page.height, closeTo(1232, 0.01));
+      expect(page.height, closeTo(1280, 0.01));
+      expect(page.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01));
       expect(page.left, greaterThanOrEqualTo(0));
       expect(page.right, lessThanOrEqualTo(768.01));
       expect(page.bottom, lessThanOrEqualTo(1280.01));
@@ -234,16 +235,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
-      // 手机 → 桌面：画面加宽成内容舞台，且底部栏换成侧栏 —— 页面只占
-      //「舞台宽 − 侧栏列宽」，内容仍在该列里按容器宽重排。
+      // 手机 → 桌面：画面铺满窗口，且底部栏换成侧栏 —— 页面只占
+      //「窗口宽 − 侧栏列宽」，内容仍在该列里按容器宽重排。
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final wide = tester.getRect(find.byType(MockPage));
       expect(
         wide.width,
-        closeTo(DemoStage.wideMaxWidth - MiGlassSideNavMetrics.gutterWidth, 0.01),
+        closeTo(1366 - MiGlassSideNavMetrics.gutterWidth, 0.01),
       );
+      expect(wide.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01));
 
       // 桌面 → 小窗：又缩回等比 contain
       setWindow(tester, const Size(240, 400));
