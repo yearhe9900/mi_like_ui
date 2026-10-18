@@ -25,19 +25,28 @@ enum MiWindowSize {
   /// 是否给出了「单列手机」以外的布局空间。
   bool get isWide => this == MiWindowSize.expanded;
 
+  /// 导航形态是否用**侧边导航栏**（枚举口径：medium / expanded 都用侧栏）。
+  ///
+  /// 与 [MiBreakpoints.usesSideNav] 同一结论，`600` 这个边界点除外 ——
+  /// `ofWidth` 把「正好 600」算进 medium（compact 是 `< 600`），而权威口径
+  /// 是 **严格大于**（MReader 的 `maxWidth > kShellRailBreakpoint`）。
+  /// 需要逐像素一致时用宽度版。
+  bool get usesSideNav => this != MiWindowSize.compact;
+
   /// 是否达到**桌面断点**（视口宽 ≥ [MiBreakpoints.desktop]）。
   ///
-  /// 桌面模式（如把底部导航栏换成侧边导航栏）按这个判定；它与
-  /// [isExpanded] 恒等（[MiBreakpoints.desktop] 就是 expanded 的下界），
-  /// 单独起名只是让调用点写「桌面」而不是「expanded 档」。
+  /// 只用来判断「桌面档专属」的样式（如示例舞台加宽成 1000dp）；
+  /// **导航形态不要按它判** —— 平板（medium）也用侧边导航栏，见
+  /// [usesSideNav]。
   bool get isDesktop => this == MiWindowSize.expanded;
 }
 
 /// 断点常量与判定函数（**纯函数**，无 context 依赖，可直接单测）。
 ///
-/// 两套入口语义不同，别混用：
+/// 三套入口语义不同，别混用：
 ///  * [ofWidth] / [MiViewport.windowSize] —— **窗口**宽，用于决定页面级布局
 ///    形态（如示例舞台是否加宽）；
+///  * [usesSideNav] —— **外壳容器**宽，决定导航形态（底栏 ⇄ 侧栏）；
 ///  * [columnsFor] —— **组件自身容器**的可用宽，用于网格列数等局部布局。
 ///    组件被嵌在限宽画布（如 393dp 手机框）里时，窗口再宽也不该改变它的
 ///    列数，所以局部布局必须读容器宽而不是窗口宽。
@@ -47,10 +56,18 @@ class MiBreakpoints {
   /// compact 上界（不含）：`width < 600` 即 compact。
   static const double compact = 600;
 
-  /// **桌面断点**：视口宽 ≥ 该值即进入桌面布局（侧边导航栏 / 宽屏内容舞台）。
+  /// **导航形态断点**：外壳容器宽 **> 该值** 时用侧边导航栏，否则底部导航栏。
   ///
-  /// 桌面模式（`MiViewport.isDesktop`）与网格的 expanded 档共用这一个数：
-  /// 它就是 medium 档的上界，两处同源避免「导航切了、网格没切」。
+  /// 取值与 MReader 主壳层 `kShellRailBreakpoint = 600`
+  /// （`lib/ui/home_shell.dart`，其上游 anx-reader 同值）一致 ——
+  /// 平板（600…1023）**也**用侧栏，只有手机竖屏 / 窄窗留底栏。
+  /// 判定用**严格大于**：正好 600 仍走底栏，与 MReader 的
+  /// `constraints.maxWidth > kShellRailBreakpoint` 逐像素同口径。
+  static const double navRail = 600;
+
+  /// **桌面断点**：视口宽 ≥ 该值即进入桌面档（示例舞台加宽、网格 6/8 列）。
+  ///
+  /// 它只是「expanded 档下界」，**不是**导航形态的判定口（那看 [navRail]）。
   static const double desktop = 1024;
 
   /// medium 上界（不含）：`600 ≤ width < 1024` 即 medium。
@@ -62,6 +79,14 @@ class MiBreakpoints {
     if (width < medium) return MiWindowSize.medium;
     return MiWindowSize.expanded;
   }
+
+  /// 导航形态：容器宽 **> [navRail]** 时用侧边导航栏。
+  ///
+  /// 传**外壳自己的容器宽**（`LayoutBuilder` 的 `constraints.maxWidth`），
+  /// 与 MReader 的 `LayoutBuilder` + `constraints.maxWidth` 同一做法：
+  /// 分屏、画中画、嵌在限宽画布（示例的 393 手机框 / 1000 舞台）里时，
+  /// 结论跟着容器走而不是跟着窗口走 —— 手机框里就算窗口再宽也不摆侧栏。
+  static bool usesSideNav(double width) => width > navRail;
 
   /// 按**容器可用宽**取列数（网格等局部布局用）。
   ///

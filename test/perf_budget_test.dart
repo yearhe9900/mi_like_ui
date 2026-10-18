@@ -54,25 +54,24 @@ void main() {
   testWidgets('深色·平板 768×1280：每帧模糊层数 / 面积预算', (tester) async {
     addTearDown(tester.view.reset);
 
+    // 2026-10-18 起平板也用侧栏（导航断点 600，照 MReader），页面列从 720
+    // 收窄到 599.1 —— 顶栏磨砂面积随之变小，侧栏自己只挂 1 层。
     final home = await measure(tester, const Size(768, 1280));
-    // 顶栏 5 段 + 导航栏 1（优化前：顶栏 8 段 + 导航 1 + 搜索 1 = 10 段 / 100,073）
     expect(home.count, lessThanOrEqualTo(7), reason: '首页 $home');
-    // 磨砂曲线按材质盒等比拉伸（119dp → 128.9dp），面积比不拉伸时多约 8%
-    expect(home.area, lessThanOrEqualTo(85000), reason: '首页 $home');
+    expect(home.area, lessThanOrEqualTo(76000), reason: '首页 $home');
 
     final showcase = await measure(tester, const Size(768, 1280), tab: '分类');
     // 分类页只开**磨砂**、关掉叠色（参考页整条栏都能看见被模糊的背景）：
     // 于是「深色 0…63.6dp 被 α=1 压色盖住、可以不算」这条省帧规则不成立 ——
     // 实测 σ(y) 阶梯从栏顶 0 起画并拉到整条栏 156dp，7 段（末段 σ=0.30 亚像素
-    // 已剔除）+ 导航 1 = 8 层 / 117,274dp²。搜索栏 / 胶囊行本身不再各挂
-    // backdrop，全栏只糊一次；这条**没有压色可省的整栏模糊**是这一形态的代价。
+    // 已剔除）+ 侧栏 1 = 8 层。搜索栏 / 胶囊行本身不再各挂 backdrop，
+    // 全栏只糊一次；这条**没有压色可省的整栏模糊**是这一形态的代价。
     expect(showcase.count, lessThanOrEqualTo(8), reason: '分类页 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(120000), reason: '分类页 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(105000), reason: '分类页 $showcase');
 
     final mine = await measure(tester, const Size(768, 1280), tab: '我的');
     expect(mine.count, lessThanOrEqualTo(6), reason: '我的 $mine');
-    // 同一处拉伸：6 段 / 53,610dp²（拉伸前 50,0xx）
-    expect(mine.area, lessThanOrEqualTo(55000), reason: '我的 $mine');
+    expect(mine.area, lessThanOrEqualTo(51000), reason: '我的 $mine');
   });
 
   testWidgets('深色·手机 393×856：模糊层数 / 面积预算', (tester) async {
@@ -85,11 +84,17 @@ void main() {
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
     // 桌面档：页面让出侧栏列（1000 − 120.9 = 879.1 宽），顶栏磨砂随之变窄，
-    // 侧栏自己只挂 1 层（95.4 × 177.1 = 16,896dp²）。合计 7 层 / 101,430dp²
-    // —— 与平板的 6~7 层同量级，说明「换形态」不是靠多加磨砂实现的。
+    // 侧栏自己只挂 1 层（95.4 × 177.1 = 16,896dp²）。首页合计
+    // 7 层 / 101,430dp² —— 与平板的 6~7 层同量级，说明「换形态」不是靠多加
+    // 磨砂实现的。
     final desktop = await measure(tester, const Size(1366, 768));
     expect(desktop.count, lessThanOrEqualTo(7), reason: '桌面 $desktop');
     expect(desktop.area, lessThanOrEqualTo(105000), reason: '桌面 $desktop');
+
+    // 分类页（无压色可省的整栏磨砂）：8 层 / 142,511dp²
+    final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
+    expect(showcase.count, lessThanOrEqualTo(8), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(146000), reason: '桌面分类 $showcase');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

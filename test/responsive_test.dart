@@ -197,6 +197,8 @@ void main() {
       await tester.pumpWidget(const DemoApp());
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      // 画面宽 393 ≤ 导航断点 600 → 仍是底部栏
+      expect(find.byType(MiGlassNavBar), findsOneWidget);
 
       final page = tester.getRect(find.byType(MockPage));
       expect(page.width, closeTo(393, 0.01));
@@ -212,8 +214,12 @@ void main() {
       expect(tester.takeException(), isNull);
 
       final page = tester.getRect(find.byType(MockPage));
-      // 舞台 = 窗口减两侧 24 留白：720×1232（旧策略这里是 393×856 的小手机）
-      expect(page.width, closeTo(720, 0.01));
+      // 舞台 = 窗口减两侧 24 留白：720×1232（旧策略这里是 393×856 的小手机）。
+      // 平板画面宽 720 > 导航断点 600 → 用侧栏，页面让出 120.9 的侧栏列。
+      expect(
+        page.width,
+        closeTo(720 - MiGlassSideNavMetrics.gutterWidth, 0.01),
+      );
       expect(page.height, closeTo(1232, 0.01));
       expect(page.left, greaterThanOrEqualTo(0));
       expect(page.right, lessThanOrEqualTo(768.01));

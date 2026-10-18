@@ -8,11 +8,16 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 // 内部画笔：只用来把「选中胶囊落在哪个槽位」读成数值（不属公开 API）。
 import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
 
-/// 桌面模式回归：侧边导航栏的几何 / 选中态 / 回调，以及示例应用在
-/// **桌面断点两侧**的导航形态切换（底部栏 ⇄ 侧栏）。
+/// 宽屏导航回归：侧边导航栏的几何 / 选中态 / 回调，以及示例应用在
+/// **导航断点两侧**的形态切换（底部栏 ⇄ 侧栏）。
+///
+/// 断点口径照抄 MReader 主壳层（`lib/ui/home_shell.dart`）：
+/// `LayoutBuilder` 读**外壳自己的容器宽**、`maxWidth > 600` 才切侧栏 ——
+/// 所以平板（中等宽）也用侧栏，只有手机竖屏 / 窄窗留底栏。
 ///
 /// 判据约定：
-///  * **形态唯一** = 任意窗口宽度下底部栏与侧栏**恰好出现一个**；
+///  * **形态唯一** = 任何容器宽下底部栏与侧栏**恰好出现一个**；
+///  * **边界严格大于** = 画面容器宽 600 → 底栏，602 → 侧栏；
 ///  * **布局不错位** = 页面左缘恰为侧栏列宽（`gutterWidth`）、侧栏左缘留白
 ///    25.5、贴顶，且不溢出（`takeException() == null`）；
 ///  * **行为一致** = 点条目回调的下标与页面切换结果和底部栏相同；
@@ -229,25 +234,88 @@ void main() {
     });
   });
 
-  group('桌面模式（DemoHome 导航形态切换）', () {
-    testWidgets('移动端 / 平板（< 桌面断点）：仍用底部导航栏', (tester) async {
+  group('导航形态断点（照 MReader：容器宽 > 600）', () {
+    test('usesSideNav 严格大于 600，与 MReader 的 maxWidth > 600 同口径', () {
+      expect(MiBreakpoints.navRail, 600);
+      expect(MiBreakpoints.usesSideNav(0), isFalse);
+      expect(MiBreakpoints.usesSideNav(393), isFalse);
+      expect(MiBreakpoints.usesSideNav(599.99), isFalse);
+      expect(MiBreakpoints.usesSideNav(600), isFalse, reason: '正好 600 仍走底栏');
+      expect(MiBreakpoints.usesSideNav(600.01), isTrue);
+      expect(MiBreakpoints.usesSideNav(768), isTrue, reason: '平板也用侧栏');
+      expect(MiBreakpoints.usesSideNav(1366), isTrue);
+    });
+
+    test('枚举口径：medium / expanded 都用侧栏（600 边界点除外）', () {
+      expect(MiWindowSize.compact.usesSideNav, isFalse);
+      expect(MiWindowSize.medium.usesSideNav, isTrue);
+      expect(MiWindowSize.expanded.usesSideNav, isTrue);
+      // 桌面档判定仍是 1024（只用于舞台加宽等桌面专属样式）
+      expect(MiBreakpoints.desktop, 1024);
+      expect(MiWindowSize.medium.isDesktop, isFalse);
+      expect(MiWindowSize.expanded.isDesktop, isTrue);
+    });
+  });
+
+  group('宽屏模式（DemoHome 导航形态切换）', () {
+    /// 在给定窗口尺寸下渲染示例，返回该窗口下画面的**容器宽**。
+    Future<double> frameWidth(WidgetTester tester, Size window) async {
+      setWindow(tester, window);
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: '$window');
+      return DemoStage.sizeFor(window).logical.width;
+    }
+
+    testWidgets('手机（画面 ≤ 600）：仍是底部导航栏', (tester) async {
       addTearDown(tester.view.reset);
 
-      for (final size in const [
-        Size(393, 856), // compact 手机
-        Size(768, 1280), // medium 平板
-        Size(1023, 768), // 断点下沿（仍属 medium）
+      for (final window in const [
+        Size(393, 856), // 参考机竖屏：画面 393
+        Size(260, 470), // 桌面小窗：画面等比缩到 260 宽
+        Size(648, 900), // 边界：画面正好 600 → 仍底栏
       ]) {
-        setWindow(tester, size);
-        await tester.pumpWidget(DemoApp(key: UniqueKey()));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull, reason: '$size');
-        expect(find.byType(MiGlassNavBar), findsOneWidget, reason: '$size');
-        expect(find.byType(MiGlassSideNavBar), findsNothing, reason: '$size');
+        final width = await frameWidth(tester, window);
+        expect(
+          width <= MiBreakpoints.navRail,
+          isTrue,
+          reason: '$window 的画面宽 $width 应落在底栏档',
+        );
+        expect(find.byType(MiGlassNavBar), findsOneWidget, reason: '$window');
+        expect(find.byType(MiGlassSideNavBar), findsNothing, reason: '$window');
       }
     });
 
-    testWidgets('桌面（≥ 桌面断点）：底部栏换成侧栏，页面让位且不错位', (tester) async {
+    testWidgets('平板 / 桌面（画面 > 600）：底部栏换成侧栏', (tester) async {
+      addTearDown(tester.view.reset);
+
+      for (final window in const [
+        Size(650, 900), // 边界上沿：画面 602 → 侧栏
+        Size(768, 1280), // 平板竖屏：画面 720
+        Size(1023, 768), // 中等宽：画面 975
+        Size(1366, 768), // 桌面：画面 1000（舞台上宽）
+      ]) {
+        final width = await frameWidth(tester, window);
+        expect(
+          width > MiBreakpoints.navRail,
+          isTrue,
+          reason: '$window 的画面宽 $width 应落在侧栏档',
+        );
+        expect(find.byType(MiGlassNavBar), findsNothing, reason: '$window');
+        expect(find.byType(MiGlassSideNavBar), findsOneWidget, reason: '$window');
+        // 页面让位、侧栏与页面都在画面内
+        final page = tester.getRect(find.byType(MockPage));
+        final rail = tester.getRect(find.byType(MiGlassSideNavBar));
+        expect(
+          page.left - rail.left,
+          closeTo(MiGlassSideNavMetrics.gutterWidth - MiGlassSideNavMetrics.railMargin, 0.01),
+          reason: '$window',
+        );
+        expect(page.right, lessThanOrEqualTo(window.width + 0.01), reason: '$window');
+      }
+    });
+
+    testWidgets('桌面 1366×768：侧栏姿势（贴顶 / 左留白）与页面尺寸', (tester) async {
       const window = Size(1366, 768);
       setWindow(tester, window);
       addTearDown(tester.view.reset);
@@ -256,8 +324,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(MiGlassNavBar), findsNothing);
-      expect(find.byType(MiGlassSideNavBar), findsOneWidget);
 
       // 舞台水平居中、宽度上限 1000；侧栏与页面都相对舞台定位
       final stageLeft = (window.width - DemoStage.wideMaxWidth) / 2;
@@ -287,7 +353,7 @@ void main() {
       expect(page.right, lessThanOrEqualTo(window.width + 0.01));
     });
 
-    testWidgets('桌面：条目点击切页（与底部栏同一份 items / 回调）', (tester) async {
+    testWidgets('侧栏：条目点击切页（与底部栏同一份 items / 回调）', (tester) async {
       setWindow(tester, const Size(1366, 768));
       addTearDown(tester.view.reset);
 
@@ -326,7 +392,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MiGlassSideNavBar), findsOneWidget);
 
-      // 在桌面档滚一段，记下位置
+      // 在侧栏档滚一段，记下位置
       await tester.drag(
         find.descendant(of: find.byType(MockPage), matching: find.byType(ListView)),
         const Offset(0, -320),
@@ -343,7 +409,14 @@ void main() {
       expect(find.byType(MiGlassSideNavBar), findsNothing);
       expect(pageScrollOffset(tester), closeTo(scrolled, 0.01));
 
-      // → 桌面：侧栏回来，位置依旧
+      // → 平板（侧栏档的另一个尺寸）：位置依旧
+      setWindow(tester, const Size(768, 1280));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(MiGlassSideNavBar), findsOneWidget);
+      expect(pageScrollOffset(tester), closeTo(scrolled, 0.01));
+
+      // → 桌面：同上
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

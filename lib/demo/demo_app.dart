@@ -175,126 +175,140 @@ class _DemoHomeState extends State<DemoHome> {
     // 舞台档（平板/桌面）圆角随画布尺寸小幅放粗，避免大方块上 44 显得过锐。
     final viewport = MiViewport.of(context);
     final radius = viewport.isCompact ? 44.0 : 56.0;
-
-    // **桌面模式**（视口 ≥ 桌面断点）：底部栏换成左侧悬浮侧栏，页面内容给
-    // 侧栏让位（左内边距 = 侧栏列宽），页边距/网格列数由容器宽自行重排。
-    // 切换是整棵子树替换、**不做淡入淡出**：`Opacity` / `AnimatedSwitcher`
-    // 会给含 `BackdropFilter` 的子树引入 saveLayer，磨砂会在切换期间消失
-    // （本项目已实测的坑，切 tab 也是同理瞬时切换）。
-    final desktop = viewport.isDesktop;
     // 页底色（侧栏那一列与页面同底，避免宽屏上出现一道拼接缝）。
     final pageBg = light ? const Color(0xFFF3F3F3) : const Color(0xFF000000);
 
     return Scaffold(
       backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
       body: DemoStage(
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            // 桌面档：侧栏那一列改用**页底色**（页面只占右侧内容列），否则
-            // 深色下这一列会是 #0E0E11、与页面 #000000 之间出现一道竖缝。
-            color: desktop
-                ? pageBg
-                : (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11)),
-            borderRadius: BorderRadius.circular(radius),
-            boxShadow: const [
-              BoxShadow(color: Colors.black54, blurRadius: 40, offset: Offset(0, 16)),
-            ],
-          ),
-          // Stack 子级一律 Positioned，且页面恒为第一个子级（索引稳定）：
-          // 手机 ↔ 桌面切换时 MockPage 的 Element 不重建（滚动位置与页内
-          // 状态保留），只是左缘从 0 变成侧栏列宽。
-          child: Stack(
-            children: [
-              Positioned(
-                left: desktop ? MiGlassSideNavMetrics.gutterWidth : 0,
-                top: 0,
-                right: 0,
-                bottom: 0,
-                // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
-                //  `FadeTransition` 会给整页套一层 `Opacity` → 引入 saveLayer，
-                //  而 saveLayer 会让下层 `BackdropFilter` 的 backdrop 变空
-                //  （本项目已实测的坑）—— 切页的 260ms 里旧页磨砂直接消失、
-                //  还多算一份 5 段全宽高斯（实测模糊层 7 → 9、另有 6 层 opacity）。
-                //  底部 tab 惯例也是瞬时切换，参考 App 同款。
-                child: MockPage(
-                  _index,
-                  key: ValueKey(_index),
-                  themeMode: widget.themeMode,
-                  onThemeModeChanged: widget.onThemeModeChanged,
-                ),
+        // 导航形态按**画面自己的容器宽**判（`LayoutBuilder` 的
+        // `constraints.maxWidth`），不读窗口宽 —— 与 MReader 主壳层
+        // （`lib/ui/home_shell.dart`：`LayoutBuilder` + `maxWidth > 600`）
+        // 同一做法。差别只在这里的画布可能被等比缩小或嵌在手机框里：
+        // 手机框 393 再宽的窗口也不摆侧栏，舞台 720/1000 就摆。
+        // 断点 `MiBreakpoints.navRail` = 600，**严格大于**才切侧栏。
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final sideNav = MiBreakpoints.usesSideNav(constraints.maxWidth);
+            return Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                // 侧栏形态：侧栏那一列改用**页底色**（页面只占右侧内容列），
+                // 否则深色下这一列会是 #0E0E11、与页面 #000000 之间出现竖缝。
+                color: sideNav
+                    ? pageBg
+                    : (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11)),
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black54,
+                    blurRadius: 40,
+                    offset: Offset(0, 16),
+                  ),
+                ],
               ),
-              if (desktop)
-                // 侧栏贴顶对齐、距窗口左缘与顶缘各一档留白（与底部栏距屏底
-                // 一档留白同一口径）；栏体自身收缩到内容高。
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: MiGlassSideNavMetrics.gutterWidth,
-                  child: Padding(
-                    padding: const EdgeInsets.only(
-                      left: MiGlassSideNavMetrics.railMargin,
-                      top: MiGlassSideNavMetrics.railMargin,
+              // Stack 子级一律 Positioned，且页面恒为第一个子级（索引稳定）：
+              // 底栏 ⇄ 侧栏切换时 MockPage 的 Element 不重建（滚动位置与页内
+              // 状态保留），只是左缘从 0 变成侧栏列宽。
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: sideNav ? MiGlassSideNavMetrics.gutterWidth : 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
+                    //  `FadeTransition` 会给整页套一层 `Opacity` → 引入
+                    //  saveLayer，而 saveLayer 会让下层 `BackdropFilter` 的
+                    //  backdrop 变空（本项目已实测的坑）—— 切页的 260ms 里旧页
+                    //  磨砂直接消失、还多算一份 5 段全宽高斯（实测模糊层
+                    //  7 → 9、另有 6 层 opacity）。底部 tab 惯例也是瞬时切换，
+                    //  参考 App 同款。
+                    child: MockPage(
+                      _index,
+                      key: ValueKey(_index),
+                      themeMode: widget.themeMode,
+                      onThemeModeChanged: widget.onThemeModeChanged,
                     ),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: MiGlassSideNavBar(
+                  ),
+                  if (sideNav)
+                    // 侧栏贴顶对齐、距画面左缘与顶缘各一档留白（与底部栏距
+                    // 屏底一档留白同一口径）；栏体自身收缩到内容高。
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: MiGlassSideNavMetrics.gutterWidth,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: MiGlassSideNavMetrics.railMargin,
+                          top: MiGlassSideNavMetrics.railMargin,
+                        ),
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: MiGlassSideNavBar(
+                            items: items,
+                            selectedIndex: _index,
+                            onTap: (i) => setState(() => _index = i),
+                            themeMode: widget.themeMode,
+                          ),
+                        ),
+                      ),
+                    )
+                  else ...[
+                    // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起
+                    // 24.2dp，与参考 App 一致）。
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 24.2, // measured: bar sits 24.2 dp above bottom
+                      child: MiGlassNavBar(
                         items: items,
                         selectedIndex: _index,
                         onTap: (i) => setState(() => _index = i),
                         themeMode: widget.themeMode,
-                      ),
-                    ),
-                  ),
-                )
-              else ...[
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 24.2, // measured: bar bottom sits 24.2 dp above screen bottom
-                  child: MiGlassNavBar(
-                    items: items,
-                    selectedIndex: _index,
-                    onTap: (i) => setState(() => _index = i),
-                    themeMode: widget.themeMode,
-                    // 预留空位圆钮：仅选中「首页」时显示（切走收起）
-                    fab: MiGlassNavFab(
-                      tabIndex: 0,
-                      onTap: () =>
-                          ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('圆形按钮被点击'),
-                          duration: Duration(milliseconds: 800),
+                        // 预留空位圆钮：仅选中「首页」时显示（切走收起）
+                        fab: MiGlassNavFab(
+                          tabIndex: 0,
+                          onTap: () =>
+                              ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('圆形按钮被点击'),
+                              duration: Duration(milliseconds: 800),
+                            ),
+                          ),
+                          child: CustomPaint(
+                            painter: GridDotsIconPainter(Colors.white),
+                            size: const Size.square(18.2),
+                          ),
                         ),
                       ),
-                      child: CustomPaint(
-                        painter: GridDotsIconPainter(Colors.white),
-                        size: const Size.square(18.2),
+                    ),
+                    // home indicator (phone chrome, not part of the nav bar)
+                    // 侧栏形态没有手机 Home 指示条（那一档不是"物理手机"
+                    // 画面）——只有底栏形态才是。
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 9,
+                      child: Center(
+                        child: Container(
+                          width: 138,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: light
+                                ? const Color(0xFF959595)
+                                : const Color(0xD9FFFFFF),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                // home indicator (phone chrome, not part of the nav bar)
-                // 桌面模式没有手机 Home 指示条（那一档不是"物理手机"画面）。
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 9,
-                  child: Center(
-                    child: Container(
-                      width: 138,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: light ? const Color(0xFF959595) : const Color(0xD9FFFFFF),
-                        borderRadius: BorderRadius.circular(2.5),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

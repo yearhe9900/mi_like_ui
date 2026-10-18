@@ -6,16 +6,16 @@
 - 节奏：每个任务完成即 git commit；`flutter analyze` / `flutter test` 由 agent 执行（用户 2026-10-17 明确）；工作区不留未提交改动。改样式后必须 `flutter test --update-goldens test/preview_capture_test.dart`。
 
 ## 响应式（`src/utils/responsive.dart`）
-- **两级断点**：① 窗口宽 `MiViewport.of(context)` / `MiBreakpoints.ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）→ 页面形态；② **容器宽** `MiResponsiveGrid.compactMax/mediumMax` → 网格列数。
+- **三处断点各管一件事**：① 窗口宽 `MiViewport` / `ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）→ 外壳是否把画面加宽；② **画面容器宽** `MiBreakpoints.usesSideNav(w) = w > 600` → 导航形态（底栏 vs 侧栏，见下）；③ **内容容器宽** `MiResponsiveGrid.compactMax/mediumMax` → 网格列数。混用会出错（限宽画布够不到窗口断点；手机框嵌宽窗口不该摆侧栏）。
 - `MiScaledCanvas.scaleFor = clamp(min(1, 可用宽/设计宽, 可用高/设计高), minScale, maxScale)`：只缩不放、宽高同比例；`scale == 1` 走原样路径（零变换层，黄金图像素稳定）。
 - 示例外壳 `DemoStage`（demo_app.dart，纯函数 `DemoStage.sizeFor(Size)→{logical,rendered}` 可单测）：**只有 compact 是"物理手机"**（等比缩 393×856，手机全屏 1:1）；**medium/expanded 铺成内容舞台** = `min(max(可用宽,393),1000) × max(可用高,480)`。2026-10-17 平板实机：medium 若 1x 居中，屏里手机只占 64% 高、上下留 170/240px 纯黑。
 - 内容断点：主题卡 3/4/6 列、展示位 4/6/8 列；非 compact 页边距统一 24（compact 用实测 11.9/20）。
-- **桌面模式（2026-10-18，`MiGlassSideNavBar`）**：视口 ≥ `MiBreakpoints.desktop`（= 1024，与 `medium` 上界同源；判定口 `MiWindowSize.isDesktop` / `MiViewport.isDesktop`）时底部栏换侧栏，mobile/平板仍底部栏。侧栏与底部栏**共用 `MiGlassNavItem` / `selectedIndex` / `onTap`**（示例传同一份 items）→ 图标、选中态、跳转零差异；动效 token 也全复用（只把轴换纵向）。
+- **宽屏模式（2026-10-18，`MiGlassSideNavBar`）**：判定照 MReader 主壳层（`MReader/lib/ui/home_shell.dart`）—— `LayoutBuilder` 读**外壳自己的 `constraints.maxWidth`**，`> kShellRailBreakpoint`（**600**）切侧栏（`MiBreakpoints.navRail` + `usesSideNav(width)`，严格大于；`MiWindowSize.usesSideNav` 是枚举口径）。所以**平板也用侧栏**、只有手机/窄窗留底栏；`MiBreakpoints.desktop`（1024）只留给桌面专属样式（舞台加宽/网格 6-8 列）。侧栏与底部栏**共用 `MiGlassNavItem` / `selectedIndex` / `onTap`**（示例传同一份 items）→ 图标、选中态、跳转零差异；动效 token 也全复用（只把轴换纵向）。
   - **几何全部「推导（非实测）」**（无侧栏样张）：栏宽 95.4 = 实测格宽 82.2 + 2×内边距 6.6、条目高 49.3 = 实测胶囊高、条目间距 8（spaceSm）、左/顶留白 25.5 = `barMarginH`；图标墨盒/间距与底栏一字不改。`railHeightFor(n) = 2×6.6 + n×49.3 + (n−1)×8`（3 项 = 177.1）。
   - 胶囊中心 = `railInnerPad + itemHeight/2 + pitch×pos`（**不是** `pitch×(pos+0.5)`，否则整体下移 gap/2 = 4dp）；pitch = itemHeight + gap；首尾按 `railInnerPad` 夹紧。
   - 刻意的两处差异：**不做 fab**（横向空位腾挪无纵向等价语义）；**栏体收缩到内容高、位置由宿主给**（示例贴顶 25.5 + 左 25.5）。
-  - 示例布局：页面恒为 `Stack` 第一个 `Positioned`（`left: desktop ? gutterWidth : 0`），仅改左缘 → 跨断点切换 `Element` 不重建、滚动位置保留；桌面档外壳底色改成页底色（否则深色下 gutter 与页面之间有一道竖缝）。
-  - 预算：桌面 1366×768 深色 **7 层 / 101,430 dp²**（页面列窄到 879.1 + 侧栏 1 层 16,896）。
+  - 示例布局：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned`（`left: sideNav ? gutterWidth : 0`），仅改左缘 → 跨断点切换 `Element` 不重建、滚动位置保留；侧栏档外壳底色改成页底色（否则深色下 gutter 与页面之间有一道竖缝）。手机 Home 指示条只在底栏形态出现。
+  - 预算：桌面 1366×768 深色 **7 层 / 101,430 dp²**（页面列 879.1 + 侧栏 1 层 16,896）；平板 768×1280（页面列 599.1）首页 7/73,831、我的 6/49,527、分类 8/102,501。
 
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
