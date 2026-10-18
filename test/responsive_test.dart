@@ -228,12 +228,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
-      // 手机 → 桌面：画面加宽成内容舞台
+      // 手机 → 桌面：画面加宽成内容舞台，且底部栏换成侧栏 —— 页面只占
+      //「舞台宽 − 侧栏列宽」，内容仍在该列里按容器宽重排。
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final wide = tester.getRect(find.byType(MockPage));
-      expect(wide.width, closeTo(DemoStage.wideMaxWidth, 0.01));
+      expect(
+        wide.width,
+        closeTo(DemoStage.wideMaxWidth - MiGlassSideNavMetrics.gutterWidth, 0.01),
+      );
 
       // 桌面 → 小窗：又缩回等比 contain
       setWindow(tester, const Size(240, 400));

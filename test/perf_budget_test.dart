@@ -82,6 +82,16 @@ void main() {
     expect(phone.area, lessThanOrEqualTo(53000), reason: '首页 $phone');
   });
 
+  testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
+    addTearDown(tester.view.reset);
+    // 桌面档：页面让出侧栏列（1000 − 120.9 = 879.1 宽），顶栏磨砂随之变窄，
+    // 侧栏自己只挂 1 层（95.4 × 177.1 = 16,896dp²）。合计 7 层 / 101,430dp²
+    // —— 与平板的 6~7 层同量级，说明「换形态」不是靠多加磨砂实现的。
+    final desktop = await measure(tester, const Size(1366, 768));
+    expect(desktop.count, lessThanOrEqualTo(7), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(105000), reason: '桌面 $desktop');
+  });
+
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(768 * 2, 1280 * 2);

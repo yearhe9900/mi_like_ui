@@ -112,6 +112,71 @@ void main() {
     );
   });
 
+  testWidgets('README preview: side nav closeups (dark & light)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(196 * 2, 236 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 背景必须是**高频内容**（彩条 + 色块）才能看出磨砂：平坦色在模糊下不变。
+    Widget frame(MiThemeMode mode) {
+      final ink = MiColors.foregroundFor(mode);
+      final items = [
+        MiGlassNavItem(label: '首页', painter: RollerIconPainter(ink)),
+        MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
+        MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(ink)),
+      ];
+      return MaterialApp(
+        theme: mode == MiThemeMode.light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Column(
+                  children: [
+                    for (final c in const [
+                      Color(0xFF2E3A8C),
+                      Color(0xFF7B4DBE),
+                      Color(0xFFD06A8A),
+                      Color(0xFF00B4DB),
+                      Color(0xFF11998E),
+                      Color(0xFFFF512F),
+                    ])
+                      Expanded(child: ColoredBox(color: c)),
+                  ],
+                ),
+              ),
+              Center(
+                child: MiGlassSideNavBar(
+                  items: items,
+                  selectedIndex: 0,
+                  onTap: (_) {},
+                  themeMode: mode,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byType(MiGlassSideNavBar),
+      matchesGoldenFile('../doc/preview/nav_side_dark.png'),
+    );
+
+    await tester.pumpWidget(frame(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byType(MiGlassSideNavBar),
+      matchesGoldenFile('../doc/preview/nav_side_light.png'),
+    );
+  });
+
   testWidgets('README preview: dark & light demo pages', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     // 参考机逻辑尺寸：示例外壳在 393×856 下 1:1 铺满，预览图即完整手机画面
@@ -143,7 +208,12 @@ void main() {
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
-    Future<void> capture(Size logical, String file, {bool showcase = false}) async {
+    Future<void> capture(
+      Size logical,
+      String file, {
+      bool showcase = false,
+      bool light = false,
+    }) async {
       // 每次换窗口尺寸都重建 App，避免复用上一档的 State（_index / _tab）。
       tester.view.devicePixelRatio = 2.0;
       tester.view.physicalSize = logical * 2;
@@ -151,6 +221,13 @@ void main() {
       await tester.pumpAndSettle();
       if (showcase) {
         await tester.tap(find.text('分类').last);
+        await tester.pumpAndSettle();
+      }
+      if (light) {
+        // 模式切换入口在「我的」页顶部
+        await tester.tap(find.text('我的').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(Switch));
         await tester.pumpAndSettle();
       }
       await expectLater(find.byType(DemoHome), matchesGoldenFile(file));
@@ -175,6 +252,12 @@ void main() {
       const Size(1366, 768),
       '../doc/preview/adaptive_desktop_showcase.png',
       showcase: true,
+    );
+    // expanded + 浅色：侧栏在浅底上的玻璃体 / 投影（验证无拼接缝）
+    await capture(
+      const Size(1366, 768),
+      '../doc/preview/adaptive_desktop_light.png',
+      light: true,
     );
   });
 
