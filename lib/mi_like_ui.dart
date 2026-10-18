@@ -27,6 +27,8 @@ export 'src/theme/top_bar_tokens.dart';
 // ── 组件层 ────────────────────────────────────────────────────────────────
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar.dart';
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar_metrics.dart';
+export 'src/components/navigation/glass_side_nav_bar/side_nav_bar.dart';
+export 'src/components/navigation/glass_side_nav_bar/side_nav_bar_metrics.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar_metrics.dart';
 export 'src/components/navigation/top_bar/top_bar.dart';

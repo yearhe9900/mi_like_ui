@@ -24,6 +24,13 @@ enum MiWindowSize {
 
   /// 是否给出了「单列手机」以外的布局空间。
   bool get isWide => this == MiWindowSize.expanded;
+
+  /// 是否达到**桌面断点**（视口宽 ≥ [MiBreakpoints.desktop]）。
+  ///
+  /// 桌面模式（如把底部导航栏换成侧边导航栏）按这个判定；它与
+  /// [isExpanded] 恒等（[MiBreakpoints.desktop] 就是 expanded 的下界），
+  /// 单独起名只是让调用点写「桌面」而不是「expanded 档」。
+  bool get isDesktop => this == MiWindowSize.expanded;
 }
 
 /// 断点常量与判定函数（**纯函数**，无 context 依赖，可直接单测）。
@@ -40,8 +47,14 @@ class MiBreakpoints {
   /// compact 上界（不含）：`width < 600` 即 compact。
   static const double compact = 600;
 
+  /// **桌面断点**：视口宽 ≥ 该值即进入桌面布局（侧边导航栏 / 宽屏内容舞台）。
+  ///
+  /// 桌面模式（`MiViewport.isDesktop`）与网格的 expanded 档共用这一个数：
+  /// 它就是 medium 档的上界，两处同源避免「导航切了、网格没切」。
+  static const double desktop = 1024;
+
   /// medium 上界（不含）：`600 ≤ width < 1024` 即 medium。
-  static const double medium = 1024;
+  static const double medium = desktop;
 
   /// 按宽度判档。
   static MiWindowSize ofWidth(double width) {
@@ -105,6 +118,10 @@ class MiViewport {
   bool get isCompact => windowSize.isCompact;
   bool get isMedium => windowSize.isMedium;
   bool get isExpanded => windowSize.isExpanded;
+
+  /// 是否进入桌面布局（视口宽 ≥ [MiBreakpoints.desktop]）。
+  /// 示例里用它把底部导航栏换成侧边导航栏。
+  bool get isDesktop => windowSize.isDesktop;
 
   @override
   bool operator ==(Object other) =>

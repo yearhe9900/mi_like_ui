@@ -165,6 +165,8 @@ class _DemoHomeState extends State<DemoHome> {
     final light = widget.themeMode == MiThemeMode.light;
     // 图标墨色随模式（与导航栏标签一致）
     final ink = MiColors.foregroundFor(widget.themeMode);
+    // 导航条目**只有一份**：底部栏与侧栏吃同一份 items，图标 / 标签 /
+    // 选中下标 / onTap 全部同源 —— 换布局不会让任何一项产生差异。
     final items = [
       MiGlassNavItem(label: '首页', painter: RollerIconPainter(ink)),
       MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
@@ -174,21 +176,41 @@ class _DemoHomeState extends State<DemoHome> {
     final viewport = MiViewport.of(context);
     final radius = viewport.isCompact ? 44.0 : 56.0;
 
+    // **桌面模式**（视口 ≥ 桌面断点）：底部栏换成左侧悬浮侧栏，页面内容给
+    // 侧栏让位（左内边距 = 侧栏列宽），页边距/网格列数由容器宽自行重排。
+    // 切换是整棵子树替换、**不做淡入淡出**：`Opacity` / `AnimatedSwitcher`
+    // 会给含 `BackdropFilter` 的子树引入 saveLayer，磨砂会在切换期间消失
+    // （本项目已实测的坑，切 tab 也是同理瞬时切换）。
+    final desktop = viewport.isDesktop;
+    // 页底色（侧栏那一列与页面同底，避免宽屏上出现一道拼接缝）。
+    final pageBg = light ? const Color(0xFFF3F3F3) : const Color(0xFF000000);
+
     return Scaffold(
       backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
       body: DemoStage(
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11),
+            // 桌面档：侧栏那一列改用**页底色**（页面只占右侧内容列），否则
+            // 深色下这一列会是 #0E0E11、与页面 #000000 之间出现一道竖缝。
+            color: desktop
+                ? pageBg
+                : (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11)),
             borderRadius: BorderRadius.circular(radius),
             boxShadow: const [
               BoxShadow(color: Colors.black54, blurRadius: 40, offset: Offset(0, 16)),
             ],
           ),
+          // Stack 子级一律 Positioned，且页面恒为第一个子级（索引稳定）：
+          // 手机 ↔ 桌面切换时 MockPage 的 Element 不重建（滚动位置与页内
+          // 状态保留），只是左缘从 0 变成侧栏列宽。
           child: Stack(
             children: [
-              Positioned.fill(
+              Positioned(
+                left: desktop ? MiGlassSideNavMetrics.gutterWidth : 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
                 // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
                 //  `FadeTransition` 会给整页套一层 `Opacity` → 引入 saveLayer，
                 //  而 saveLayer 会让下层 `BackdropFilter` 的 backdrop 变空
@@ -202,48 +224,75 @@ class _DemoHomeState extends State<DemoHome> {
                   onThemeModeChanged: widget.onThemeModeChanged,
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 24.2, // measured: bar bottom sits 24.2 dp above screen bottom
-                child: MiGlassNavBar(
-                  items: items,
-                  selectedIndex: _index,
-                  onTap: (i) => setState(() => _index = i),
-                  themeMode: widget.themeMode,
-                  // 预留空位圆钮：仅选中「首页」时显示（切走收起）
-                  fab: MiGlassNavFab(
-                    tabIndex: 0,
-                    onTap: () =>
-                        ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('圆形按钮被点击'),
-                        duration: Duration(milliseconds: 800),
+              if (desktop)
+                // 侧栏贴顶对齐、距窗口左缘与顶缘各一档留白（与底部栏距屏底
+                // 一档留白同一口径）；栏体自身收缩到内容高。
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: MiGlassSideNavMetrics.gutterWidth,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: MiGlassSideNavMetrics.railMargin,
+                      top: MiGlassSideNavMetrics.railMargin,
+                    ),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: MiGlassSideNavBar(
+                        items: items,
+                        selectedIndex: _index,
+                        onTap: (i) => setState(() => _index = i),
+                        themeMode: widget.themeMode,
                       ),
                     ),
-                    child: CustomPaint(
-                      painter: GridDotsIconPainter(Colors.white),
-                      size: const Size.square(18.2),
+                  ),
+                )
+              else ...[
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 24.2, // measured: bar bottom sits 24.2 dp above screen bottom
+                  child: MiGlassNavBar(
+                    items: items,
+                    selectedIndex: _index,
+                    onTap: (i) => setState(() => _index = i),
+                    themeMode: widget.themeMode,
+                    // 预留空位圆钮：仅选中「首页」时显示（切走收起）
+                    fab: MiGlassNavFab(
+                      tabIndex: 0,
+                      onTap: () =>
+                          ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('圆形按钮被点击'),
+                          duration: Duration(milliseconds: 800),
+                        ),
+                      ),
+                      child: CustomPaint(
+                        painter: GridDotsIconPainter(Colors.white),
+                        size: const Size.square(18.2),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              // home indicator (phone chrome, not part of the nav bar)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 9,
-                child: Center(
-                  child: Container(
-                    width: 138,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: light ? const Color(0xFF959595) : const Color(0xD9FFFFFF),
-                      borderRadius: BorderRadius.circular(2.5),
+                // home indicator (phone chrome, not part of the nav bar)
+                // 桌面模式没有手机 Home 指示条（那一档不是"物理手机"画面）。
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 9,
+                  child: Center(
+                    child: Container(
+                      width: 138,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: light ? const Color(0xFF959595) : const Color(0xD9FFFFFF),
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
