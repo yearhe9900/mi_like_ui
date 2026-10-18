@@ -30,6 +30,16 @@
 
 ### Added
 
+- **桌面模式：底部导航栏换成侧边导航栏**（`MiGlassSideNavBar`）
+  - 新增组件 `src/components/navigation/glass_side_nav_bar/`（widget + metrics + painter），经 barrel 导出 `MiGlassSideNavBar` / `MiGlassSideNavMetrics`
+  - **同语义纵向版**：条目类型沿用 `MiGlassNavItem`（标签 + 图标 painter），选中态同为「胶囊透镜」、`onTap(index)` 语义不变 —— 示例里底部栏与侧栏吃**同一份 items / selectedIndex / onTap**，图标、选中反馈与跳转行为零差异
+  - **同配方**：玻璃材质（`MiGlassPalette` + `MiTransparencyTokens.blurSigma`，整条栏只挂 1 个 `BackdropFilter`）与动效（`MiGlassNavMetrics` 的飞行 easeOutSine、settle 波形、按压缩圈 3%/7.5%、拖拽果冻）全部复用底部栏 token，仅把轴换成纵向（飞 x→y、果冻「宽拉伸+高压缩」→「高拉伸+宽压缩」）
+  - **几何全部「推导（非实测）」**（参考素材没有侧栏样张）：栏宽 95.4 = 实测格宽 82.2 + 2×内边距 6.6、条目高 49.3 = 实测胶囊高、条目间距 8、栏体到左缘留白 25.5 = 实测 `barMarginH`、图标墨盒 / 间距与底部栏完全一致；换算表写在 `side_nav_bar_metrics.dart` 类注释
+  - **两处刻意差异**：不做预留空位圆钮（横向空位腾挪在纵向无等价语义）；栏体竖向收缩到内容高、位置由宿主给（示例贴顶 + 距左缘 25.5）
+  - `MiBreakpoints.desktop`（= 1024，与 `medium` 上界同源）+ `MiWindowSize.isDesktop` / `MiViewport.isDesktop` 作为桌面模式判定口
+  - 示例 `DemoHome`：桌面档 `Row` 式布局 —— 侧栏占左侧 120.9dp 列（贴顶、距左缘/顶缘各 25.5），页面左缘从 0 变成该列宽（页面恒为 `Stack` 第一个子级，跨断点切换时 `Element` 不重建、滚动位置保留）；手机 / 平板仍用底部栏；手机 Home 指示条只在移动端出现
+  - 切换不做淡入淡出（`Opacity`/`AnimatedSwitcher` 会给含 `BackdropFilter` 的子树引入 saveLayer → 磨砂整段消失，本项目已知坑）
+  - 新增 `test/desktop_nav_test.dart`（侧栏几何 / 选中槽位 / 点按与拖拽回调 / 单层磨砂 / 断点两侧形态唯一 / 桌面页面让位与贴顶留白 / 跨断点来回切换保留滚动位置），`perf_budget_test` 追加桌面档预算（7 层 / 101,430 dp²），预览图新增 `nav_side_dark|light.png` 与 `adaptive_desktop_light.png`
 - **MiTopBar 通用化：头部区（顶栏自己产出搜索栏 / 胶囊行）** —— 顶栏由「标题区 + 头部区」上下拼成，两区可自由组合
   - **声明式入参（默认路径，调用方不 new 组件）**：`searchHint` / `onSearchTap` → 顶栏内部构造 `MiSearchBar`；`tabs` / `selectedTab` / `onTabChanged` → 内部构造 `MiPillTabBar`。明暗配方由顶栏解析后的 `themeMode` 统一下发（页面不必再各传一遍 `themeMode`），`onTabChanged` 为空时胶囊只展示不可切换
   - **同名插槽（逃生口，与声明式入参二选一）**：`searchBar` / `tabBar` 传现成组件换皮，排版与让位完全相同；`searchBarHeight` / `tabBarHeight` 用于声明插槽高度（默认 44.1 / 39.9，声明式入参时恒等于组件自身高度）

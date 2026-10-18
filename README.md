@@ -3,7 +3,8 @@
 小米风格可扩展 UI 组件框架（Flutter）。
 
 以像素级实测还原小米系视觉与动效，沉淀为分层清晰、可持续扩充的组件库。
-当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）、`MiPillTabBar`
+当前已落地 `MiGlassNavBar`（玻璃悬浮底部导航栏）、`MiGlassSideNavBar`
+（同一套玻璃配方的**侧边**导航栏，桌面模式替身）、`MiPillTabBar`
 （胶囊分类标签行）、`MiButton`（胶囊按钮）、`MiSearchBar`（搜索栏，
 透明磨砂参数与导航栏同源）、`MiTopBar`（大标题折叠顶部导航栏，
 渐进磨砂材质 + 逐帧实测折叠曲线）与 `MiThemeCard`（竖向预览卡片，
@@ -18,6 +19,33 @@
 ### 浅色
 
 <img src="doc/preview/demo_light.png" width="240" alt="浅色模式 demo 整页" /> <img src="doc/preview/nav_light.png" width="360" alt="浅色模式导航栏特写" />
+
+### 组件：侧边导航栏（MiGlassSideNavBar，桌面模式）
+
+底部栏的**同语义纵向版**：视口宽达到桌面断点（`MiBreakpoints.desktop` = 1024dp，
+判定口 `MiViewport.isDesktop`）时把底部栏换成左侧悬浮侧栏；移动端/平板仍用底部栏。
+两者吃**同一份 `MiGlassNavItem`**（标签 + 图标 painter）、同一个 `selectedIndex`
+与同一个 `onTap(index)`，选中态同为「胶囊透镜」，所以图标、选中反馈与跳转行为
+一字不改。
+
+玻璃配方、`BackdropFilter` 的 σ、飞行 / 弹性沉降 / 按压缩圈 / 拖拽吸附的曲线
+与时长全部复用底部栏的 token（`MiGlassPalette`、`MiTransparencyTokens`、
+`MiGlassNavMetrics`），只把**轴换成纵向**：飞行方向由 x 变 y，果冻形变由
+「宽拉伸 + 高压缩」变「高拉伸 + 宽压缩」。几何值均为**推导（非实测）**——
+参考素材里没有侧栏样张，故全部由底部栏已实测 token 换算（栏宽 = 一格 82.2 +
+两侧内边距 6.6 = 95.4，条目高 = 胶囊高 49.3，图标墨盒 / 间距一字不改），
+换算表见 `side_nav_bar_metrics.dart`。
+
+两处刻意差异：**不做预留空位圆钮**（那套「栏体平移让位」是横向一排 tab 的
+空位腾挪，侧栏无等价语义）；**栏体竖向收缩到内容高、贴顶摆放**（对应底部栏
+「栏宽 = 内容宽、位置由宿主给」的同构做法，示例贴顶 + 距左缘 25.5dp）。
+
+形态切换是整棵子树替换、**不做淡入淡出**：`Opacity` / `AnimatedSwitcher` 会给
+含 `BackdropFilter` 的子树引入 saveLayer，切换期间磨砂会整段消失（本项目实测
+过的坑）。示例里页面恒为第一个 `Stack` 子级、只改左缘（0 → 侧栏列宽 120.9dp），
+所以跨断点来回改窗口尺寸时页面的 `Element` 不重建、滚动位置不丢。
+
+<img src="doc/preview/nav_side_light.png" width="150" alt="浅色侧边导航栏特写" /> <img src="doc/preview/nav_side_dark.png" width="150" alt="深色侧边导航栏特写" />
 
 ### 组件：胶囊分类标签行
 
@@ -107,20 +135,22 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 框架层 `src/utils/responsive.dart` 提供断点判定与等比缩放画布，示例层
 `DemoStage` 用它们把「物理手机画面」摆进任意窗口。**两级断点**分工明确：
 
-| 档位 | 窗口逻辑宽 | 示例外壳（`DemoStage`） | 内容网格列数（主题卡 / 展示位） |
-|---|---|---|---|
-| compact | < 600dp | 393×856 设计画布**等比缩小**到放得下（手机全屏时正好 1:1、零留白） | 3 / 4 |
-| medium | 600…1023dp | 画面**铺成内容舞台**（宽 = 可用宽、高 = 可用高，四周 24dp） | 4 / 6 |
-| expanded | ≥ 1024dp | 同上，宽度上限 1000dp（桌面端不让内容无限拉宽） | 6 / 8 |
+| 档位 | 窗口逻辑宽 | 示例外壳（`DemoStage`） | 内容网格列数（主题卡 / 展示位） | 导航形态 |
+|---|---|---|---|---|
+| compact | < 600dp | 393×856 设计画布**等比缩小**到放得下（手机全屏时正好 1:1、零留白） | 3 / 4 | 底部栏 |
+| medium | 600…1023dp | 画面**铺成内容舞台**（宽 = 可用宽、高 = 可用高，四周 24dp） | 4 / 6 | 底部栏 |
+| expanded | ≥ 1024dp | 同上，宽度上限 1000dp（桌面端不让内容无限拉宽） | 6 / 8 | **侧边栏**（页面让出 120.9dp 列宽） |
 
 > 平板不再是一个 1x 居中的小手机：medium 档也铺成内容舞台，内容宽随屏幕增大，
 > 网格从 3 列升到 4 列 —— 是**重新布局**，而不是把手机画面等比拉大（拉大后
 > 1dp 实测值会失去物理意义）。2026-10-17 平板实机反馈：旧策略下 650×1138 的
 > 屏幕里手机框只占 64% 高、上下各留 170/240px 纯黑。
 
-- **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）决定页面形态；
-  **容器断点**（`MiResponsiveGrid.compactMax / mediumMax`，示例取 520 / 800）
+- **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）决定页面形态与导航形态
+  （桌面 = 侧栏，其余 = 底部栏）；**容器断点**
+  （`MiResponsiveGrid.compactMax / mediumMax`，示例取 520 / 800）
   决定网格列数 —— 限宽画布里的容器永远够不到窗口断点，两者混用会让宽屏换不到列。
+  页面让出侧栏列宽后内容变窄，网格按**新的容器宽**自行重排，不需要额外断点。
 - **只缩不放、宽高同比例**：`MiScaledCanvas.scaleFor` 取
   `min(1, 可用宽/设计宽, 可用高/设计高)` → 不溢出、不变形；`scale == 1` 时走
   原样路径、不加任何变换层（黄金图逐像素稳定），缩小走 `FittedBox` 矢量重绘。
@@ -132,9 +162,15 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 
 验证：`test/responsive_test.dart` —— 断点边界、`scaleFor` 纯函数、三档外壳尺寸、
 260×470 小窗与 1366×768 桌面端的实际渲染（无溢出 + 关键部件在窗口内 + 宽高比
-不变）、窗口尺寸热切换、网格 3/4/6 与 4/6/8 列。
+不变）、窗口尺寸热切换、网格 3/4/6 与 4/6/8 列；`test/desktop_nav_test.dart` ——
+侧栏几何/选中槽位/回调、断点两侧导航形态唯一、桌面页面让位与贴顶留白、跨断点
+来回切换后滚动位置保留。
 
-<img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856：1:1" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470：整机等比缩小" /> <img src="doc/preview/adaptive_tablet.png" width="180" alt="平板 800×1000：1x 居中" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768：加宽舞台，主题卡 6 列" />
+<img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856：1:1" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470：整机等比缩小" /> <img src="doc/preview/adaptive_tablet.png" width="180" alt="平板 800×1000：内容舞台" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768：侧边栏 + 加宽舞台，主题卡 6 列" />
+
+桌面浅色（侧栏玻璃体与投影落在浅底上，无拼接缝）：
+
+<img src="doc/preview/adaptive_desktop_light.png" width="520" alt="桌面 1366×768 浅色：侧边栏 + 我的页" />
 
 
 ## 性能：每帧模糊预算
@@ -148,6 +184,7 @@ log(S₁/S₀) = −2π²σ²f²」两种独立方法交叉验证。
 |---|---|---|
 | 首页 / 我的（顶栏 + 导航栏 + 搜索栏） | 10 层 / 100,073 dp² | **6~7 层 / 47,081~76,716 dp²** |
 | 分类（胶囊行 4 + 搜索 + 导航） | 6 层 / 58,009 dp² | **3 层 / 59,434 dp²** |
+| 桌面 1366×768（侧栏 + 顶栏，页面让出 120.9dp） | — | **7 层 / 101,430 dp²** |
 
 三条**零视觉差异**的优化（逐像素对比：最大灰度差 1~2 级，无任何像素差 > 2）：
 
@@ -193,6 +230,7 @@ lib/
     ├── components/          # 组件层（类别/组件名/ 两级目录）
     │   ├── navigation/
     │   │   ├── glass_nav_bar/
+    │   │   ├── glass_side_nav_bar/
     │   │   ├── pill_tab_bar/
     │   │   └── top_bar/
     │   ├── buttons/
@@ -240,6 +278,7 @@ flutter test     # 回归测试
 ## 路线图
 
 - [x] `MiGlassNavBar` — 玻璃悬浮底部导航栏
+- [x] `MiGlassSideNavBar` — 玻璃悬浮侧边导航栏（桌面模式，与底部栏同语义/同配方）
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 按钮
 - [x] `MiSearchBar` — 搜索栏（与导航栏共用透明磨砂参数）
