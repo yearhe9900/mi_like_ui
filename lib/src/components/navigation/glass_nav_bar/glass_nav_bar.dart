@@ -503,32 +503,39 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                   top: 0,
                   width: fabD,
                   height: fabD,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: fab.onTap,
-                    child: AnimatedBuilder(
-                      animation: _fabCtrl,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: fab.color ?? MiColors.fabGreenFor(widget.themeMode),
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: fab.child,
-                      ),
-                      builder: (context, child) {
-                        // 显示：缩放+淡入（easeOutCubic）；收起：同曲线
-                        // reverse 时间镜像，与视频实测剖面一致。
-                        final t = Curves.easeOutCubic.transform(_fabCtrl.value);
-                        return IgnorePointer(
-                          ignoring: t == 0,
+                  child: AnimatedBuilder(
+                    animation: _fabCtrl,
+                    builder: (context, _) {
+                      // 显示：缩放+淡入（easeOutCubic）；收起：同曲线
+                      // reverse 时间镜像，与视频实测剖面一致。
+                      // IgnorePointer 必须**包在 GestureDetector 外面**：
+                      // GestureDetector 自身 opaque，若它留在命中测试里，
+                      // 收起后这块不可见区域仍会吞掉点击（2026-10-18
+                      // 侧栏圆钮测试暴露的同款隐患，两种形态一起修）。
+                      final t = Curves.easeOutCubic.transform(_fabCtrl.value);
+                      return IgnorePointer(
+                        ignoring: t == 0,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: fab.onTap,
                           child: Opacity(
                             opacity: t,
-                            child: Transform.scale(scale: t, child: child),
+                            child: Transform.scale(
+                              scale: t,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: fab.color ??
+                                      MiColors.fabGreenFor(widget.themeMode),
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: fab.child,
+                              ),
+                            ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ),
             ],

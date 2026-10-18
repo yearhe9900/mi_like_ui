@@ -97,6 +97,50 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('收起的圆钮不吃点击（IgnorePointer 包在 GestureDetector 外）', (tester) async {
+    tester.view.devicePixelRatio = 3.0;
+    tester.view.physicalSize = const Size(393 * 3, 160 * 3);
+    addTearDown(tester.view.reset);
+
+    var taps = 0;
+    var selected = 1; // 起始选中「分类」：圆钮收起
+    await tester.pumpWidget(StatefulBuilder(
+      builder: (context, setState) => frame3(
+        selected,
+        (i) => setState(() => selected = i),
+        fab: MiGlassNavFab(
+          tabIndex: 0,
+          onTap: () => taps++,
+          child: CustomPaint(
+            painter: GridDotsIconPainter(const Color(0xFFFFFFFF)),
+            size: const Size.square(18.2),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // 圆钮弹出位（cx 恒定）：screenW/2 + (barW + fabGap)/2，与组件内同一公式。
+    // GestureDetector 自身 opaque —— 若 IgnorePointer 没包住它，收起后这块
+    // 不可见区域仍会吞点击（历史隐患，2026-10-18 由侧栏圆钮测试暴露）。
+    const screenW = 393.0;
+    const barW = 2 * MiGlassNavMetrics.barInnerPad + 3 * MiGlassNavMetrics.cellWidth;
+    final fabCenter = Offset(
+      screenW / 2 + (barW + MiGlassNavMetrics.fabGap) / 2,
+      160 - 24.2 - MiGlassNavMetrics.barHeight / 2,
+    );
+    await tester.tapAt(fabCenter);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(taps, 0, reason: '收起的圆钮不应命中点击');
+
+    // 切回「首页」弹出后，同一位置点击可命中
+    await tester.tap(find.text('首页'));
+    await tester.pumpAndSettle();
+    await tester.tapAt(fabCenter);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(taps, 1);
+  });
+
   testWidgets('fab unsupported with more than 3 tabs', (tester) async {
     // items 数量校验在 initState 断言（const 构造断言不支持 .length 求值）
     final items = [

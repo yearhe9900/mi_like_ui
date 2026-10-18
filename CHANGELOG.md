@@ -131,6 +131,8 @@
 - **导航栏 logo 合集** `nav_icons.dart`（含新增加号 logo）
 - **MiTransparencyTokens** 统一透明 / 磨砂配置，胶囊半透明磨砂同源取值
 - **框架骨架**：分层架构（导出层 / 组件层 / 主题层 / 图标 / 工具 / 示例）、barrel 唯一对外 API、命名与扩充约定
+- **MiGlassSideNavBar** 桌面 / 平板侧边导航栏（容器宽 > 600 替代底部栏，
+  与底部栏同语义 / 同配方，轴换纵向；含预留空位绿色圆钮）
 - **演示 app** 与黄金图回归测试（`test/preview_capture_test.dart`）
 
 ### Changed
@@ -143,6 +145,11 @@
 
 ### Fixed
 
+- 侧栏**内外圈间距四周等距**：栏体圆角改「内圈胶囊圆角 + 内边距」（31.25），
+  端头圆弧与胶囊同心 —— 旧 stadium 圆角与内圈不同心，肩部间距从 6.6 收缩到 0
+- 圆钮收起后**不再吞掉该区域点击**：`IgnorePointer` 移到 `GestureDetector`
+  外层（`GestureDetector` 自身 opaque，包在里层时收起仍命中；底部栏同款
+  隐患一并修复）
 - 导航图标在每个 tab 居中对齐（修复 roller +3dp 偏移）
 - `const` 构造断言不支持 `.length` 求值，数量 / FAB 适配校验移至 `initState`
 - 预览图遗漏：`demo_light` 重新生成并补入 `.gitignore`（`test/failures`）

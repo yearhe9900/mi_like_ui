@@ -42,6 +42,7 @@ void main() {
     int selected = 0,
     ValueChanged<int>? onTap,
     MiThemeMode mode = MiThemeMode.dark,
+    MiGlassNavFab? fab,
   }) {
     return MaterialApp(
       theme: mode == MiThemeMode.dark
@@ -55,6 +56,7 @@ void main() {
             items: items(mode),
             selectedIndex: selected,
             onTap: onTap ?? (_) {},
+            fab: fab,
             themeMode: mode,
           ),
         ),
@@ -67,6 +69,13 @@ void main() {
       MiGlassSideNavMetrics.railInnerPad +
       MiGlassSideNavMetrics.itemHeight / 2 +
       MiGlassSideNavMetrics.pitch * i;
+
+  /// 测试用圆钮（子级用文本，方便取几何中心）。
+  MiGlassNavFab demoFab({VoidCallback? onTap}) => MiGlassNavFab(
+        tabIndex: 0,
+        onTap: onTap ?? () {},
+        child: const Text('圆钮'),
+      );
 
   SideNavPainter pillPainter(WidgetTester tester) => tester
       .widgetList<CustomPaint>(
@@ -123,6 +132,35 @@ void main() {
         MiGlassSideNavMetrics.railHeightFor(5) -
             MiGlassSideNavMetrics.railHeightFor(4),
         closeTo(MiGlassSideNavMetrics.itemHeight + MiGlassSideNavMetrics.itemGap, 1e-9),
+      );
+    });
+
+    test('栏体圆角以内圈胶囊为准等距外扩（内外圈间距四周恒 6.6）', () {
+      // 端头圆弧与胶囊顶角圆弧**同心**：圆心 y 同为 内边距 + 胶囊半径，
+      // 间距 = 半径差 = 内边距。旧值 railWidth/2 = 47.7 与内圈不同心，
+      // 肩部间距会从 6.6 收缩到 0（两圆弧相交）—— 用户反馈平板模式
+      // 内外圈间距应一致，以内圈为准。
+      expect(
+        MiGlassSideNavMetrics.railRadius,
+        closeTo(MiGlassSideNavMetrics.pillRadius + MiGlassSideNavMetrics.railInnerPad, 1e-9),
+      );
+      expect(MiGlassSideNavMetrics.railRadius, closeTo(31.25, 1e-9));
+      // 圆钮几何沿用底部栏实测（直径 = 栏高、间距 11.9）
+      expect(MiGlassSideNavMetrics.fabDiameter, MiGlassNavMetrics.fabDiameter);
+      expect(MiGlassSideNavMetrics.fabGap, MiGlassNavMetrics.fabGap);
+      // 槽位恒定预留：hasFab 只加一段定高，显隐不改布局
+      expect(
+        MiGlassSideNavMetrics.heightFor(3, hasFab: true),
+        closeTo(
+          MiGlassSideNavMetrics.railHeightFor(3) +
+              MiGlassSideNavMetrics.fabGap +
+              MiGlassSideNavMetrics.fabDiameter,
+          1e-9,
+        ),
+      );
+      expect(
+        MiGlassSideNavMetrics.heightFor(3),
+        closeTo(MiGlassSideNavMetrics.railHeightFor(3), 1e-9),
       );
     });
   });
@@ -232,6 +270,146 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(pillPainter(tester).palette.scrimGradient, isNotNull);
+    });
+  });
+
+  group('预留空位圆钮（MiGlassNavFab，与底部栏同契约）', () {
+    testWidgets('圆钮挂在栏尾下方：水平居中 / 间距 fabGap / 槽位恒定预留', (tester) async {
+      setWindow(tester, const Size(400, 700));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(harness(selected: 0, fab: demoFab()));
+      await tester.pumpAndSettle();
+
+      final railFinder = find.byType(MiGlassSideNavBar);
+      final size = tester.getSize(railFinder);
+      expect(size.width, closeTo(MiGlassSideNavMetrics.railWidth, 0.01));
+      // 配置圆钮后组件总高 = 栏体高 + 间距 + 直径（槽位恒定预留）
+      expect(
+        size.height,
+        closeTo(MiGlassSideNavMetrics.heightFor(3, hasFab: true), 0.01),
+      );
+
+      // 圆钮中心：水平对齐栏体中线，纵向在栏尾下方一个间距 + 半径
+      final center = tester.getCenter(find.text('圆钮'));
+      final railTopLeft = tester.getTopLeft(railFinder);
+      expect(center.dx, closeTo(railTopLeft.dx + size.width / 2, 0.01));
+      expect(
+        center.dy,
+        closeTo(
+          railTopLeft.dy +
+              MiGlassSideNavMetrics.railHeightFor(3) +
+              MiGlassSideNavMetrics.fabGap +
+              MiGlassSideNavMetrics.fabDiameter / 2,
+          0.01,
+        ),
+      );
+      // 首帧即稳态：选中「首页」圆钮完全显示
+      final opacity = tester.widget<Opacity>(
+        find
+            .ancestor(of: find.text('圆钮'), matching: find.byType(Opacity)),
+      );
+      expect(opacity.opacity, 1.0);
+    });
+
+    testWidgets('切到其它条目收起、切回弹出；收起不改组件高度、不吃点击', (tester) async {
+      setWindow(tester, const Size(400, 700));
+      addTearDown(tester.view.reset);
+
+      var taps = 0;
+      await tester.pumpWidget(harness(selected: 0, fab: demoFab(onTap: () => taps++)));
+      await tester.pumpAndSettle();
+      final shownHeight = tester.getSize(find.byType(MiGlassSideNavBar)).height;
+      final fabCenter = tester.getCenter(find.text('圆钮'));
+
+      // 切到「分类」：镜像收起（reverse 时间镜像），槽位仍在、高度不变
+      await tester.pumpWidget(harness(selected: 1, fab: demoFab(onTap: () => taps++)));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(find.byType(MiGlassSideNavBar)).height,
+        closeTo(shownHeight, 0.01),
+        reason: '收起不应引起布局跳动（槽位恒定预留）',
+      );
+      final hidden = tester.widget<Opacity>(
+        find
+            .ancestor(of: find.text('圆钮'), matching: find.byType(Opacity)),
+      );
+      expect(hidden.opacity, 0.0);
+      // 收起后圆钮整体 IgnorePointer：点在圆钮位置不触发回调、不吞下层点击
+      await tester.tapAt(fabCenter);
+      await tester.pumpAndSettle();
+      expect(taps, 0, reason: '收起的圆钮不应吃点击');
+
+      // 切回「首页」：弹回完全显示，点击恢复
+      await tester.pumpWidget(harness(selected: 0, fab: demoFab(onTap: () => taps++)));
+      await tester.pumpAndSettle();
+      final back = tester.widget<Opacity>(
+        find
+            .ancestor(of: find.text('圆钮'), matching: find.byType(Opacity)),
+      );
+      expect(back.opacity, 1.0);
+      await tester.tap(find.text('圆钮'));
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('圆钮点按回调触发', (tester) async {
+      setWindow(tester, const Size(400, 700));
+      addTearDown(tester.view.reset);
+
+      var taps = 0;
+      await tester.pumpWidget(harness(selected: 0, fab: demoFab(onTap: () => taps++)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('圆钮'));
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('超过 3 个条目 / tabIndex 越界：initState 断言', (tester) async {
+      // 数量与范围校验在 initState 断言（const 构造断言不支持 .length 求值）
+      final fourItems = [
+        for (var i = 0; i < 4; i++)
+          MiGlassNavItem(
+            label: 'tab$i',
+            painter: RollerIconPainter(MiColors.foregroundFor(MiThemeMode.dark)),
+          ),
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MiGlassSideNavBar(
+              items: fourItems,
+              selectedIndex: 0,
+              onTap: (_) {},
+              fab: demoFab(),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isA<AssertionError>());
+
+      // fab.tabIndex 越界（构造期无法校验，initState 断言）
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => MiGlassSideNavBar(
+                items: items(MiThemeMode.dark),
+                selectedIndex: 0,
+                onTap: (_) {},
+                fab: MiGlassNavFab(
+                  tabIndex: 3,
+                  onTap: () {},
+                  child: const Text('圆钮'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isA<AssertionError>());
     });
   });
 
@@ -461,6 +639,54 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('外观模式'), findsOneWidget);
       expect(pill(), closeTo(slotCenter(2), 0.5));
+    });
+
+    testWidgets('平板 / 桌面：绿色圆钮随「首页」选中显隐、点按弹提示', (tester) async {
+      setWindow(tester, const Size(1366, 768));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final rail = find.byType(MiGlassSideNavBar);
+      // 圆钮 = 侧栏子树里唯一的圆形 Container（绿色底，与底部栏同色 token）
+      final fabCircle = find.descendant(
+        of: rail,
+        matching: find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              w.decoration is BoxDecoration &&
+              (w.decoration! as BoxDecoration).shape == BoxShape.circle,
+        ),
+      );
+      expect(fabCircle, findsOneWidget);
+      final deco = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      expect(deco.color, MiColors.fabGreenFor(MiThemeMode.dark));
+
+      // 点按弹提示（与底部栏形态同一份 fab 声明）
+      await tester.tap(fabCircle);
+      await tester.pump();
+      expect(find.text('圆形按钮被点击'), findsOneWidget);
+      await tester.pumpAndSettle();
+
+      // 切到「分类」→ 收起（缩放到 0 + IgnorePointer，不占视觉）
+      await tester.tap(find.descendant(of: rail, matching: find.text('分类')));
+      await tester.pumpAndSettle();
+      final hidden = tester.widget<Opacity>(
+        find
+            .ancestor(of: fabCircle, matching: find.byType(Opacity)),
+      );
+      expect(hidden.opacity, 0.0);
+
+      // 切回「首页」→ 弹回
+      await tester.tap(find.descendant(of: rail, matching: find.text('首页')));
+      await tester.pumpAndSettle();
+      final shown = tester.widget<Opacity>(
+        find
+            .ancestor(of: fabCircle, matching: find.byType(Opacity)),
+      );
+      expect(shown.opacity, 1.0);
     });
 
     testWidgets('跨断点来回切换：形态正确、页面滚动位置保留（不重建页面）', (tester) async {

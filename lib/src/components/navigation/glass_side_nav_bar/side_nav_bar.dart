@@ -10,7 +10,7 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import '../../../utils/filter_cache.dart';
-import '../glass_nav_bar/glass_nav_bar.dart' show MiGlassNavItem;
+import '../glass_nav_bar/glass_nav_bar.dart' show MiGlassNavFab, MiGlassNavItem;
 import '../glass_nav_bar/glass_nav_bar_metrics.dart';
 import 'side_nav_bar_metrics.dart';
 import 'side_nav_bar_painter.dart';
@@ -28,17 +28,21 @@ import 'side_nav_bar_painter.dart';
 ///
 /// ## 什么时候用它
 ///
-/// 视口宽达到桌面断点（[MiBreakpoints.desktop]，见 `MiViewport.isDesktop`）时
-/// 取代底部栏；移动端 / 平板仍用 [MiGlassNavBar]。两者**不要同时显示**。
+/// 画面容器宽达到导航断点（`MiBreakpoints.usesSideNav`，**> 600**）时取代
+/// 底部栏；手机 / 窄窗仍用 [MiGlassNavBar]。两者**不要同时显示**。
 /// 切换是整棵子树替换（不做淡入淡出）：`Opacity` / `FadeTransition` 会给
 /// 含 `BackdropFilter` 的子树引入 saveLayer，磨砂会在切换期间直接消失
 /// （本项目已实测的坑）。
 ///
 /// ## 与底部栏的两处刻意差异
 ///
-///  1. **没有预留空位圆钮（fab）**：那一套「栏体平移让位」是为横向一排
-///     tab 设计的空位腾挪，侧栏没有等价语义；桌面端如需主行动按钮，请由
-///     页面自己放在内容区。
+///  1. **圆钮（[fab]）挂在栏尾下方、栏体不让位**：底部栏的「栏体平移让位」
+///     是为横向一排 tab 的居中腾挪设计的；侧栏锚定左上、栏体不动，圆钮
+///     纵向排在栏体下方（间距 [MiGlassSideNavMetrics.fabGap]、直径
+///     [MiGlassSideNavMetrics.fabDiameter]，均沿用底部栏实测）。显隐契约
+///     与底部栏完全一致：选中 [MiGlassNavFab.tabIndex] 对应条目时缩放+
+///     淡入弹出（同一 [MiGlassNavMetrics.fabPopMs] / easeOutCubic 曲线），
+///     切走收起。槽位**恒定预留**（收起不改组件高度，无布局跳动）。
 ///  2. **栏体竖向收缩到内容高**（[MiGlassSideNavMetrics.railHeightFor]），
 ///     摆放位置由宿主决定（示例贴顶 + 距左缘 [MiGlassSideNavMetrics.railMargin]
 ///     一档留白）—— 对应底部栏「栏宽 = 内容宽、位置由宿主给」的同构做法。
@@ -57,10 +61,12 @@ class MiGlassSideNavBar extends StatefulWidget {
     required this.items,
     required this.selectedIndex,
     required this.onTap,
+    this.fab,
     this.themeMode = MiThemeMode.dark,
   });
-  // items 数量与 selectedIndex 范围校验放 initState：const 构造断言不能
-  // 求值 `.length`（同 MiGlassNavBar）。
+  // items 数量、fab 适配与 fab.tabIndex 范围校验均在 initState：const 构造
+  // 断言不支持 `.length` / 参数字段求值（放构造器会封死 const 构造，
+  // 同 MiGlassNavBar）。
 
   /// 导航条目（与底部栏共用 [MiGlassNavItem]，调用方传同一份即可）。
   final List<MiGlassNavItem> items;
@@ -70,6 +76,12 @@ class MiGlassSideNavBar extends StatefulWidget {
 
   /// 点按 / 拖拽选中的回调（与底部栏语义一致：只报目标下标，不改自身状态）。
   final ValueChanged<int> onTap;
+
+  /// 预留空位圆形按钮（与底部栏同款绿色圆钮）；null = 不启用。
+  ///
+  /// 选中 [MiGlassNavFab.tabIndex] 对应条目时在**栏尾下方**弹出，
+  /// 切走收起；显隐动画曲线与时长与底部栏逐帧同源。
+  final MiGlassNavFab? fab;
 
   /// 明暗模式：决定玻璃材质配方与标签墨色（默认深色）。
   final MiThemeMode themeMode;
@@ -89,6 +101,9 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
   /// 拖拽残留果冻的淡出控制器。
   late final AnimationController _stretchCtrl;
 
+  /// 圆钮显隐（缩放 + 淡入）控制器。
+  late final AnimationController _fabCtrl;
+
   double _from = 0;
   double _to = 0;
   double _travelCells = 0;
@@ -106,13 +121,25 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
 
   double get _railHeight => MiGlassSideNavMetrics.railHeightFor(widget.items.length);
 
+  /// 圆钮是否应显示（fab 配置的条目被选中）——与底部栏同一契约。
+  bool get _showFab => widget.fab != null && widget.selectedIndex == widget.fab!.tabIndex;
+
   @override
   void initState() {
     super.initState();
+    final fab = widget.fab;
     assert(widget.items.isNotEmpty, 'items 不能为空');
     assert(
       widget.selectedIndex >= 0 && widget.selectedIndex < widget.items.length,
       'selectedIndex 必须落在 items 范围内',
+    );
+    assert(
+      fab == null || widget.items.length <= 3,
+      '预留空位圆形按钮仅支持 3 个及以下 tab',
+    );
+    assert(
+      fab == null || (fab.tabIndex >= 0 && fab.tabIndex < widget.items.length),
+      'fab.tabIndex 必须落在 items 范围内',
     );
     _from = _to = widget.selectedIndex.toDouble();
     _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
@@ -124,11 +151,26 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
       vsync: this,
       duration: const Duration(milliseconds: MiGlassNavMetrics.dragStretchDecayMs),
     );
+    _fabCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: MiGlassNavMetrics.fabPopMs),
+    );
+    // 首帧即处于稳态（配置的条目已选中则直接显示，无入场动画）
+    _fabCtrl.value = _showFab ? 1 : 0;
   }
 
   @override
   void didUpdateWidget(covariant MiGlassSideNavBar old) {
     super.didUpdateWidget(old);
+    final wasShown = old.fab != null && old.selectedIndex == old.fab!.tabIndex;
+    if (wasShown != _showFab) {
+      // 显示：缩放+淡入弹出；收起：同曲线 reverse 时间镜像（与底部栏一致）。
+      if (_showFab) {
+        _fabCtrl.forward();
+      } else {
+        _fabCtrl.reverse();
+      }
+    }
     if (old.selectedIndex != widget.selectedIndex) {
       // 从胶囊当前位置起飞：快速连点可以中途改道而不跳变（同底部栏）。
       _from = _currentPos;
@@ -245,6 +287,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
     _stretchDecay?.cancel();
     _stretchCtrl.dispose();
     _pressCtrl.dispose();
+    _fabCtrl.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -413,6 +456,70 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
       ),
     );
 
-    return SizedBox(width: railW, height: h, child: rail);
+    // 无圆钮：原样返回栏体（与旧版逐像素一致，不经过 Stack 包裹）
+    final fab = widget.fab;
+    if (fab == null) {
+      return SizedBox(width: railW, height: h, child: rail);
+    }
+
+    // 预留空位圆钮：**挂在栏尾下方**、水平居中于栏体 —— 侧栏锚定左上，
+    // 没有底部栏「整组居中」的让位语义，故栏体不动、只在下方恒定预留
+    // 一个圆钮槽位（收起时 Opacity 0，显隐不产生任何布局跳动）。
+    // 槽位在组件高度内（不是 Stack 溢出）：溢出到 SizedBox 外的区域
+    // hitTest 会被外层 `size.contains` 拦掉，圆钮将点不动。
+    const fabD = MiGlassSideNavMetrics.fabDiameter;
+    return SizedBox(
+      width: railW,
+      height: h + MiGlassSideNavMetrics.fabGap + fabD,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 0,
+            width: railW,
+            height: h,
+            child: rail,
+          ),
+          Positioned(
+            left: (railW - fabD) / 2,
+            top: h + MiGlassSideNavMetrics.fabGap,
+            width: fabD,
+            height: fabD,
+            child: AnimatedBuilder(
+              animation: _fabCtrl,
+              builder: (context, _) {
+                // 显示：缩放+淡入（easeOutCubic）；收起：同曲线 reverse
+                // 时间镜像 —— 与底部栏圆钮逐帧同源。
+                // IgnorePointer 必须**包在 GestureDetector 外面**：
+                // GestureDetector 自身 opaque，若它留在命中测试里，
+                // 收起后这块不可见区域仍会吞掉点击（2026-10-18 测试暴露）。
+                final t = Curves.easeOutCubic.transform(_fabCtrl.value);
+                return IgnorePointer(
+                  ignoring: t == 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: fab.onTap,
+                    child: Opacity(
+                      opacity: t,
+                      child: Transform.scale(
+                        scale: t,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: fab.color ?? MiColors.fabGreenFor(widget.themeMode),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: fab.child,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

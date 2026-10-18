@@ -169,6 +169,23 @@ class _DemoHomeState extends State<DemoHome> {
     final framed = viewport.isCompact;
     // 页底色（侧栏那一列与页面同底，避免宽屏上出现一道拼接缝）。
     final pageBg = light ? const Color(0xFFF3F3F3) : const Color(0xFF000000);
+    // 预留空位圆钮：两种导航形态**共用同一份声明**（仅「首页」选中时展示、
+    // 点按弹提示）—— 手机 / 窄窗挂在底部栏右侧（栏体左移让位），平板 /
+    // 桌面挂在侧栏栏尾下方（栏体不动、槽位恒定预留）。显隐契约、弹出曲线
+    // 与直径/间距 token 两种形态逐帧同源。
+    final fab = MiGlassNavFab(
+      tabIndex: 0,
+      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('圆形按钮被点击'),
+          duration: Duration(milliseconds: 800),
+        ),
+      ),
+      child: CustomPaint(
+        painter: GridDotsIconPainter(Colors.white),
+        size: const Size.square(18.2),
+      ),
+    );
     // edge-to-edge 下内容会铺到状态栏 / 手势条下面，浮层类元素要让开安全区。
     final safeTop = MediaQuery.paddingOf(context).top;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
@@ -262,12 +279,14 @@ class _DemoHomeState extends State<DemoHome> {
                           ),
                           child: Align(
                             alignment: Alignment.topLeft,
-                            child: MiGlassSideNavBar(
-                              items: items,
-                              selectedIndex: _index,
-                              onTap: (i) => setState(() => _index = i),
-                              themeMode: widget.themeMode,
-                            ),
+                          child: MiGlassSideNavBar(
+                            items: items,
+                            selectedIndex: _index,
+                            onTap: (i) => setState(() => _index = i),
+                            themeMode: widget.themeMode,
+                            // 绿色圆钮挂在栏尾下方（选中「首页」时弹出）
+                            fab: fab,
+                          ),
                           ),
                         ),
                       )
@@ -279,27 +298,15 @@ class _DemoHomeState extends State<DemoHome> {
                         right: 0,
                         bottom: 24.2 +
                             (framed ? safeBottom : 0), // measured: 24.2 dp
-                        child: MiGlassNavBar(
-                          items: items,
-                          selectedIndex: _index,
-                          onTap: (i) => setState(() => _index = i),
-                          themeMode: widget.themeMode,
-                          // 预留空位圆钮：仅选中「首页」时显示（切走收起）
-                          fab: MiGlassNavFab(
-                            tabIndex: 0,
-                            onTap: () =>
-                                ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('圆形按钮被点击'),
-                                duration: Duration(milliseconds: 800),
-                              ),
-                            ),
-                            child: CustomPaint(
-                              painter: GridDotsIconPainter(Colors.white),
-                              size: const Size.square(18.2),
-                            ),
-                          ),
-                        ),
+                      child: MiGlassNavBar(
+                        items: items,
+                        selectedIndex: _index,
+                        onTap: (i) => setState(() => _index = i),
+                        themeMode: widget.themeMode,
+                        // 预留空位圆钮：仅选中「首页」时显示（切走收起）；
+                        // 与侧栏形态共用同一份声明。
+                        fab: fab,
+                      ),
                       ),
                       // home indicator (phone chrome, not part of the nav bar)
                       // 侧栏形态没有手机 Home 指示条（那一档不是"物理手机"

@@ -14,7 +14,8 @@
 - **宽屏模式（2026-10-18，`MiGlassSideNavBar`）**：判定照 MReader 主壳层（`MReader/lib/ui/home_shell.dart`）—— `LayoutBuilder` 读**外壳自己的 `constraints.maxWidth`**，`> kShellRailBreakpoint`（**600**）切侧栏（`MiBreakpoints.navRail` + `usesSideNav(width)`，严格大于；`MiWindowSize.usesSideNav` 是枚举口径）。所以**平板也用侧栏**、只有手机/窄窗留底栏；`MiBreakpoints.desktop`（1024）只留给桌面专属样式（舞台加宽/网格 6-8 列）。侧栏与底部栏**共用 `MiGlassNavItem` / `selectedIndex` / `onTap`**（示例传同一份 items）→ 图标、选中态、跳转零差异；动效 token 也全复用（只把轴换纵向）。
   - **几何全部「推导（非实测）」**（无侧栏样张）：栏宽 95.4 = 实测格宽 82.2 + 2×内边距 6.6、条目高 49.3 = 实测胶囊高、条目间距 8（spaceSm）、左/顶留白 25.5 = `barMarginH`；图标墨盒/间距与底栏一字不改。`railHeightFor(n) = 2×6.6 + n×49.3 + (n−1)×8`（3 项 = 177.1）。
   - 胶囊中心 = `railInnerPad + itemHeight/2 + pitch×pos`（**不是** `pitch×(pos+0.5)`，否则整体下移 gap/2 = 4dp）；pitch = itemHeight + gap；首尾按 `railInnerPad` 夹紧。
-  - 刻意的两处差异：**不做 fab**（横向空位腾挪无纵向等价语义）；**栏体收缩到内容高、位置由宿主给**（示例贴顶 25.5 + 左 25.5）。
+  - 刻意的两处差异：**fab 挂栏尾下方、栏体不让位**（2026-10-18 起侧栏支持 `MiGlassNavFab`，与底栏同显隐契约；直径 55.4 / 间距 11.9 沿用实测，槽位恒定预留零跳动）；**栏体收缩到内容高、位置由宿主给**（示例贴顶 25.5 + 左 25.5）。
+  - **内外圈等距（2026-10-18，用户反馈「以内圈为准」）**：栏体圆角 `railRadius = pillRadius + railInnerPad` = 31.25（不是 railWidth/2）——端头圆弧与胶囊顶角同心、间距四周恒 6.6；旧 stadium 与内圈不同心，肩部间距收缩到 0。**painter 曾自算 `size.width/2` 绕过 token，只改 metrics 预览图逐字节不变**（见「已知坑：测试与流程」）。
   - 示例布局：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned`（`left: sideNav ? gutterWidth : 0`），仅改左缘 → 跨断点切换 `Element` 不重建、滚动位置保留；侧栏档外壳底色改成页底色（否则深色下 gutter 与页面之间有一道竖缝）。手机 Home 指示条只在底栏形态出现。
   - 预算（铺满后）：桌面 1366×768 深色首页 **7 层 / 137,506**、分类 8/194,809（页面列 1245.1 + 侧栏 1 层 16,896）；平板 768×1280（页面列 647.1）首页 7/78,562、我的 6/52,142、分类 8/109,360。层数不变，**面积随宽度线性增长**（edge-to-edge 的必然代价）。
   - **edge-to-edge**：`main.dart` 调 `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`（透明状态栏/手势条 + 图标亮度随明暗）。不做的话应用窗口从状态栏下方开始，那一条是系统画的底色+压色（实测 250→183）= 平板上的「灰带」。代价：侧栏顶 = `padding.top + 25.5`、底栏底 = `24.2 + padding.bottom`、Home 指示条同款；顶栏本来读 `MediaQuery.padding.top`。
@@ -59,7 +60,7 @@
 - **`MiPillTabBar` 在宽父级里会居中**（横向 SingleChildScrollView shrink-wrap + Column 默认 center）→ 宽屏要包 `Align(centerStart)`。
 - **全屏页壳的 Stack 子级一律 `Positioned`**：有非定位子级时 Stack 收缩到该子级尺寸，遇 loose 上级（Center / AnimatedSwitcher 内部）整页被居中 → 顶栏跑到屏幕正中（实测偏移 (856−152.8)/2 = 351.6dp）。
 - `Container`/`Align` 带 `alignment` 在有界父级会拉满宽；要内容自适应用 `Center(widthFactor: 1.0)`。
-- 叠在内容之上的透明层要包 `IgnorePointer`，否则吃掉下层点击（顶栏整体只有返回圆钮吃手势）。
+- 叠在内容之上的透明层要包 `IgnorePointer`，否则吃掉下层点击（顶栏整体只有返回圆钮吃手势）；且必须包在 `GestureDetector` **外层**——后者 `behavior.opaque` 自身吃命中，包内层时收起的浮层（fab opacity 0）该区域仍吞点击（2026-10-18 实证，底栏+侧栏圆钮同款）。
 - **布局类断言别用 `Column` 撑溢出**：比容器高的 mock 内容用 `Stack`+`Positioned` 逐行摆（Stack 只裁剪不报 `RenderFlex overflowed`），行距并进 `top`。
 - **`Container` 的 `clipBehavior` 不要在两种状态间切**：`Clip.antiAlias ↔ Clip.none` 会让 Container 内部增删裁剪层 → widget 结构变化 → 子级 `Element` 重建（本项目里表现为跨断点后页面**滚动位置归零**）。要"有时圆角有时不圆"就固定 `Clip.antiAlias`、用 `BorderRadius.zero` + 空 `boxShadow` 表达"无卡片"（像素无差）。
 - **给已截图界面加"外壳层"要零新增 render object**：给页面套 `Padding` / 垫 `ColoredBox` 会让黄金图出现 195px、1 级灰度的噪声差（2026-10-18 实测 `light_mode_golden_test` 挂）。正确做法 = 用 `Positioned(left: desktop ? gutter : 0)` 改几何、用容器自身颜色改底色 —— 紧凑档逐像素不变。
@@ -71,6 +72,7 @@
 - **行盒高会被引擎向上取整**：31.83dp + height 1.0 → 实测 32.0，容差别写 0.01。
 
 ## 已知坑：测试与流程
+- **改了几何 token 预览图却逐字节不变 = 有代码自算几何绕过了 token**（如 painter 里 `Radius.circular(size.width/2)`）；ClipRRect 半径改小也裁不到像素（比绘制区大）。先 grep 自算点，再用 PIL `ImageChops.difference(...).getbbox()` 定位差异区验证（2026-10-18 侧栏圆角实证）。
 - **`test/` 不参与 app 构建**：`flutter build` 不编译测试 → 动过 `test/` 至少跑一次 `dart analyze`（`C:\src\flutter\bin\dart.bat`，0 error 才算过）。
 - 构造期断言在 `harness()` 同步构造时就抛 → `expect(() => harness(...), throwsA(isA<AssertionError>()))`，不要 `pumpWidget`+`takeException`。
 - **`getDistanceToBaseline` 不能在测试体里调**（有 layout/paint 期断言）→ 改断言输入契约：`tester.widget<Baseline>(...).baseline`。

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/glass_tokens.dart';
+import 'side_nav_bar_metrics.dart';
 
 /// 纵向玻璃侧栏的绘制：栏体遮罩（在选中胶囊处开洞）+ 胶囊透镜 + 外缘高光。
 ///
 /// 这是 `GlassBarPainter`（底部栏）的**同配方转轴版**：配方（[MiGlassPalette]
 /// 的遮罩 / 渐变 / 透镜暗化 / 色调 / 描边 / 高光）与层序完全一致，只是胶囊
-/// 沿**纵轴**移动、栏体圆角取短轴（栏宽）而非栏高。
+/// 沿**纵轴**移动、栏体圆角取 [MiGlassSideNavMetrics.railRadius]
+/// （= 内圈胶囊圆角 + 内边距，内外圈四周等距）。
 ///
 /// 框架内部实现 —— 刻意不从 `mi_like_ui.dart` 导出，不承诺 API 稳定。
 class SideNavPainter extends CustomPainter {
@@ -33,10 +35,13 @@ class SideNavPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 栏体是全圆角胶囊：半径取**短轴**（栏宽）的一半。
+    // 栏体（外圈）：圆角 = 内圈胶囊圆角 + 内边距（**以内圈为准等距外扩**，
+    // 见 MiGlassSideNavMetrics.railRadius）——端头圆弧与胶囊顶角圆弧同心，
+    // 内外圈间距四周恒 6.6。曾自算 `size.width / 2`（stadium）：与内圈
+    // 不同心，肩部间距会收缩到 0（两圆弧相交、胶囊被裁）。
     final railR = RRect.fromRectAndRadius(
       Offset.zero & size,
-      Radius.circular(size.width / 2),
+      const Radius.circular(MiGlassSideNavMetrics.railRadius),
     );
     final pillRect = Rect.fromCenter(
       center: Offset(size.width / 2, pillCenterY),
