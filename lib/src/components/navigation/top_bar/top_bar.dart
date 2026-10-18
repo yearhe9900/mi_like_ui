@@ -4,7 +4,7 @@ import '../../../icons/nav_icons.dart';
 import '../../../theme/top_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/filter_cache.dart';
+import '../../effects/gradient_blur/gradient_blur.dart';
 import '../../inputs/search_bar/search_bar.dart';
 import '../pill_tab_bar/pill_tab_bar.dart';
 import 'top_bar_metrics.dart';
@@ -21,7 +21,8 @@ import 'top_bar_metrics.dart';
 /// （主题商店「每日精选」），它的内容顶部照样是糊的，而且模糊程度随 y 递减
 /// （逐行水平梯度 44dp 0.05 → 75dp 0.97 → 116dp 4.32 → **120dp 后不再上升**，
 /// 即已经完全清晰、没有硬边）。所以磨砂是**内容滚动区自己的顶部渐进模糊**，
-/// 只是位置正好落在顶栏下面，由本组件顺带按同一位置画出来。
+/// 已抽成独立组件 [MiGradientBlur]（不依赖顶栏，任何滚动内容都能自己挂）；
+/// 顶栏只是因为位置正好重合，按自己的材质盒高**复用它**。
 ///
 /// 于是材质拆成两个**独立开关**：
 ///
@@ -292,9 +293,9 @@ class MiTopBar extends StatelessWidget {
   /// 是否绘制**顶部渐进磨砂**（默认 true）。
   ///
   /// 这是**内容区自己的顶部渐进模糊**（实测：有一页完全没有顶栏 —— 主题商店
-  /// 「每日精选」—— 内容顶部照样糊，见 ## 材质 的说明），只是由顶栏顺带
-  /// 画在同一位置。σ 沿 y 递减到**材质盒底归零**：形状固定、范围随栏高
-  /// （无头部区 128.9dp / 有头部区整条栏），栏底既不糊也不留硬边。
+  /// 「每日精选」—— 内容顶部照样糊），本体是独立组件 [MiGradientBlur]，
+  /// 顶栏只是按材质盒高复用它。σ 沿 y 递减到**材质盒底归零**：形状固定、
+  /// 范围随栏高（无头部区 128.9dp / 有头部区整条栏），栏底既不糊也不留硬边。
   ///
   /// 内置的搜索栏 / 胶囊行会自动关掉自绘的 backdrop（`frosted: false`），
   /// 整条栏只糊一次。
@@ -361,53 +362,28 @@ class MiTopBar extends StatelessWidget {
         : MiTopBarMetrics.scrimHeight;
   }
 
-  /// 渲染时真正要绘制的模糊段。
+  /// 渲染时真正要绘制的模糊段 —— 转发到 [MiGradientBlur.bandsFor]。
   ///
-  /// **几何按 [extent] 等比拉伸、σ 不变**：实测曲线（[MiTopBarPalette.blurBands]）
-  /// 是从一页 128.9dp 高的材质上量出来的、末段落在 119dp；头部区形态的材质
-  /// 高 156dp，曲线就整体拉到 156 才归零 —— 对照分类页截图：模糊一直糊到
-  /// 胶囊行下方、横幅底缘才变清晰；而**没有顶栏**的「每日精选」页量到的是
-  /// ~120dp 收尾（= 材质盒高度）。也就是说**形状固定、范围跟栏高走**。
+  /// 磨砂本体已抽成独立组件 [MiGradientBlur]（它属于**内容区**，不属于顶栏）；
+  /// 顶栏只是按自己的材质盒高复用它。这里保留转发仅为既有引用与测试。
   ///
-  /// 再剔除两类**视觉上不存在**的段：
-  ///  * σ < [MiTopBarMetrics.minVisibleBlurSigma] —— 高斯半径 < 1dp，亚像素；
-  ///  * [underSurface] 为 true 时，完全落在叠色不透明段之内
-  ///    （[MiTopBarPalette.scrimOpaqueBottom]）的段 —— 深色配方 0…63.6dp 是
-  ///    α = 1.000 的纯黑，底下的模糊结果 100% 被遮住。
-  ///
-  /// 后者是零视觉差异的省帧手段：平板 768×1280 深色首页实测，顶栏模糊段从
-  /// 8 段 / 119dp 降到 5 段 / 45.4dp，模糊面积 85,680 → 32,688 dp²（−62%）；
-  /// 每段在滚动时都要重算一次全宽高斯，这是丢帧的主因。
-  ///
-  /// ⚠️ 关掉叠色（[showSurface] = false，分类页形态）时**必须传 false**：
-  /// 那时上半段是透明的，模糊真会被看到，跳过它等于栏顶一片清晰（实机踩过）。
+  /// 几何按 [extent]（材质盒高）等比拉伸、σ 不变：实测曲线
+  /// （[MiGradientBlurProfile.bands]）末段落在 119dp，头部区形态的材质高
+  /// 156dp，曲线就整体拉到 156 才归零 —— 对照分类页截图：模糊一直糊到胶囊行
+  /// 下方、横幅底缘才变清晰。叠色的比例 stop 同样随盒子拉长，实心段下沿要按
+  /// 同一比例换算后再传给组件。
   @visibleForTesting
   static List<MiTopBarBlurBand> visibleBlurBands(
     MiTopBarPalette palette, {
     double extent = MiTopBarMetrics.scrimHeight,
     bool underSurface = true,
-  }) {
-    final nominal = MiTopBarPalette.blurBands.last.bottom;
-    final kBlur = extent > 0 ? extent / nominal : 1.0;
-    // 叠色梯度是比例 stop，会跟着材质盒一起拉长，实心段下沿同样被拉长
-    final kScrim = extent > 0 ? extent / MiTopBarMetrics.scrimHeight : 1.0;
-    final opaque =
-        underSurface ? palette.scrimOpaqueBottom * kScrim : 0.0;
-    final bands = <MiTopBarBlurBand>[];
-    for (final band in MiTopBarPalette.blurBands) {
-      if (band.sigma < MiTopBarMetrics.minVisibleBlurSigma) continue;
-      final top = band.top * kBlur;
-      final bottom = band.bottom * kBlur;
-      final clipped = top > opaque ? top : opaque;
-      if (bottom <= clipped) continue;
-      bands.add(MiTopBarBlurBand(
-        top: clipped,
-        height: bottom - clipped,
-        sigma: band.sigma,
-      ));
-    }
-    return bands;
-  }
+  }) =>
+      MiGradientBlur.bandsFor(
+        extent: extent,
+        opaqueScrimBottom: palette.scrimOpaqueBottom *
+            (extent / MiTopBarMetrics.scrimHeight),
+        underSurface: underSurface,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -462,16 +438,9 @@ class MiTopBar extends StatelessWidget {
                 themeMode: mode,
                 frosted: !showBlur,
               ));
-    // 材质层：叠色（可关）+ 磨砂（可关），两者共用「顶栏盖住的那块区域」，
-    // 磨砂曲线拉伸到同一高度并在那里归零。
+    // 材质层：磨砂（可关，独立组件）+ 压色（可关），两者共用「顶栏盖住的
+    // 那块区域」，磨砂曲线拉伸到同一高度并在那里归零。
     final materialHeight = materialExtent(context);
-    final bands = showBlur
-        ? visibleBlurBands(
-            palette,
-            extent: materialHeight,
-            underSurface: showSurface,
-          )
-        : const <MiTopBarBlurBand>[];
 
     return SizedBox(
       // 顶部叠加的根：材质层是**盖在**整条顶栏上的底，不占布局高度 ——
@@ -480,7 +449,7 @@ class MiTopBar extends StatelessWidget {
       width: double.infinity,
       child: Stack(
         children: [
-          // 0) 材质底（磨砂 + 叠色），铺满 materialHeight
+          // 0) 材质底（磨砂 + 压色），铺满 materialHeight
           if (materialHeight > 0)
             Positioned(
               left: 0,
@@ -490,24 +459,16 @@ class MiTopBar extends StatelessWidget {
               child: IgnorePointer(
                 child: Stack(
                   children: [
-                    // 1) 磨砂：按实测 σ(y) 曲线分段，每段一个定 σ 的 backdrop 模糊。
-                    //    （不能用一个渐变的 ShaderMask / Opacity 去调强度 —— 那会引入
-                    //    新的 saveLayer，BackdropFilter 的 backdrop 变空、模糊整段消失。
-                    //    见 MiTopBarPalette.blurBands 的说明。）
-                    for (final band in bands)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        top: band.top,
-                        height: band.height,
-                        child: ClipRect(
-                          child: BackdropFilter(
-                            // σ 来自固定 token → 复用缓存的 native filter，
-                            // 避免每帧重建（滚动时每帧都会走这里）。
-                            filter: MiFilterCache.blur(band.sigma),
-                            child: const SizedBox.expand(),
-                          ),
-                        ),
+                    // 1) 磨砂：**内容区自己那层顶部渐进模糊**，本体是独立组件
+                    //    [MiGradientBlur]（与顶栏无关，只是位置正好重合）。
+                    //    压色盒比曲线高时其比例 stop 会一起拉长，实心段下沿
+                    //    按同一比例换算后再交给组件跳过。
+                    if (showBlur)
+                      MiGradientBlur(
+                        height: materialHeight,
+                        opaqueScrimBottom: palette.scrimOpaqueBottom *
+                            (materialHeight / MiTopBarMetrics.scrimHeight),
+                        underSurface: showSurface,
                       ),
                     // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
                     //    @1→0，两页各自实测，见 MiTopBarPalette 文档）。

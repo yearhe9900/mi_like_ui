@@ -30,6 +30,13 @@
 
 ### Added
 
+- **`MiGradientBlur`：顶部渐进模糊抽成独立组件**（`src/components/effects/gradient_blur/`）
+  - **动机**：这层模糊本来就不属于顶栏 —— 参考 App 有一页完全没有顶栏，内容顶部照样糊。之前只能通过 `MiTopBar(showBlur: true)` 拿到，等于「没有顶栏的页面永远没有这层模糊」，与参考页矛盾。现在它不依赖任何页面形态，任何滚动内容都能自己挂
+  - 入参：`height`（作用区，曲线按其拉伸并在此归零）/ `opaqueScrimBottom` + `underSurface`（上层有不透明压色时跳过被 100% 遮住的段；**关掉压色必须传 `underSurface: false`**）；`bandsFor(...)` 是纯函数，可单测
+  - **曲线 token 迁到 `theme/gradient_blur_tokens.dart`**（`MiGradientBlurProfile`：σ 5.37 / 名义跨度 119 / `minVisibleSigma` 0.5 / 8 段阶梯），`MiTopBarPalette.blurSigma`、`blurBands`、`MiTopBarMetrics.minVisibleBlurSigma` 保留为转发（旧引用不改、含 `MiTopBarBlurBand` 的 export）
+  - `MiTopBar` 内部改为复用它（`visibleBlurBands` 转发到 `MiGradientBlur.bandsFor`）；**golden 零差异**（111 项既有测试原样通过，未更新任何一张图）
+  - 新增 `test/gradient_blur_test.dart` 9 条：曲线段数 / σ 递减、按作用区等比拉伸、不透明压色跳段与 `underSurface: false` 的对照、每段几何与 `bandsFor` 一致、禁用 `ShaderMask`/`Opacity`、不吃手势、无 `MiTopBar` 也能单独用、`ImageFilter` 跨帧复用
+
 - **宽屏（平板 / 桌面）：底部导航栏换成侧边导航栏**（`MiGlassSideNavBar`）
   - 新增组件 `src/components/navigation/glass_side_nav_bar/`（widget + metrics + painter），经 barrel 导出 `MiGlassSideNavBar` / `MiGlassSideNavMetrics`
   - **同语义纵向版**：条目类型沿用 `MiGlassNavItem`（标签 + 图标 painter），选中态同为「胶囊透镜」、`onTap(index)` 语义不变 —— 示例里底部栏与侧栏吃**同一份 items / selectedIndex / onTap**，图标、选中反馈与跳转行为零差异

@@ -1,3 +1,5 @@
+import '../../../theme/gradient_blur_tokens.dart';
+
 /// [MiTopBar] 的几何 / 折叠动效参数：1:1 逐帧实测自参考录屏。
 ///
 /// Source frame: 1220x2656 px screen recording (HyperOS 设置「显示与亮度」
@@ -143,9 +145,11 @@ class MiTopBarMetrics {
   /// 低于该 σ 的模糊段**不绘制**：高斯半径 < 1dp 落在亚像素，渲染结果与
   /// 「不模糊」在任意 dpr 下都不可分辨（实测 σ 曲线尾部 0.76 / 0.27 即属此列）。
   ///
-  /// 省帧判据之一（另一条见 [MiTopBarPalette.scrimOpaqueBottom]）；两条都只
-  /// 剔除**视觉上不存在**的段，不改动任何可见像素。
-  static const double minVisibleBlurSigma = 0.5;
+  /// 权威定义在 [MiGradientBlurProfile.minVisibleSigma]（模糊属内容区、已抽成
+  /// `MiGradientBlur`），这里转发保持旧引用可用。省帧判据之一（另一条见
+  /// [MiTopBarPalette.scrimOpaqueBottom]）；两条都只剔除**视觉上不存在**的段，
+  /// 不改动任何可见像素。
+  static const double minVisibleBlurSigma = MiGradientBlurProfile.minVisibleSigma;
 
   // ── 内容 ──────────────────────────────────────────────────────────────
   /// 内容首行（**卡片**类）在静止态的顶缘：录屏页首行卡片填充顶缘

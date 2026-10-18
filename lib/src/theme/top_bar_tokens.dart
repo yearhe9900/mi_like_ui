@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import 'colors.dart';
+import 'gradient_blur_tokens.dart';
 import 'theme_mode.dart';
 
 /// 顶部导航栏 [MiTopBar] 的**材质**（磨砂 + 叠色）与配色 token。
@@ -62,42 +62,9 @@ import 'theme_mode.dart';
 ///
 /// 磨砂阶梯的一段：`[top, top + height)` 区间内用定 σ 的 backdrop 模糊。
 ///
-/// 见 [MiTopBarPalette.blurBands] 的说明 —— 用多段近似的目的是绕开
-/// "Flutter 无法做位置相关模糊"这一限制。
-@immutable
-class MiTopBarBlurBand {
-  const MiTopBarBlurBand({
-    required this.top,
-    required this.height,
-    required this.sigma,
-  });
-
-  /// 段顶距顶栏顶端的距离（dp）。
-  final double top;
-
-  /// 段高（dp）。
-  final double height;
-
-  /// 段内使用的 blur σ（dp，高斯标准差）。
-  final double sigma;
-
-  /// 段底（dp）。
-  double get bottom => top + height;
-
-  @override
-  bool operator ==(Object other) =>
-      other is MiTopBarBlurBand &&
-      other.top == top &&
-      other.height == height &&
-      other.sigma == sigma;
-
-  @override
-  int get hashCode => Object.hash(top, height, sigma);
-
-  @override
-  String toString() =>
-      'MiTopBarBlurBand($top…$bottom dp, σ=$sigma)';
-}
+/// 定义已搬到 [MiTopBarBlurBand] 的**权威位置** `gradient_blur_tokens.dart`
+/// （这层渐进模糊属于内容区、不属于顶栏）；此处 export 保持旧引用可用。
+export 'gradient_blur_tokens.dart' show MiTopBarBlurBand, MiGradientBlurProfile;
 
 /// 墨色沿用框架前景色 [MiColors.foreground]（实测标题笔画内部 246）；
 /// 返回圆钮按压反馈为**白 @9.4%**（叠纯黑底实测 24 级，圆盘内均匀），
@@ -129,36 +96,15 @@ class MiTopBarPalette {  const MiTopBarPalette({
   final double scrimOpaqueBottom;
 
   // ── 磨砂材质（明暗通用） ────────────────────────────────────────────────
-  /// 栏顶**平台段**的 blur σ（dp）。取 10-90% 边缘宽度 42.7px 换算：
-  /// σ = 42.7px / 2.563 × 0.32213 = 5.37dp（频谱比法在 67.5dp 处给出
-  /// 4.34dp、90dp 处 1.85dp，与衰减曲线一致）。
-  static const double blurSigma = 5.37;
+  // 权威定义在 `gradient_blur_tokens.dart`（这层渐进模糊属于内容区，见
+  // `MiGradientBlur`）；这里转发保持旧引用可用，取值与文档见
+  // [MiGradientBlurProfile]。
 
-  /// 磨砂的**分段强度表**：把实测 σ(y) 曲线切成若干等高段，每段一个定 σ。
-  ///
-  /// ⚠️ 这是**工程近似（非实测的原生形态）**：录屏里的模糊强度沿 y 连续
-  /// 衰减，但 Flutter 的 `BackdropFilter` 只支持**定 σ**，没有"位置相关
-  /// 模糊"。唯一能按位置调节的手段是给模糊层套半透明遮罩
-  /// （`ShaderMask` / `Opacity`）—— 实测走不通：那类 widget 会引入一个新的
-  /// saveLayer，`BackdropFilter` 的 backdrop 随之变空、模糊整段消失
-  /// （探针实测：遮罩 alpha 恒 1 时条纹被抹平，只要出现 <1 的 alpha 就完全
-  /// 恢复锐利）。因此改为**多段并列**：段内定 σ、段间递减，用小段高把
-  /// 台阶控制在肉眼不可见。
-  ///
-  /// 各段 σ 取实测控制点的分段线性插值在段中点处的值：
-  /// (0, 5.37) (35, 5.37) (50, 4.96) (67.5, 4.34) (90, 1.85) (103, 0.76)
-  /// (119, 0)。段高 ≤ 17dp、相邻 σ 比 ≤ 1.5（σ 越小越不可辨），覆盖
-  /// 0…119dp 后完全锐利。
-  static const List<MiTopBarBlurBand> blurBands = [
-    MiTopBarBlurBand(top: 0, height: 35, sigma: 5.37), // 平台段 0…35
-    MiTopBarBlurBand(top: 35, height: 15, sigma: 5.15),
-    MiTopBarBlurBand(top: 50, height: 17, sigma: 4.68), // 50.1dp 测点 4.96
-    MiTopBarBlurBand(top: 67, height: 11, sigma: 3.80), // 67.5dp 测点 4.34
-    MiTopBarBlurBand(top: 78, height: 12, sigma: 2.50),
-    MiTopBarBlurBand(top: 90, height: 10, sigma: 1.45), // 90.0dp 测点 1.85
-    MiTopBarBlurBand(top: 100, height: 9, sigma: 0.70), // 103dp 测点 0.76
-    MiTopBarBlurBand(top: 109, height: 10, sigma: 0.30),
-  ];
+  /// 栏顶**平台段**的 blur σ（dp）= [MiGradientBlurProfile.sigma]（5.37）。
+  static const double blurSigma = MiGradientBlurProfile.sigma;
+
+  /// 实测 σ(y) 的**分段强度表** = [MiGradientBlurProfile.bands]。
+  static const List<MiTopBarBlurBand> blurBands = MiGradientBlurProfile.bands;
 
   /// 深色配方（HyperOS 设置「显示与亮度」页录屏逐帧实测；顶部不透明）。
   static const MiTopBarPalette dark = MiTopBarPalette(

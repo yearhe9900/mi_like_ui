@@ -1,6 +1,7 @@
 # mi_like_ui_demo 项目笔记
 
 ## 架构与约定
+- **顶部渐进模糊已独立成组件 `MiGradientBlur`**（`src/components/effects/gradient_blur/`，不再只归顶栏）：曲线 token 在 `theme/gradient_blur_tokens.dart`（`MiGradientBlurProfile`），`MiTopBar.showBlur` 内部复用；`bandsFor(extent:)` 把 119dp 曲线等比拉到作用区并在底归零，`underSurface: false` 时不得跳过被压色遮住的段。
 - 对外只经 barrel `lib/mi_like_ui.dart`（新增组件/token 记得补 export）；组件放 `src/components/<类别>/<组件名>/`，类 `Mi` 前缀、文件 snake_case；颜色/文字/间距一律走 `src/theme/` token，组件内不写字面量。
 - **实测优先**：视觉参数 1:1 从参考截图像素量；参考图没有的样式（禁用态、桌面侧栏等）只能推导，必须在 doc comment 标「推导（非实测）」+ 写明取值来源。
 - 节奏：每个任务完成即 git commit；`flutter analyze` / `flutter test` 由 agent 执行（用户 2026-10-17 明确）；工作区不留未提交改动。改样式后必须 `flutter test --update-goldens test/preview_capture_test.dart`。
