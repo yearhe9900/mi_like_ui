@@ -22,11 +22,16 @@ class MockPage extends StatelessWidget {
     super.key,
     this.themeMode = MiThemeMode.dark,
     this.onThemeModeChanged,
+    this.onSearchActiveChanged,
   });
 
   final int index;
   final MiThemeMode themeMode;
   final ValueChanged<MiThemeMode>? onThemeModeChanged;
+
+  /// 搜索态开关（true = 页面进入搜索）。外壳据此收起浮动底栏 ——
+  /// 参考录屏里搜索页是整屏的，没有 App 级导航。
+  final ValueChanged<bool>? onSearchActiveChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -35,10 +40,16 @@ class MockPage extends StatelessWidget {
         // 首页 = 参考页形态：**悬浮头部**（搜索栏 + 胶囊标签行）压在高频横幅
         // 上，横幅与下方区块一起从头部后方滚过 —— 头部区那层恒定 σ 磨砂在
         // 这一页才看得见（见 [_HomePage]）。
-        return _HomePage(themeMode: themeMode);
+        return _HomePage(
+          themeMode: themeMode,
+          onSearchActiveChanged: onSearchActiveChanged,
+        );
       case 1:
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
-        return _ShowcasePage(themeMode: themeMode);
+        return _ShowcasePage(
+          themeMode: themeMode,
+          onSearchActiveChanged: onSearchActiveChanged,
+        );
       default:
         // 次级页形态：**带返回圆钮**（`showBack: true`），首行是卡片 →
         // 用卡片档上内边距（183，即 `_MockPageShell` 默认值）。
@@ -268,9 +279,10 @@ class _GradientCard extends StatelessWidget {
 /// 与「我的」页的分工：那页保留**大标题折叠**形态（`showBack: true`），
 /// 本页换成头部区形态 —— 顶栏两种形态在 demo 里各有一处。
 class _HomePage extends StatefulWidget {
-  const _HomePage({required this.themeMode});
+  const _HomePage({required this.themeMode, this.onSearchActiveChanged});
 
   final MiThemeMode themeMode;
+  final ValueChanged<bool>? onSearchActiveChanged;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -291,6 +303,8 @@ class _HomePageState extends State<_HomePage> {
 
   @override
   void dispose() {
+    // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
+    if (_searching) widget.onSearchActiveChanged?.call(false);
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -299,12 +313,14 @@ class _HomePageState extends State<_HomePage> {
   void _openSearch() {
     if (_searching) return;
     setState(() => _searching = true);
+    widget.onSearchActiveChanged?.call(true);
   }
 
   void _closeSearch() {
     if (!_searching) return;
     _searchFocus.unfocus();
     setState(() => _searching = false);
+    widget.onSearchActiveChanged?.call(false);
   }
 
   @override
@@ -698,9 +714,10 @@ class _ThemeCardGrid extends StatelessWidget {
 /// 吸顶展示：网格上滚时从胶囊后方经过，借胶囊的半透明磨砂直观展示
 /// 透明/透射效果。
 class _ShowcasePage extends StatefulWidget {
-  const _ShowcasePage({required this.themeMode});
+  const _ShowcasePage({required this.themeMode, this.onSearchActiveChanged});
 
   final MiThemeMode themeMode;
+  final ValueChanged<bool>? onSearchActiveChanged;
 
   @override
   State<_ShowcasePage> createState() => _ShowcasePageState();
@@ -736,6 +753,33 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       ];
 
   int _tab = 0;
+
+  /// 搜索态（与首页同一套交互，见 `MiTopBar.searchActive`）。
+  bool _searching = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+
+  @override
+  void dispose() {
+    // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
+    if (_searching) widget.onSearchActiveChanged?.call(false);
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _openSearch() {
+    if (_searching) return;
+    setState(() => _searching = true);
+    widget.onSearchActiveChanged?.call(true);
+  }
+
+  void _closeSearch() {
+    if (!_searching) return;
+    _searchFocus.unfocus();
+    setState(() => _searching = false);
+    widget.onSearchActiveChanged?.call(false);
+  }
 
   /// 展示位：「Logo 展示」组前 6 位给真实 logo 全量展示位，其余铺占位展示位
   /// （补足可滚长度）；其余分组全给占位展示位。
@@ -783,6 +827,11 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       themeMode: widget.themeMode,
       headerInset: inset,
       searchHint: '搜索主题 / 壁纸 / 图标',
+      onSearchTap: _openSearch,
+      searchActive: _searching,
+      onSearchCancel: _closeSearch,
+      searchController: _searchController,
+      searchFocusNode: _searchFocus,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
@@ -796,15 +845,14 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       overContent: true,
     );
     return Container(
-      color: widget.themeMode == MiThemeMode.light
-          ? const Color(0xFFF3F3F3)
-          : const Color(0xFF000000),
+      color: MiColors.pageBackgroundFor(widget.themeMode),
       child: Stack(
         children: [
           // 滚动网格：初始让出顶栏高度 + 胶囊行底 → 内容的实测间距 12dp；
           // 上滚后内容从胶囊行后方经过，胶囊的半透明磨砂把透上来的网格
           // 磨出毛玻璃感。
           Positioned.fill(
+            key: const ValueKey('showcaseList'),
             child: ListView(
               padding: EdgeInsets.fromLTRB(
                 inset,
@@ -846,9 +894,23 @@ class _ShowcasePageState extends State<_ShowcasePage> {
               ],
             ),
           ),
+          // 搜索态：内容让位给输入（与首页同款；Stack 子级必须带 key，见首页注释）。
+          if (_searching)
+            Positioned.fill(
+              key: const ValueKey('showcaseSearchCover'),
+              child: ColoredBox(
+                color: MiColors.pageBackgroundFor(widget.themeMode),
+              ),
+            ),
           // 吸顶头部：搜索框 + 胶囊分类标签悬浮在滚动内容之上
           //（标签行吸附搜索框下方，网格从胶囊后方滚过）。
-          Positioned(left: 0, right: 0, top: 0, child: bar),
+          Positioned(
+            key: const ValueKey('showcaseTopBar'),
+            left: 0,
+            right: 0,
+            top: 0,
+            child: bar,
+          ),
         ],
       ),
     );

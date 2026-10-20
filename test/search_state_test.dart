@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:mi_like_ui/demo/demo_app.dart';
+import 'package:mi_like_ui/demo/mock_pages.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
 /// 搜索态（点按搜索栏 → 输入态）的几何 / 动效 / 交互。
@@ -343,5 +345,46 @@ void main() {
       () => MiTopBar(searchActive: true, tabs: const ['a']),
       throwsA(isA<AssertionError>()),
     );
+  });
+
+  group('示例外壳', () {
+    testWidgets('进入搜索态收起浮动底栏，退出后装回来', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(_w, 856);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      expect(find.byType(MiGlassNavBar), findsOneWidget);
+
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 520));
+      // 搜索是聚焦态：App 级浮动底栏（连同绿色圆钮）收起
+      expect(find.byType(MiGlassNavBar), findsNothing);
+      expect(find.byType(MiGlassNavFab), findsNothing);
+
+      await tester.tap(find.byType(MiSearchCancelButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 520));
+      expect(find.byType(MiGlassNavBar), findsOneWidget);
+    });
+
+    testWidgets('键盘弹出不改画面尺寸（viewInsets 不吃布局）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(_w, 856);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      final before = tester.getRect(find.byType(MockPage));
+
+      // 模拟键盘：Insets 一下顶上来 300
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pump();
+      expect(
+        tester.getRect(find.byType(MockPage)),
+        before,
+        reason: '画面被键盘挤小 → 等比缩放会把整块画布缩水（真机反馈）',
+      );
+    });
   });
 }

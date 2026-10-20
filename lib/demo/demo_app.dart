@@ -151,6 +151,15 @@ class DemoHome extends StatefulWidget {
 class _DemoHomeState extends State<DemoHome> {
   int _index = 0;
 
+  /// 当前页是否处于搜索态 —— 搜索是**聚焦态**（参考录屏里那屏没有 App 级
+  /// 导航），所以手机档的浮动底栏要收起来。
+  bool _searchActive = false;
+
+  void _setSearchActive(bool value) {
+    if (value == _searchActive) return;
+    setState(() => _searchActive = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final light = widget.themeMode == MiThemeMode.light;
@@ -205,6 +214,12 @@ class _DemoHomeState extends State<DemoHome> {
       ),
       child: Scaffold(
         backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
+        // **键盘弹出不能让画面重新排版**：`resizeToAvoidBottomInset` 默认 true
+        // 会把 body 的高度减掉 `viewInsets.bottom`，而 [DemoStage] 是按可用
+        // 高度等比缩放画面的 —— 一弹键盘整块画布就缩水（2026-10-20 真机反馈
+        // 「输入法出现后整体缩放」）。这里关掉，让键盘**覆盖**在画面上：搜索态
+        // 的输入行本就在屏幕顶端，下方那块是空的，被盖住正好。
+        resizeToAvoidBottomInset: false,
         body: DemoStage(
           // 导航形态按**画面自己的容器宽**判（`LayoutBuilder` 的
           // `constraints.maxWidth`），不读窗口宽 —— 与 MReader 主壳层
@@ -261,6 +276,7 @@ class _DemoHomeState extends State<DemoHome> {
                         key: ValueKey(_index),
                         themeMode: widget.themeMode,
                         onThemeModeChanged: widget.onThemeModeChanged,
+                        onSearchActiveChanged: _setSearchActive,
                       ),
                     ),
                     if (sideNav)
@@ -290,8 +306,13 @@ class _DemoHomeState extends State<DemoHome> {
                           ),
                         ),
                       )
-                    else
+                    else if (!_searchActive)
                       // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起 24.2dp）。
+                      //
+                      // **搜索态收起**（`_searchActive`）：参考录屏里搜索页是
+                      // 整屏的，没有 App 级导航；不复用 Opacity 淡出 —— 那会给
+                      // 含 backdrop 的子树加 saveLayer、模糊当场消失（本项目已
+                      // 实测的坑），所以直接换结构。
                       //
                       // 浮起量是**距屏幕物理底缘**的实测值（参考截图里系统手势
                       // 条就落在这 24.2 之内），所以不能再叠加一遍安全区 ——

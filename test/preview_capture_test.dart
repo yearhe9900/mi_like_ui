@@ -575,6 +575,24 @@ void main() {
     await capture(MiThemeMode.dark, '../doc/preview/home_search_dark.png');
   });
 
+  testWidgets('README preview: demo shell in search state', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 856);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    await tester.pumpWidget(const DemoApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(MiSearchBar));
+    await tester.pump();
+    // 同「搜索态」用例：不用 pumpAndSettle（光标闪烁会一直有帧）
+    await tester.pump(const Duration(milliseconds: 490));
+    await expectLater(
+      find.byType(DemoHome),
+      matchesGoldenFile('../doc/preview/demo_search_dark.png'),
+    );
+  });
+
   testWidgets('README preview: theme card closeups (light & dark)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 264 * 2);
