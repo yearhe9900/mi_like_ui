@@ -224,6 +224,20 @@ Stack(children: [
 > 头部区」同页形态，所以示例页这一段位移为 **0** —— 真正变化的是宽度让位、
 > 取消钮、输入态与内容清空。
 
+示例外壳在搜索态还有两条行为（2026-10-20 真机反馈）：
+
+- **浮动底栏收起**：搜索是「专注输入」，底栏留在屏幕上会和键盘 / 取消钮抢注意力
+  （参考录屏里也没有）。示例外壳用 `onSearchActiveChanged` 把搜索态上传，切底栏
+  走**换结构**（`else if (!_searchActive)`）而不是 `Opacity` 淡出 —— 淡出会给含
+  `BackdropFilter` 的子树套一层 `saveLayer`，backdrop 变空、玻璃栏瞬间变锐利
+  （本项目既有结论）。
+- **键盘覆盖、画面不缩放**：`Scaffold(resizeToAvoidBottomInset: false)`。`DemoStage`
+  是按**可用高度**取 `min(1, w/W, h/H)` 的等比画布，`viewInsets` 一吃高度整块画面
+  就跟着缩水（真机实拍：底栏连同整页一起被顶扁）。关掉后键盘盖住下半屏，画布尺寸
+  恒定不变 —— 这也是全屏 App 里键盘的标准行为。
+
+<img src="doc/preview/demo_search_dark.png" width="200" alt="深色示例外壳搜索态：浮动底栏已收起、画布未被键盘压缩" />
+
 ### 自适应（响应式）
 
 框架层 `src/utils/responsive.dart` 提供断点判定与等比缩放画布，示例层

@@ -16,9 +16,16 @@
   - 转场 **480ms**：前 10% 静止 + `easeOutQuint`（拟合逐帧位移 `252 244 194 143 112 95 86 82 80 79 79 78`，mean|Δ| = 0.008；纯 easeOutQuint 无延迟 0.035、easeInOut 族更差）。取消钮淡入**不与位移同步**，落在线性进度 0.35…0.62（实测 208/250/292ms 覆盖率 0.32/0.63/0.96）
   - 光标：强调蓝（实测 rgb(60,130,246) → `MiColors.accent`）、高 21.3dp 钉死（实测 32px）、闪烁 500ms/500ms（实测亮灭各 12 帧 @24fps，与 Flutter 默认一致，故不另设）
   - 颜色 token 收敛：`MiColors.accent`（主按钮填充同源）、`MiColors.pageBackground{Light,Dark}`（`veilBase*` 改为转发，值不变）
-  - 测试：新增 `test/search_state_test.dart`（14 例：几何 / 让位 / 右缘留白可覆盖 / `occupiedHeight` / 480ms 转场与淡入区间 / 进出双向 / 回调 / 输入态与 autofocus / 取消钮组件与断言）；`preview_capture_test` 新增搜索态预览两图
+  - 测试：新增 `test/search_state_test.dart`（14 例：几何 / 让位 / 右缘留白可覆盖 / `occupiedHeight` / 480ms 转场与淡入区间 / 进出双向 / 回调 / 输入态与 autofocus / 取消钮组件与断言）；`preview_capture_test` 新增搜索态预览两图（后续外壳两例见 `### Fixed`，共 16 例）
 
 ### Fixed
+
+- **搜索态下浮动底栏收起；键盘不再压缩画面**（2026-10-20，用户真机实拍反馈）
+  - 反馈两条：「唤起搜索后应该不展示底部导航栏」「输入法出现后不应该整体缩放」。实拍截图里浮动玻璃底栏仍在，且整块画布被键盘顶上去缩了水
+  - 底栏：示例外壳把搜索态上传（`MockPage.onSearchActiveChanged` → `DemoApp._searchActive`），`else if (!_searchActive)` 时**不插**底栏（**换结构**，不是 `Opacity` 淡出 —— 淡出会给含 `BackdropFilter` 的子树套 `saveLayer`，backdrop 变空、玻璃栏瞬间变锐利）
+  - 键盘：`Scaffold(resizeToAvoidBottomInset: false)`。`DemoStage` 按可用高度取 `min(1, w/W, h/H)`，`viewInsets` 吃掉高度就会让 393×856 画布整体等比缩水；关掉后键盘覆盖下半屏、画布恒定
+  - 测试：`search_state_test` 新增两例（进搜索态底栏消失 / 退出装回；`viewInsets` 800+300 下画面尺寸不变）
+  - 预览：新增 `doc/preview/demo_search_dark.png`
 
 - **搜索态转场一上来就跳到终态**（2026-10-20，自查发现）
   - 两个独立成因，都会让 480ms 的转场看起来「瞬间完成」：① `AnimationController` 写成 `late final ... = AnimationController(value: widget.isSearchMode ? 1 : 0)`，那个初始化器在**第一次访问**（`didUpdateWidget` 里）才跑，此时 `widget` 已是新值 → 控制器一出生就是 1.0；改为在 `initState` 里建。② demo 首页的 `Stack` 里**条件插入**了一层搜索态遮罩，兄弟节点按下标配对，顶栏从下标 1 挪到 2 → 它的 `Element` 被当成新子树重建 → `State` 重来；给三个子级都补上 `ValueKey`
