@@ -20,6 +20,16 @@
 - 示例：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned(left: sideNav ? gutterWidth : 0)` → 跨断点不重建、滚动保留；侧栏档外壳底色 = 页底色（否则深色有竖缝）；**不自绘 Home 指示条**（edge-to-edge 下系统自己画，自绘=两条）。
 - **edge-to-edge**：`main.dart` 调 `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`（透明状态栏/手势条，图标亮度随明暗）。不做则窗口从状态栏下方开始，那条灰带（实测 250→183）就是系统画的。代价：侧栏顶 = `padding.top+25.5`、底栏底 = **`max(24.2, padding.bottom)`**（24.2 量的是**屏幕**底缘、手势条就在这 24.2 里 → 不叠加；叠加会到 45dp，真机实测过）。
 
+## 搜索态（`MiTopBar.searchActive`，2026-10-20）
+- 参考录屏「短信」搜索 592×1280 **@24fps**；换算 s 用**同帧搜索栏高** 66px→44.1dp 标定（别用屏宽标，会和既有 44.1 打架）。
+- 实测：栏 y 252…317 → **78…143**（168.4→52.1dp），高不变 66px；左缘 21 不动、右缘 591→511；取消钮 ⌀66 **= 栏高**、距栏 15px、**右缘贴屏（0）**——四数闭合 21+491+15+66=593≈屏宽，圆纵向也 66 故非裁切。
+- 取消钮：叉号墨盒 17.0 / 笔画 1.9；**墨色 = 前景墨色**（实测叉号 0、放大镜 167、hint 161，三档不同，叉号不能共用 icon 灰）。填充 = 搜索栏填充（同帧同色）。
+- 光标：强调蓝（实测 rgb(60,130,246) → `MiColors.accent`）、高 **21.3** 钉死、闪烁 500/500ms（= Flutter 默认，不用设）。
+- 转场 **480ms = 前 10% 静止 + easeOutQuint**（拟合 mean|Δ|=0.008；无延迟 quint 0.035、easeInOut 更差）。**几何与透明度是两条曲线**：取消钮淡入落在线性 0.35…0.62（实测 208/250/292ms → 0.32/0.63/0.96）。
+- `MiTopBar` 已改 Stateful，但构建体留在 widget 的 `_buildBar(context, progress)`：常规态插值退化为原值 → 非搜索页零像素变化。
+- **坑1**：`late final _c = AnimationController(value: widget.x)` 的初始化器在**首次访问**才跑（多半已在 didUpdateWidget，widget 是新值）→ 出生即终态。**必须在 initState 建**。
+- **坑2**：宿主 `Stack` 条件插入子级 → 兄弟按**下标**配对，后面的子树整体重建（State 重来）。**Stack 子级增删一律给 ValueKey**。
+
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
 - MiPillTabBar：pill 87.6×39.9、gap/edge 11.9、标签 13.85 w500。
