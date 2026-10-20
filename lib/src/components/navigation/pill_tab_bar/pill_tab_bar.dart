@@ -74,9 +74,11 @@ class MiPillTabBar extends StatelessWidget {
   /// 未选胶囊是否铺**玻璃膜**（默认 false）。
   ///
   /// 平底页（分类页）的未选胶囊是 onSurface@6% 的低调填充（合成 #E5E5E5）；
-  /// 压在照片/视频上时（首页悬浮头部区）实测是页面色 @0.46(亮)/纯黑
-  /// @0.59(暗) 的一层膜 —— 否则胶囊在杂乱背景上几乎读不出形状。
-  /// 取值与推导见 [MiTransparencyTokens.veilFor]；选中胶囊两态同款（近不透明）。
+  /// 压在照片/视频上时（悬浮头部区）再垫一层页面色 @0.46(亮)/纯黑
+  /// @0.59(暗) 的膜 —— 否则胶囊在杂乱背景上几乎读不出形状。
+  /// 两层预合成成一个等效色（[MiTransparencyTokens.veiledFill]）：垫在同色
+  /// 页底上等于没垫，**平底页观感不变**，只有背景有内容时才显出玻璃片。
+  /// 选中胶囊两态同款（近不透明），不参与这层膜。
   final bool overContent;
 
   @override
@@ -87,9 +89,10 @@ class MiPillTabBar extends StatelessWidget {
       'selectedIndex 必须落在 labels 范围内',
     );
     final palette = MiPillTabPalette.of(themeMode);
-    // 未选填充两态：平底 = 低调 6% onSurface；压内容 = 玻璃膜（页底色半透明）。
+    // 未选填充两态：平底 = 低调 6% onSurface；压内容 = 该档再垫一层玻璃膜
+    // （预合成为单色，平底观感不变）。
     final unselectedFill = overContent
-        ? MiTransparencyTokens.veilFor(themeMode)
+        ? MiTransparencyTokens.veiledFill(palette.unselectedFill, themeMode)
         : palette.unselectedFill;
     // 填充/文案/手势层（与磨砂分离成两层，保证模糊源里没有填充色）。
     final fills = <Widget>[];

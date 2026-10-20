@@ -57,9 +57,9 @@ class MiSearchBar extends StatelessWidget {
   /// 是否铺**玻璃膜**（默认 false）—— 压在照片/视频等内容上时开启。
   ///
   /// 平底页填充是 onSurface@13/36 的低调半透明（合成 #E7E7E7 / #242424）；
-  /// 首页悬浮头部的搜索栏实测是页面色 @0.46(亮)/纯黑 @0.59(暗) 的一层膜，
-  /// 否则整条栏在杂乱背景上会糊成一片、边缘读不出来。
-  /// 取值与推导见 [MiTransparencyTokens.veilFor]。
+  /// 压在内容上时再垫一层页面色 @0.46(亮)/纯黑 @0.59(暗) 的膜，否则整条栏
+  /// 在杂乱背景上会糊成一片、边缘读不出来。两层预合成成一个等效色
+  /// （[MiTransparencyTokens.veiledFill]）：平底页观感不变。
   final bool overContent;
 
   @override
@@ -69,9 +69,11 @@ class MiSearchBar extends StatelessWidget {
             ? MiThemeMode.light
             : MiThemeMode.dark);
     final palette = MiSearchBarPalette.of(mode);
-    // 未选填充两态：平底 = 低调半透明（palette.fill）；压内容 = 玻璃膜。
-    final fill =
-        overContent ? MiTransparencyTokens.veilFor(mode) : palette.fill;
+    // 未选填充两态：平底 = 低调半透明（palette.fill）；压内容 = 该档再垫一层
+    // 玻璃膜（预合成为单色，平底观感不变）。
+    final fill = overContent
+        ? MiTransparencyTokens.veiledFill(palette.fill, mode)
+        : palette.fill;
     // 磨砂取景框裁到 stadium 形状（与玻璃导航栏 / 胶囊同款：clip →
     // backdrop → 半透明填充 → 内容），只有栏内透射磨砂，栏外不糊。
     // [frosted] 为 false 时跳过 backdrop，只留半透明填充（材质由顶栏给）。

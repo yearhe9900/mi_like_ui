@@ -74,7 +74,8 @@ void main() {
                 of: find.byType(MiSearchBar), matching: find.byType(ColoredBox))
             .first,
       );
-      expect(box.color, MiTransparencyTokens.veilFor(mode));
+      expect(box.color,
+          MiTransparencyTokens.veiledFill(MiSearchBarPalette.of(mode).fill, mode));
       expect(box.color, isNot(MiSearchBarPalette.of(mode).fill));
     }
   });

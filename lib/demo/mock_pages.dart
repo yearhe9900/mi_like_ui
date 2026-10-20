@@ -741,6 +741,10 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       // 压色只在大标题形态需要（保证标题可读）。磨砂保留 —— 它是内容区的
       // 顶部渐进模糊，到这里只是顺带复用。
       showSurface: false,
+      // 网格上滚后从头部区下方经过（真机截图里第一排色块正压在搜索栏与
+      // 胶囊行后方）→ 搜索栏与未选胶囊同样要那层玻璃膜，否则色块直接透上来、
+      // 边界只能靠文字认。膜垫在同色页底上等于没垫，静止态观感不变。
+      overContent: true,
     );
     return Container(
       color: widget.themeMode == MiThemeMode.light

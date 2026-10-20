@@ -183,8 +183,9 @@ void main() {
 
       final palette = MiPillTabPalette.of(mode);
       expect(fillOf(four[0]), palette.selectedFill); // 选中档两态同款
-      expect(fillOf(four[1]), MiTransparencyTokens.veilFor(mode));
-      expect(MiTransparencyTokens.veilFor(mode), isNot(palette.unselectedFill));
+      expect(fillOf(four[1]),
+          MiTransparencyTokens.veiledFill(palette.unselectedFill, mode));
+      expect(fillOf(four[1]), isNot(palette.unselectedFill));
     }
   });
 }

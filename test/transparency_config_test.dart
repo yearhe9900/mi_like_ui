@@ -147,5 +147,25 @@ void main() {
       expect(MiTransparencyTokens.veilFor(MiThemeMode.dark).a * 255,
           closeTo(MiTransparencyTokens.veilAlphaDark, 1e-6));
     });
+
+    /// 垫在同色页底上的结果（取 r 通道 —— 这几档填充都是中性灰/黑/白）。
+    double over(double pageChannel, Color fill) =>
+        pageChannel * (1 - fill.a) + fill.r * 255 * fill.a;
+
+    test('玻璃膜 + 低调填充 = 平底页观感不变（只有背景有内容才显出玻璃片）', () {
+      // 亮页底 #F3F3F3 / 暗页底 #000000；每档都断言「垫膜前后合成结果不变」
+      void unchanged(double page, Color fill, String label) {
+        expect(over(page, MiTransparencyTokens.veiledFill(fill, page == 243
+                ? MiThemeMode.light
+                : MiThemeMode.dark)),
+            closeTo(over(page, fill), 0.5),
+            reason: '$label 在平底页上不应因为垫膜而变色');
+      }
+
+      unchanged(243, MiPillTabPalette.light.unselectedFill, '亮色未选胶囊');
+      unchanged(0, MiPillTabPalette.dark.unselectedFill, '暗色未选胶囊');
+      unchanged(243, MiSearchBarPalette.light.fill, '亮色搜索栏');
+      unchanged(0, MiSearchBarPalette.dark.fill, '暗色搜索栏');
+    });
   });
 }
