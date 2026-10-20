@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import 'theme_mode.dart';
+import 'transparency_tokens.dart';
 
 /// 搜索栏配色 token（完整截图实测，明暗双配方）。
 ///
@@ -40,14 +41,15 @@ class MiSearchBarPalette {
 
   /// 深色配方（暗色截图实测：平底合成 #242424）。
   static const MiSearchBarPalette dark = MiSearchBarPalette(
-    fill: Color.fromARGB(36, 255, 255, 255),
+    fill: Color.fromARGB(
+        MiTransparencyTokens.fillAlphaSearchDark, 255, 255, 255),
     hint: Color(0xFF6D6D6D),
     icon: Color(0xFF9A9A9A),
   );
 
   /// 浅色配方（亮色截图实测：平底合成 #E7E7E7）。
   static const MiSearchBarPalette light = MiSearchBarPalette(
-    fill: Color.fromARGB(13, 0, 0, 0),
+    fill: Color.fromARGB(MiTransparencyTokens.fillAlphaSearchLight, 0, 0, 0),
     hint: Color(0xFF848484),
     icon: Color(0xFF9A9A9A),
   );

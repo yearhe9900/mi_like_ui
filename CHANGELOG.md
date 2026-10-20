@@ -34,6 +34,13 @@
 
 ### Changed
 
+- **透明参数收进统一配置 `MiTransparencyTokens`**（`src/theme/transparency_tokens.dart`）
+  - 之前只有 `blurSigma` / 表面填充 alpha 在那里，搜索栏的 13·36、顶栏压色曲线的 22 档采样色、按压高光 0.094、玻璃导航栏的遮罩·透镜·描边·外缘 alpha、按钮禁用态 12%·38%、亮色投影色，全散在各自 token 文件里 —— 同一个语义抄两遍的风险很高
+  - 现在**数值只在统一配置定义**，`MiTopBarPalette` / `MiSearchBarPalette` / `MiPillTabPalette` / `MiGlassPalette` / `MiGradientBlurProfile` / `MiButtonPalette` 只引用常量 + 自己的几何（stops、段位段高）
+  - 渐进曲线：`blurSigmaRamp`（8 档 σ）成为唯一来源，`MiGradientBlurProfile.bands` 由「段位/段高」两张几何表 + ramp 生成（`const` → `final`，`MiTopBarPalette.blurBands` 同步；引用处已改）
+  - **逐字节不变**：alpha 一律保留原来的表达形式（0.63 之类实测小数仍走 `Color.fromRGBO`，没有换成 `161/255`），159 项测试全绿、**零黄金图更新**
+  - 新增 `test/transparency_config_test.dart` 6 例守门：扫源码断言 theme 层（除配置文件）与组件层都不出现 `withOpacity` / `fromRGBO` 的 alpha 字面量 / 带 alpha 的十六进制色 / `fromARGB(数字`；再断言各组件的取值确实等于统一配置的常量（含「配置文件自身必须带字面量」防空转）
+
 - **平板 / 桌面铺满窗口（去掉外围圆角卡片），并改成 edge-to-edge 透明状态栏**（2026-10-18 平板实拍反馈：「应该铺满屏幕，不需要外围卡片效果」「状态栏为什么呈现灰色」）
   - `DemoStage`：medium / expanded 的画面 = **窗口本身**（不再四周留 24 + 圆角 56 + 投影 + 宽度上限 1000），只有 compact 仍是「物理手机画布 393×856」（等比缩到放得下）。`DemoStage.wideMaxWidth` / `minStageHeight` / `gutter` 随之删除，`sizeFor` 对非 compact 直接返回可用尺寸（仍过 `min(1, …)` 兜底）
   - 灰带成因：应用窗口原本从状态栏下方开始，那一条是**系统自己画的底色 + 压色**（实测 250 → 183），与页面底色对不上。现在 `main.dart` 用 `SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>` 给透明状态栏 / 手势条 + 图标亮度随明暗翻转，状态栏背后就是页面底色与顶栏磨砂

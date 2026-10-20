@@ -1,6 +1,7 @@
 import 'package:flutter/painting.dart';
 
 import 'theme_mode.dart';
+import 'transparency_tokens.dart';
 
 /// 按钮配色 token（明暗双配方）。
 ///
@@ -51,8 +52,10 @@ class MiButtonPalette {
     filledLabel: Color(0xFFFFFFFF),
     tonalFill: Color(0xFF242424),
     tonalLabel: Color(0xFFF3F3F3),
-    disabledFill: Color(0x1FF5F5F5), // #F5F5F5 @12%
-    disabledLabel: Color(0x61F5F5F5), // #F5F5F5 @38%
+    disabledFill: Color.fromARGB(
+        MiTransparencyTokens.disabledFillAlpha, 0xF5, 0xF5, 0xF5), // @12%
+    disabledLabel: Color.fromARGB(
+        MiTransparencyTokens.disabledLabelAlpha, 0xF5, 0xF5, 0xF5), // @38%
   );
 
   /// 浅色配方。
@@ -61,8 +64,10 @@ class MiButtonPalette {
     filledLabel: Color(0xFFFFFFFF),
     tonalFill: Color(0xFFE7E7E7),
     tonalLabel: Color(0xFF161616),
-    disabledFill: Color(0x1F050505), // #050505 @12%
-    disabledLabel: Color(0x61050505), // #050505 @38%
+    disabledFill: Color.fromARGB(
+        MiTransparencyTokens.disabledFillAlpha, 0x05, 0x05, 0x05), // @12%
+    disabledLabel: Color.fromARGB(
+        MiTransparencyTokens.disabledLabelAlpha, 0x05, 0x05, 0x05), // @38%
   );
 
   /// 按明暗模式取配方。

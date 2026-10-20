@@ -13,6 +13,9 @@ import 'transparency_tokens.dart';
 /// 玻璃体。旧"白玻璃"参考图（近白底 #F7F7F7）实为同一配方在白底上的
 /// 表现（代入透射模型体部≈#FBFBFB、胶囊≈#EAEAEA，与旧采样吻合）。
 /// 明暗两套配方见 [MiGlassPalette]。
+///
+/// **所有 alpha / σ 都是引用**（[MiTransparencyTokens]，统一透明配置），
+/// 这里只决定「哪一层用哪档」和色相。
 class MiGlassTokens {
   MiGlassTokens._();
 
@@ -22,20 +25,25 @@ class MiGlassTokens {
   /// 保持旧引用兼容；新代码请直接取 [MiTransparencyTokens.blurSigma]。
   static const double blurSigma = MiTransparencyTokens.blurSigma;
 
-  /// 玻璃体深色遮罩（rgba(20,20,20,0.63)）。
-  static const Color scrim = Color.fromRGBO(20, 20, 20, 0.63);
+  /// 玻璃体深色遮罩（20,20,20 @0.63）。
+  static const Color scrim = Color.fromRGBO(
+      20, 20, 20, MiTransparencyTokens.glassScrimAlpha);
 
   /// 透镜暗化层（~60% 内容透射）。
-  static const Color lensShade = Color.fromRGBO(0, 0, 0, 0.40);
+  static const Color lensShade = Color.fromRGBO(
+      0, 0, 0, MiTransparencyTokens.glassLensShadeAlpha);
 
   /// 透镜白茶色调。
-  static const Color lensTint = Color.fromRGBO(255, 255, 255, 0.118);
+  static const Color lensTint = Color.fromRGBO(
+      255, 255, 255, MiTransparencyTokens.glassLensTintAlpha);
 
   /// 透镜内描边。
-  static const Color lensStroke = Color.fromRGBO(255, 255, 255, 0.08);
+  static const Color lensStroke = Color.fromRGBO(
+      255, 255, 255, MiTransparencyTokens.glassLensStrokeAlpha);
 
   /// 玻璃体外缘高光。
-  static const Color rim = Color.fromRGBO(255, 255, 255, 0.10);
+  static const Color rim = Color.fromRGBO(
+      255, 255, 255, MiTransparencyTokens.glassRimAlpha);
 }
 
 /// 玻璃材质配方包（按 [MiThemeMode] 取用的一整套颜色 + 投影）。
@@ -101,33 +109,46 @@ class MiGlassPalette {
   ///  * 外缘纯白 #FFFFFF 高光（实测峰值 255）；
   ///  * 投影：下缘近处约 -8 级、~50px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
-    scrim: Color.fromRGBO(251, 251, 251, 0.76),
+    scrim: Color.fromRGBO(
+        251, 251, 251, MiTransparencyTokens.glassScrimLightAlphaMid),
     scrimGradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       stops: [0, 0.5, 1],
       colors: [
-        Color.fromRGBO(251, 251, 251, 0.61),
-        Color.fromRGBO(251, 251, 251, 0.76),
-        Color.fromRGBO(251, 251, 251, 0.80),
+        Color.fromRGBO(
+            251, 251, 251, MiTransparencyTokens.glassScrimLightAlphaTop),
+        Color.fromRGBO(
+            251, 251, 251, MiTransparencyTokens.glassScrimLightAlphaMid),
+        Color.fromRGBO(
+            251, 251, 251, MiTransparencyTokens.glassScrimLightAlphaBottom),
       ],
     ),
-    lensShade: Color.fromRGBO(0, 0, 0, 0),
-    lensTint: Color.fromRGBO(230, 230, 231, 0.78),
+    lensShade: Color.fromRGBO(
+        0, 0, 0, MiTransparencyTokens.glassLensShadeLightAlpha),
+    lensTint: Color.fromRGBO(
+        230, 230, 231, MiTransparencyTokens.glassLensTintLightAlphaMid),
     lensTintGradient: LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       stops: [0, 0.5, 1],
       colors: [
-        Color.fromRGBO(230, 230, 231, 0.66),
-        Color.fromRGBO(230, 230, 231, 0.78),
-        Color.fromRGBO(230, 230, 231, 0.82),
+        Color.fromRGBO(
+            230, 230, 231, MiTransparencyTokens.glassLensTintLightAlphaTop),
+        Color.fromRGBO(
+            230, 230, 231, MiTransparencyTokens.glassLensTintLightAlphaMid),
+        Color.fromRGBO(
+            230, 230, 231, MiTransparencyTokens.glassLensTintLightAlphaBottom),
       ],
     ),
-    lensStroke: Color.fromRGBO(255, 255, 255, 0),
-    rim: Color.fromRGBO(255, 255, 255, 1.0),
+    lensStroke: Color.fromRGBO(
+        255, 255, 255, MiTransparencyTokens.glassLensStrokeLightAlpha),
+    rim: Color.fromRGBO(255, 255, 255, MiTransparencyTokens.glassRimLightAlpha),
     elevationShadow: [
-      BoxShadow(color: Color(0x0F000000), blurRadius: 32, offset: Offset(0, 4)),
+      BoxShadow(
+          color: MiTransparencyTokens.glassShadowLight,
+          blurRadius: 32,
+          offset: Offset(0, 4)),
     ],
   );
 

@@ -330,7 +330,7 @@ test/                        # 黄金图 + 交互测试
 |---|---|
 | 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
-| 主题层 `src/theme/` | 跨组件样式 token（玻璃/透明参数统一配置，组件同源取值） |
+| 主题层 `src/theme/` | 跨组件样式 token；**透明/磨砂参数统一在 `transparency_tokens.dart`**，其余 token 只引用 |
 | 图标 `src/icons/nav_icons.dart` | 导航栏 logo 合集（`*IconPainter`） |
 | 工具层 `src/utils/` | 无状态纯函数 |
 | 示例层 `lib/demo/` | 演示 app，模拟真实使用方 |
@@ -340,6 +340,17 @@ test/                        # 黄金图 + 交互测试
 - 公共类 `Mi` 前缀（`MiGlassNavBar`、`MiColors`）；图标 painter 用 `*IconPainter`
 - 文件名 snake_case 取事物名；组件常量进 `<组件名>_metrics.dart`
 - 使用方与测试只 import barrel；未导出的 `src/` 实现即内部，不承诺 API 稳定
+- **透明参数只有一个来源** —— `src/theme/transparency_tokens.dart`（blur σ、
+  各级填充 alpha、玻璃膜色、顶栏压色曲线的采样色、玻璃导航栏各层 alpha）。
+  其它 theme 文件与组件**只引用常量**，不写字面量：`withOpacity` / `fromRGBO`
+  的 alpha 位 / 带 alpha 的十六进制色，都由 `test/transparency_config_test.dart`
+  扫源码守门（还有一条「配置文件自身必须带字面量」防止规则空转）
+  - alpha 用 0-255 字节（`Color.fromARGB`）还是 double（`Color.fromRGBO`）看实测
+    口径：录屏反解出的 0.63 / 0.094 保留 double，避免 0.63 → 161/255 的取整偏差
+    让黄金图漂移
+  - 顶栏压色 / 渐进曲线这类**曲线**：色值表在统一配置（`scrimGradientDark` /
+    `scrimGradientLight` / `blurSigmaRamp`），组件 token 只保留几何（stops、
+    段位与段高）
 
 ## 扩充新组件
 

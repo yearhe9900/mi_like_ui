@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'transparency_tokens.dart';
+
 /// 顶部**渐进模糊**（内容区自己那层磨砂）的实测曲线 token。
 ///
 /// 这层模糊**不属于顶栏**：参考 App 里有一页完全没有顶栏（主题商店「每日
@@ -51,35 +53,59 @@ class MiTopBarBlurBand {
 
 /// 渐进模糊的曲线常量（明暗通用 —— 参考页亮/暗的模糊强度一致，差别只在
 /// 顶栏那层压色）。
+///
+/// **σ 数值一律取自 [MiTransparencyTokens]**（统一透明配置），这里只负责
+/// 「哪一段、多高」这类几何。
 class MiGradientBlurProfile {
   const MiGradientBlurProfile._();
 
-  /// 顶部**平台段**的 blur σ（dp）。取 10-90% 边缘宽度 42.7px 换算：
-  /// σ = 42.7 / 2.563 × 0.32213 = 5.37dp（频谱比法在 67.5dp 给出 4.34dp、
-  /// 90dp 处 1.85dp，与衰减曲线一致）。
-  static const double sigma = 5.37;
+  /// 顶部**平台段**的 blur σ（dp）= [MiTransparencyTokens.blurSigmaTop]（5.37）。
+  static const double sigma = MiTransparencyTokens.blurSigmaTop;
 
-  /// 曲线从顶部到「完全清晰」的**名义**跨度（dp）。
+  /// 曲线从顶部到「完全清晰」的**名义**跨度（dp）= 119。
   ///
   /// 这是 128.9dp 材质盒上量出来的值；作用区更高时曲线会**等比拉伸**到
   /// 区底归零（形状固定、范围跟着走），见 `MiGradientBlur.bandsFor`。
-  static const double nominalExtent = 119;
+  static const double nominalExtent = MiTransparencyTokens.nominalBlurExtent;
 
-  /// 低于该 σ 的模糊段**不绘制**：高斯半径 < 1dp 落在亚像素，渲染结果与
-  /// 「不模糊」在任意 dpr 下都不可分辨（实测曲线尾部 0.76 / 0.27 即属此列）。
-  static const double minVisibleSigma = 0.5;
+  /// 低于该 σ 的模糊段**不绘制**（= [MiTransparencyTokens.minVisibleSigma]）。
+  static const double minVisibleSigma = MiTransparencyTokens.minVisibleSigma;
 
-  /// 8 段定 σ 阶梯：σ 取实测控制点 (0, 5.37) (35, 5.37) (50, 4.96)
-  /// (67.5, 4.34) (90, 1.85) (103, 0.76) (119, 0) 的分段线性插值在段中点
-  /// 处的值。
-  static const List<MiTopBarBlurBand> bands = [
-    MiTopBarBlurBand(top: 0, height: 35, sigma: 5.37), // 平台段 0…35
-    MiTopBarBlurBand(top: 35, height: 15, sigma: 5.15),
-    MiTopBarBlurBand(top: 50, height: 17, sigma: 4.68), // 50.1dp 测点 4.96
-    MiTopBarBlurBand(top: 67, height: 11, sigma: 3.80), // 67.5dp 测点 4.34
-    MiTopBarBlurBand(top: 78, height: 12, sigma: 2.50),
-    MiTopBarBlurBand(top: 90, height: 10, sigma: 1.45), // 90.0dp 测点 1.85
-    MiTopBarBlurBand(top: 100, height: 9, sigma: 0.70), // 103dp 测点 0.76
-    MiTopBarBlurBand(top: 109, height: 10, sigma: 0.30),
+  /// 8 段定 σ 阶梯：段位 / 段高是几何（见 [_tops] / [_heights]），每段的 σ
+  /// 逐档取自 [MiTransparencyTokens.blurSigmaRamp]（实测控制点分段线性插值）。
+  ///
+  /// 不是 `const`：σ 来自统一配置的那张表，逐档引用比把数值抄一遍可靠。
+  static final List<MiTopBarBlurBand> bands =
+      List<MiTopBarBlurBand>.unmodifiable(<MiTopBarBlurBand>[
+    for (var i = 0; i < _tops.length; i++)
+      MiTopBarBlurBand(
+        top: _tops[i],
+        height: _heights[i],
+        sigma: MiTransparencyTokens.blurSigmaRamp[i],
+      ),
+  ]);
+
+  /// 各段顶部位置（dp）。
+  static const List<double> _tops = <double>[
+    0, // 平台段 0…35
+    35,
+    50, // 50.1dp 测点 4.96
+    67, // 67.5dp 测点 4.34
+    78,
+    90, // 90.0dp 测点 1.85
+    100, // 103dp 测点 0.76
+    109,
+  ];
+
+  /// 各段高度（dp）；段高 ≤ 17、相邻 σ 比 ≤ 1.5 时台阶肉眼不可见。
+  static const List<double> _heights = <double>[
+    35,
+    15,
+    17,
+    11,
+    12,
+    10,
+    9,
+    10,
   ];
 }

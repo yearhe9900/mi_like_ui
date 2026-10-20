@@ -3,6 +3,7 @@ import 'package:flutter/painting.dart';
 import 'colors.dart';
 import 'gradient_blur_tokens.dart';
 import 'theme_mode.dart';
+import 'transparency_tokens.dart';
 
 /// 顶部导航栏 [MiTopBar] 的**材质**（磨砂 + 叠色）与配色 token。
 ///
@@ -96,17 +97,21 @@ class MiTopBarPalette {  const MiTopBarPalette({
   final double scrimOpaqueBottom;
 
   // ── 磨砂材质（明暗通用） ────────────────────────────────────────────────
-  // 权威定义在 `gradient_blur_tokens.dart`（这层渐进模糊属于内容区，见
-  // `MiGradientBlur`）；这里转发保持旧引用可用，取值与文档见
-  // [MiGradientBlurProfile]。
+  // 权威定义在共享的透明配置 `transparency_tokens.dart` + 曲线结构
+  // `gradient_blur_tokens.dart`（这层渐进模糊属于内容区，见 `MiGradientBlur`）；
+  // 这里转发保持旧引用可用，取值与文档见那两个文件。
 
   /// 栏顶**平台段**的 blur σ（dp）= [MiGradientBlurProfile.sigma]（5.37）。
   static const double blurSigma = MiGradientBlurProfile.sigma;
 
   /// 实测 σ(y) 的**分段强度表** = [MiGradientBlurProfile.bands]。
-  static const List<MiTopBarBlurBand> blurBands = MiGradientBlurProfile.bands;
+  static final List<MiTopBarBlurBand> blurBands =
+      MiGradientBlurProfile.bands;
 
   /// 深色配方（HyperOS 设置「显示与亮度」页录屏逐帧实测；顶部不透明）。
+  ///
+  /// 色值（含各档 α）在 [MiTransparencyTokens.scrimGradientDark]，这里只给
+  /// 几何：每档对应的 y 除以 [MiTopBarMetrics.scrimHeight] 128.9 的归一化位置。
   static const MiTopBarPalette dark = MiTopBarPalette(
     scrimGradient: LinearGradient(
       begin: Alignment.topCenter,
@@ -123,21 +128,10 @@ class MiTopBarPalette {  const MiTopBarPalette({
         0.93670, // y 120.7dp —— 0.182
         1.0, // y 128.9dp —— 0.000
       ],
-      colors: [
-        Color.fromRGBO(0, 0, 0, 1.000),
-        Color.fromRGBO(0, 0, 0, 1.000),
-        Color.fromRGBO(0, 0, 0, 0.956),
-        Color.fromRGBO(0, 0, 0, 0.875),
-        Color.fromRGBO(0, 0, 0, 0.770),
-        Color.fromRGBO(0, 0, 0, 0.646),
-        Color.fromRGBO(0, 0, 0, 0.506),
-        Color.fromRGBO(0, 0, 0, 0.351),
-        Color.fromRGBO(0, 0, 0, 0.182),
-        Color.fromRGBO(0, 0, 0, 0.000),
-      ],
+      colors: MiTransparencyTokens.scrimGradientDark,
     ),
     ink: MiColors.foreground,
-    pressHighlight: Color.fromRGBO(255, 255, 255, 0.094),
+    pressHighlight: MiTransparencyTokens.pressHighlightDark,
     // 顶部 α = 1.000 纯黑直到 63.6dp（stops 0.4934 × scrimHeight 128.9）
     scrimOpaqueBottom: 63.6,
   );
@@ -161,23 +155,10 @@ class MiTopBarPalette {  const MiTopBarPalette({
         0.91932, // y 118.5dp —— 0.055
         0.94957, // y 122.4dp —— 0.000（以下只剩磨砂，无叠色）
       ],
-      colors: [
-        Color.fromRGBO(243, 243, 243, 0.650),
-        Color.fromRGBO(243, 243, 243, 0.634),
-        Color.fromRGBO(243, 243, 243, 0.606),
-        Color.fromRGBO(243, 243, 243, 0.594),
-        Color.fromRGBO(243, 243, 243, 0.577),
-        Color.fromRGBO(243, 243, 243, 0.530),
-        Color.fromRGBO(243, 243, 243, 0.501),
-        Color.fromRGBO(243, 243, 243, 0.427),
-        Color.fromRGBO(243, 243, 243, 0.314),
-        Color.fromRGBO(243, 243, 243, 0.183),
-        Color.fromRGBO(243, 243, 243, 0.055),
-        Color.fromRGBO(243, 243, 243, 0.000),
-      ],
+      colors: MiTransparencyTokens.scrimGradientLight,
     ),
     ink: MiColors.foregroundLight,
-    pressHighlight: Color.fromRGBO(0, 0, 0, 0.094),
+    pressHighlight: MiTransparencyTokens.pressHighlightLight,
     // 亮色叠色顶部 α 仅 0.650 → 全段半透明，模糊一段都不能省
     scrimOpaqueBottom: 0,
   );

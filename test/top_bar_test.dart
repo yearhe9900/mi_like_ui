@@ -554,7 +554,7 @@ void main() {
     test('token：栏顶 σ = 5.37dp；阶梯按实测 σ(y) 单调递减、无缝铺满 0…119dp', () {
       expect(MiTopBarPalette.blurSigma, 5.37);
 
-      const bands = MiTopBarPalette.blurBands;
+      final bands = MiTopBarPalette.blurBands;
       expect(bands, isNotEmpty);
       // 首段从 0 起、末段到 119dp 收（下缘完全锐利）
       expect(bands.first.top, 0);
