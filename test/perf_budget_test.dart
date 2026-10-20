@@ -17,6 +17,12 @@ import 'package:mi_like_ui/demo/demo_app.dart';
 /// 另外锁住两条**零视觉差异**的省帧规则：
 ///  1. 深色顶栏在叠色完全不透明段（0…63.6dp，α = 1.000 纯黑）之内不画模糊；
 ///  2. σ 固定的 filter 走缓存复用（同一 σ 拿到的 `ImageFilter` 是同一实例）。
+///
+/// 2026-10-20 起头部区形态（搜索栏 + 胶囊行）改成**一整段恒定 σ** 铺满整条栏
+/// （首页亮/暗截图实测，见 `MiTopBar.uniformBlurBands`）：层数 7 → 2
+///（栏 + 导航），面积反而上升 —— 恒定 σ 意味着整条栏都要算，不像渐进曲线那样
+/// 尾部几段被剔除。**一次大 filter 比多次小 filter 便宜**（每次都是一趟全 QUAD
+/// 高斯 + 一个 saveLayer），所以总成本仍是下降的，但面积阈值要按新形态重标。
 class _BlurStat {
   const _BlurStat(this.count, this.area);
 
@@ -56,18 +62,16 @@ void main() {
 
     // 2026-10-18 起平板：铺满窗口（768，无外围卡片）+ 用侧栏（导航断点 600，
     // 照 MReader）→ 页面列 647.1，顶栏磨砂比"卡片舞台"时代（720−48）宽一档。
+    // 首页 = 头部区形态（悬浮搜索栏 + 胶囊行压在高频横幅上）：**1 段恒定 σ**
+    // 覆盖 0…156dp（未压色，无从省起的整栏模糊）+ 侧栏 1 层 = 2 层。
     final home = await measure(tester, const Size(768, 1280));
-    expect(home.count, lessThanOrEqualTo(7), reason: '首页 $home');
-    expect(home.area, lessThanOrEqualTo(81000), reason: '首页 $home');
+    expect(home.count, lessThanOrEqualTo(3), reason: '首页 $home');
+    expect(home.area, lessThanOrEqualTo(122000), reason: '首页 $home');
 
+    // 分类页同一形态（搜索栏 + 胶囊行吸顶、无压色）→ 与首页同预算。
     final showcase = await measure(tester, const Size(768, 1280), tab: '分类');
-    // 分类页只开**磨砂**、关掉叠色（参考页整条栏都能看见被模糊的背景）：
-    // 于是「深色 0…63.6dp 被 α=1 压色盖住、可以不算」这条省帧规则不成立 ——
-    // 实测 σ(y) 阶梯从栏顶 0 起画并拉到整条栏 156dp，7 段（末段 σ=0.30 亚像素
-    // 已剔除）+ 侧栏 1 = 8 层。搜索栏 / 胶囊行本身不再各挂 backdrop，
-    // 全栏只糊一次；这条**没有压色可省的整栏模糊**是这一形态的代价。
-    expect(showcase.count, lessThanOrEqualTo(8), reason: '分类页 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(113000), reason: '分类页 $showcase');
+    expect(showcase.count, lessThanOrEqualTo(3), reason: '分类页 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(122000), reason: '分类页 $showcase');
 
     final mine = await measure(tester, const Size(768, 1280), tab: '我的');
     expect(mine.count, lessThanOrEqualTo(6), reason: '我的 $mine');
@@ -76,25 +80,25 @@ void main() {
 
   testWidgets('深色·手机 393×856：模糊层数 / 面积预算', (tester) async {
     addTearDown(tester.view.reset);
+    // 手机档：头部区 1 段（393 × 156 = 61,308）+ 底栏 1 层
     final phone = await measure(tester, const Size(393, 856));
-    expect(phone.count, lessThanOrEqualTo(7), reason: '首页 $phone');
-    expect(phone.area, lessThanOrEqualTo(53000), reason: '首页 $phone');
+    expect(phone.count, lessThanOrEqualTo(3), reason: '首页 $phone');
+    expect(phone.area, lessThanOrEqualTo(78000), reason: '首页 $phone');
   });
 
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
-    // 桌面档：铺满窗口（1366 宽）+ 侧栏 → 页面列 1245.1，顶栏磨砂面积随
-    // 宽度线性增长（5 段 × 1245 × 128.9 量级），侧栏自己只挂 1 层
-    //（95.4 × 177.1 = 16,896dp²）。首页 7 层 / 137,506dp² —— 层数没变多，
-    // 只是每段更宽（edge-to-edge 的必然代价）。
+    // 桌面档：铺满窗口（1366 宽）+ 侧栏 → 页面列 1245.1，头部区那一段
+    // 面积 1245.1 × 156 = 194,236 + 侧栏 16,896 = 211,132dp²，仍只有 2 层
+    //（面积随宽度线性增长是 edge-to-edge 的必然代价，层数不增）。
     final desktop = await measure(tester, const Size(1366, 768));
-    expect(desktop.count, lessThanOrEqualTo(7), reason: '桌面 $desktop');
-    expect(desktop.area, lessThanOrEqualTo(141000), reason: '桌面 $desktop');
+    expect(desktop.count, lessThanOrEqualTo(3), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(215000), reason: '桌面 $desktop');
 
-    // 分类页（无压色可省的整栏磨砂）：8 层 / 194,809dp²
+    // 分类页同一形态 → 同预算
     final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
-    expect(showcase.count, lessThanOrEqualTo(8), reason: '桌面分类 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(199000), reason: '桌面分类 $showcase');
+    expect(showcase.count, lessThanOrEqualTo(3), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(215000), reason: '桌面分类 $showcase');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

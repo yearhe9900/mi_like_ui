@@ -697,11 +697,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MiGlassSideNavBar), findsOneWidget);
 
-      // 在侧栏档滚一段，记下位置
-      await tester.drag(
-        find.descendant(of: find.byType(MockPage), matching: find.byType(ListView)),
-        const Offset(0, -320),
+      // 在侧栏档滚一段，记下位置。**按可滚范围取**、不写死位移：首页内容
+      // 长度会随演示内容调整（2026-10-20 起首屏是 186dp 横幅 + 区块），宽窗口
+      // 上 `-320` 会直接撞到 maxScrollExtent，断点切换后"位置保留"就无从对比。
+      final scrollable = tester.state<ScrollableState>(
+        find
+            .descendant(
+              of: find.byType(MockPage),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent * 0.5);
       await tester.pumpAndSettle();
       final scrolled = pageScrollOffset(tester);
       expect(scrolled, greaterThan(0));

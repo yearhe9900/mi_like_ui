@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
@@ -30,23 +32,10 @@ class MockPage extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (index) {
       case 0:
-        // 首页页边距实测 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片
-        // 25~26 同量级，与分类页一致）；区块标题行经 _SectionTitle.inset
-        // 收进 ≈20.5dp 文本列（实测 x46），卡标题再由卡片自身 8.8dp
-        // 内缩与之同列起排。
-        // 顶层页形态：**无返回圆钮**（`showBack` 默认 false）。首行是搜索栏，
-        // 其顶缘实测 168.5dp（比卡片档少一档 14.5dp）→ 用搜索栏档上内边距。
-        final inset = _pageInset(context, 11.9);
-        return _MockPageShell(
-          title: '首页',
-          padding: EdgeInsets.fromLTRB(
-            inset,
-            MiTopBarMetrics.searchBarTopInset,
-            inset,
-            20,
-          ),
-          children: _homeItems,
-        );
+        // 首页 = 参考页形态：**悬浮头部**（搜索栏 + 胶囊标签行）压在高频横幅
+        // 上，横幅与下方区块一起从头部后方滚过 —— 头部区那层恒定 σ 磨砂在
+        // 这一页才看得见（见 [_HomePage]）。
+        return _HomePage(themeMode: themeMode);
       case 1:
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
         return _ShowcasePage(themeMode: themeMode);
@@ -264,17 +253,280 @@ class _GradientCard extends StatelessWidget {
   }
 }
 
-/// 搜索位即框架组件 [MiSearchBar]（亮/暗完整截图实测 + 与底部导航栏同源的
-/// 透明磨砂参数，见 `src/components/inputs/search_bar/`）：占位文案与
-/// 页面级左右 inset（11.9）由 demo 提供，明暗配方由组件 palette 供给。
-const List<Widget> _homeItems = [
-  MiSearchBar(hint: '搜索主题 / 壁纸 / 图标'),
-  SizedBox(height: 16),
-  _GradientCard(
-    height: 150,
-    colors: [Color(0xFF2E3A8C), Color(0xFF7B4DBE), Color(0xFFD06A8A)],
-    caption: '湾区升明月  肆好时光',
-  ),
+/// 首页（参考页形态）：**悬浮头部 + 顶部横幅 + 区块列表**。
+///
+/// 结构照亮/暗两张完整截图（881×1920）：
+///  * 顶部是一条**高频横幅**（[_HeroBanner]，底缘圆角 20dp），从屏幕最顶端
+///    （含状态栏后面）铺到实测 ~186dp；
+///  * 搜索栏 + 胶囊标签行**悬浮**在横幅上（[MiTopBar] 头部区形态，由顶栏
+///    自己产出两个组件），页面只给数据；
+///  * 列表**上内边距为 0** —— 横幅与下方区块一起从头部后方滚过，那条恒定 σ
+///    的整栏磨砂才有东西可糊（这正是本页要演示的效果）；
+///  * 参考页这一形态**没有顶栏压色**（整条栏都能看见被模糊的背景）→
+///    `showSurface: false`。
+///
+/// 与「我的」页的分工：那页保留**大标题折叠**形态（`showBack: true`），
+/// 本页换成头部区形态 —— 顶栏两种形态在 demo 里各有一处。
+class _HomePage extends StatefulWidget {
+  const _HomePage({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  State<_HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<_HomePage> {
+  /// 胶囊分类标签：取参考截图原文（推荐 / 背屏 / 小部件 / 主题）。
+  static const List<String> _tabs = ['推荐', '背屏', '小部件', '主题'];
+
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = widget.themeMode == MiThemeMode.light;
+    // 首页页边距实测 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片 25~26
+    // 同量级，与分类页一致）；宽屏舞台下收到 24。
+    final inset = _pageInset(context, 11.9);
+    // 头部区形态：搜索栏 + 胶囊行由顶栏内部产出（自带状态栏让位、间距、
+    // 页边距），磨砂是**恒定 σ 的整条栏**（参考截图实测，见 MiTopBar 文档）。
+    // `overContent: true` —— 横幅从 y=0 起铺、从头部下方滚过，搜索栏与未选
+    // 胶囊要铺那层玻璃膜才读得出来（参考图实测，见 MiTransparencyTokens）。
+    final bar = MiTopBar(
+      themeMode: widget.themeMode,
+      headerInset: inset,
+      searchHint: '搜索主题 / 壁纸 / 图标',
+      tabs: _tabs,
+      selectedTab: _tab,
+      onTabChanged: (i) => setState(() => _tab = i),
+      showSurface: false,
+      overContent: true,
+    );
+    return ColoredBox(
+      // 页底实测：亮 #F3F3F3 / 暗 #000000。
+      color: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+      child: Stack(
+        children: [
+          // 列表不留给头部让位：横幅从 y = 0 起铺（含状态栏后面），滚动时从
+          // 头部后方经过 —— 与参考图一致，也是磨砂的可见性来源。
+          Positioned.fill(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const _HeroBanner(key: ValueKey('homeHero')),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(inset, 0, inset, 20),
+                  // 区块内容恒定，只有页边距随断点变 → 内部 Column 仍可 const
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: _homeSections,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
+          Positioned(left: 0, right: 0, top: 0, child: bar),
+        ],
+      ),
+    );
+  }
+}
+
+/// 首页顶部横幅（示例占位）：程序化绘制的风景图。
+///
+/// **为什么不用渐变占位**：平坦色块在模糊下亮度不变，判不了"有没有磨砂"
+/// （本项目已实测的坑）。参考页横幅是一张高频照片（天空 / 树线 / 草地），
+/// 这里用 [CustomPainter] 按同样构图生成 —— 树线剪影 + 随机草叶提供了足量
+/// 高频细节，滚到头部区后方时能被磨砂明显抹开。
+///
+/// 几何取参考截图实测：底缘 ≈ 186dp、下圆角 20dp，左右**满幅**（不受页边距
+/// 约束，横幅是通栏图）；磨砂带（[MiTopBar.occupiedHeight] ≈ 156dp）落在
+/// 横幅上半段，所以静止态就能看到"上半被糊、下半清晰"。
+class _HeroBanner extends StatelessWidget {
+  const _HeroBanner({super.key});
+
+  /// 横幅高度（实测底缘 ≈ 416px ≈ 186dp）。
+  static const double height = 186;
+
+  /// 下圆角（实测底缘收角 ≈ 20dp）。
+  static const double bottomRadius = 20;
+
+  @override
+  Widget build(BuildContext context) {
+    return const ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        bottom: Radius.circular(bottomRadius),
+      ),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _HeroPainter(),
+          // 静态图：标成 complex 让引擎缓存成图片，滚动时只做变换不重画。
+          isComplex: true,
+          willChange: false,
+          child: SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+}
+
+/// 横幅内容：天空 → 远山 → 树线 → 草地（含随机草叶）。
+///
+/// 全部用固定种子，保证每次布局/截图完全一致（黄金图可比）。
+class _HeroPainter extends CustomPainter {
+  const _HeroPainter();
+
+  /// 地平线（天空 → 草地的分界）在横幅内的比例。
+  static const double _horizon = 0.62;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final rect = Offset.zero & size;
+
+    // 1) 天空：上深下浅，贴近地平线转暖
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF4E86BD), Color(0xFF9CC6E4), Color(0xFFDCE2C6)],
+          stops: [0, 0.40, _horizon],
+        ).createShader(rect),
+    );
+
+    // 2) 太阳光晕（右上）
+    final glowCenter = Offset(w * 0.72, h * 0.15);
+    final glowRadius = h * 0.32;
+    canvas.drawCircle(
+      glowCenter,
+      glowRadius,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0x88FFFFFF), Color(0x00FFFFFF)],
+        ).createShader(
+          Rect.fromCircle(center: glowCenter, radius: glowRadius),
+        ),
+    );
+
+    // 3) 云：几条横向椭圆
+    final cloud = Paint()..color = const Color(0x4DFFFFFF);
+    for (final (cx, cy, rx, ry) in const [
+      (0.16, 0.13, 0.26, 0.035),
+      (0.52, 0.06, 0.34, 0.028),
+      (0.86, 0.20, 0.28, 0.040),
+    ]) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(w * cx, h * cy),
+          width: w * rx,
+          height: h * ry,
+        ),
+        cloud,
+      );
+    }
+
+    // 4) 远山（低饱和紫灰）
+    final far = Path()
+      ..moveTo(0, h * 0.58)
+      ..lineTo(w * 0.16, h * 0.45)
+      ..lineTo(w * 0.30, h * 0.51)
+      ..lineTo(w * 0.46, h * 0.41)
+      ..lineTo(w * 0.62, h * 0.50)
+      ..lineTo(w * 0.78, h * 0.44)
+      ..lineTo(w, h * 0.53)
+      ..lineTo(w, h * _horizon)
+      ..lineTo(0, h * _horizon)
+      ..close();
+    canvas.drawPath(far, Paint()..color = const Color(0xFF8E8DA6));
+
+    // 5) 树线剪影：逐列随机构成锯齿顶缘 —— 模糊下最先被抹成一片的判据
+    final rnd = math.Random(20261020);
+    final trees = Path()..moveTo(0, h * _horizon);
+    var x = 0.0;
+    while (x < w) {
+      trees.lineTo(x, h * (0.545 + rnd.nextDouble() * 0.055));
+      x += 2.5 + rnd.nextDouble() * 4.5;
+      trees.lineTo(x, h * (_horizon - 0.035 + rnd.nextDouble() * 0.035));
+    }
+    trees
+      ..lineTo(w, h * _horizon)
+      ..close();
+    canvas.drawPath(trees, Paint()..color = const Color(0xFF6B5C63));
+
+    // 6) 草地
+    final grassRect = Rect.fromLTWH(0, h * _horizon, w, h * (1 - _horizon));
+    canvas.drawRect(
+      grassRect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFAFA954), Color(0xFF7C7A32)],
+        ).createShader(grassRect),
+    );
+
+    // 7) 草叶：随机竖笔（越靠下越长越粗 → 有透视感，也补足高频纹理）
+    final rnd2 = math.Random(7);
+    const bladeColors = [
+      Color(0xFFCFC163),
+      Color(0xFF6E7B33),
+      Color(0xFF8E9A3E),
+      Color(0xFF5C6428),
+    ];
+    for (var i = 0; i < 460; i++) {
+      final gx = rnd2.nextDouble() * w;
+      final gy = h * (_horizon + rnd2.nextDouble() * (1 - _horizon));
+      final depth = (gy - h * _horizon) / (h * (1 - _horizon)); // 0 远 → 1 近
+      final len = (2 + 9 * depth) * (0.6 + rnd2.nextDouble());
+      canvas.drawLine(
+        Offset(gx, gy),
+        Offset(gx + (rnd2.nextDouble() - 0.5) * 1.6, gy - len),
+        Paint()
+          ..color = bladeColors[rnd2.nextInt(bladeColors.length)]
+          ..strokeWidth = 0.8 + 1.4 * depth
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_HeroPainter oldDelegate) => false;
+}
+
+/// 首页区块（横幅下方的滚动内容）。
+///
+/// 分节照亮/暗参考截图：横幅下方依次是「背屏创意设计大赛」（两张大卡）→
+/// 「精选主题」（[MiThemeCard] 网格）→「热门 IP」→「经典表盘」→「更多」，
+/// 每节两行、行距 12，与参考图的节奏一致。区块标题行经 [_SectionTitle.inset]
+/// 收进 ≈20.5dp 文本列（实测 x46），卡标题再由卡片自身 8.8dp 内缩与之同列起排。
+///
+/// 内容量不只是"好看"：磨砂效果需要内容**不断从头部后方经过**才有东西可糊，
+/// 页面太短（比如只有一两节）在平板 / 桌面上会直接不可滚。
+const List<Widget> _homeSections = [
+  _SectionTitle('背屏创意设计大赛', inset: 8.6),
+  Row(children: [
+    Expanded(
+      child: _GradientCard(
+        height: 150,
+        colors: [Color(0xFF2E3A8C), Color(0xFF7B4DBE), Color(0xFFD06A8A)],
+        caption: '湾区升明月  肆好时光',
+      ),
+    ),
+    SizedBox(width: 12),
+    Expanded(
+      child: _GradientCard(
+        height: 150,
+        colors: [Color(0xFF4A2C6E), Color(0xFFB24592)],
+        caption: '分秒皆经典  奢韵不喧哗',
+      ),
+    ),
+  ]),
   _SectionTitle('精选主题', inset: 8.6),
   _ThemeCardGrid(),
   _SectionTitle('热门 IP', inset: 8.6),
@@ -289,11 +541,23 @@ const List<Widget> _homeItems = [
     SizedBox(width: 12),
     Expanded(child: _GradientCard(colors: [Color(0xFF11998E), Color(0xFF38EF7D)], caption: '清新绿意')),
   ]),
-  _SectionTitle('更多', inset: 8.6),
+  _SectionTitle('经典表盘', inset: 8.6),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFF232526), Color(0xFF414345)], caption: '光轴指针')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFF8E7B5A), Color(0xFF3B342A)], caption: '金属律动')),
+  ]),
+  SizedBox(height: 12),
   Row(children: [
     Expanded(child: _GradientCard(colors: [Color(0xFFFF512F), Color(0xFF242424)], caption: '暖橙日落')),
     SizedBox(width: 12),
     Expanded(child: _GradientCard(colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '海盐汽水')),
+  ]),
+  _SectionTitle('更多', inset: 8.6),
+  Row(children: [
+    Expanded(child: _GradientCard(colors: [Color(0xFF396AFC), Color(0xFF2948FF)], caption: '极简蓝调')),
+    SizedBox(width: 12),
+    Expanded(child: _GradientCard(colors: [Color(0xFFB993D6), Color(0xFF8CA6DB)], caption: '莫兰迪')),
   ]),
   SizedBox(height: 12),
   _GradientCard(height: 90, colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '查看全部主题  ›'),

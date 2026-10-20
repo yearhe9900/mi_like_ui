@@ -148,6 +148,45 @@ void main() {
     expect(bar.selectedIndex, 1);
     expect(bar.itemWidth, MiPillTabMetrics.itemWidth);
   });
+
+  /// 压在内容上时未选胶囊换成玻璃膜（平底页那档 6% onSurface 会读不出形状）。
+  testWidgets('overContent swaps only the unselected fill for the veil',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 80);
+    addTearDown(tester.view.reset);
+
+    Color fillOf(String label) => (tester
+            .widget<AnimatedContainer>(find.ancestor(
+                of: find.text(label), matching: find.byType(AnimatedContainer)))
+            .decoration! as BoxDecoration)
+        .color!;
+
+    for (final mode in MiThemeMode.values) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: MiPillTabBar(
+                labels: four,
+                selectedIndex: 0,
+                onTap: _noop,
+                themeMode: mode,
+                overContent: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final palette = MiPillTabPalette.of(mode);
+      expect(fillOf(four[0]), palette.selectedFill); // 选中档两态同款
+      expect(fillOf(four[1]), MiTransparencyTokens.veilFor(mode));
+      expect(MiTransparencyTokens.veilFor(mode), isNot(palette.unselectedFill));
+    }
+  });
 }
 
 void _noop(int _) {}

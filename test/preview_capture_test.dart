@@ -495,6 +495,55 @@ void main() {
     );
   });
 
+  testWidgets('README preview: home cover (blur of search bar + pills)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    Future<void> capture(
+      MiThemeMode mode,
+      String file, {
+      double scroll = 0,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: mode == MiThemeMode.dark
+              ? ThemeData.dark(useMaterial3: true)
+              : ThemeData.light(useMaterial3: true),
+          home: Scaffold(body: MockPage(0, themeMode: mode)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (scroll > 0) {
+        // 用 `jumpTo` 精确控位移：`drag` 会带惯性，落点不可复现（黄金图会抖）
+        tester
+            .state<ScrollableState>(find.byType(Scrollable).first)
+            .position
+            .jumpTo(scroll);
+        await tester.pumpAndSettle();
+      }
+      await expectLater(find.byType(MockPage), matchesGoldenFile(file));
+    }
+
+    // 静止态：横幅 0…186 跨越磨砂底（156）→ 上半糊、下半锐利
+    await capture(MiThemeMode.light, '../doc/preview/home_light.png');
+    await capture(MiThemeMode.dark, '../doc/preview/home_dark.png');
+    // 上滚 20：横幅的草叶（高频）整片压在搜索栏 / 胶囊行后方 —— 磨砂最直观
+    // 的一帧（平坦色块在模糊下不变：卡片不行，纹理行）。再多滚 10dp 横幅底缘
+    // 就进到胶囊行里，画面会同时出现「被糊的草」和「锐利的页底」，反而费解。
+    await capture(
+      MiThemeMode.light,
+      '../doc/preview/home_scrolled_light.png',
+      scroll: 20,
+    );
+    await capture(
+      MiThemeMode.dark,
+      '../doc/preview/home_scrolled_dark.png',
+      scroll: 20,
+    );
+  });
+
   testWidgets('README preview: theme card closeups (light & dark)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 264 * 2);

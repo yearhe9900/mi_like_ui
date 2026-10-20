@@ -18,7 +18,12 @@ Color _compose(Color bg, Color fill) {
 }
 
 /// 可交互脚手架；[mode] 为空时走「跟随环境 Theme」路径。
-Widget _harness({MiThemeMode? mode, VoidCallback? onTap, ThemeData? theme}) {
+Widget _harness({
+  MiThemeMode? mode,
+  VoidCallback? onTap,
+  ThemeData? theme,
+  bool overContent = false,
+}) {
   return MaterialApp(
     theme: theme,
     home: Scaffold(
@@ -31,6 +36,7 @@ Widget _harness({MiThemeMode? mode, VoidCallback? onTap, ThemeData? theme}) {
           hint: '搜索主题 / 壁纸 / 图标',
           themeMode: mode,
           onTap: onTap,
+          overContent: overContent,
         ),
       ),
     ),
@@ -51,6 +57,26 @@ void main() {
       _compose(const Color(0xFF000000), MiSearchBarPalette.dark.fill),
       const Color(0xFF242424),
     );
+  });
+
+  /// 压在内容上时改用玻璃膜：平底页那档 5% 黑在照片上几乎读不出栏形。
+  testWidgets('overContent paints the glass veil instead of the flat fill',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 300);
+    addTearDown(tester.view.reset);
+
+    for (final mode in MiThemeMode.values) {
+      await tester.pumpWidget(_harness(mode: mode, overContent: true));
+      final box = tester.widget<ColoredBox>(
+        find
+            .descendant(
+                of: find.byType(MiSearchBar), matching: find.byType(ColoredBox))
+            .first,
+      );
+      expect(box.color, MiTransparencyTokens.veilFor(mode));
+      expect(box.color, isNot(MiSearchBarPalette.of(mode).fill));
+    }
   });
 
   test('palette ink matches the measured stroke cores', () {

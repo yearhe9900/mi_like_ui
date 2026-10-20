@@ -32,6 +32,9 @@ import 'pill_tab_bar_metrics.dart';
 ///
 /// 点按切换选中态，填充/标签色以 200ms 过渡（截图是静态参考、无动效
 /// 实测，取标准过渡值；不引入按压缩放等未实测动效）。
+///
+/// 未选胶囊有**两种状态**（都实测）：平底页的 onSurface@6% 低调填充，
+/// 与压在照片上的玻璃膜（[overContent]），不可互相推导。
 class MiPillTabBar extends StatelessWidget {
   const MiPillTabBar({
     super.key,
@@ -41,6 +44,7 @@ class MiPillTabBar extends StatelessWidget {
     this.itemWidth = MiPillTabMetrics.itemWidth,
     this.themeMode = MiThemeMode.dark,
     this.frosted = true,
+    this.overContent = false,
   }) : assert(itemWidth > 0);
   // labels 非空与 selectedIndex 范围校验见 build()：const 构造断言不支持
   // .length 求值（放构造器会封死 const 构造）
@@ -67,6 +71,14 @@ class MiPillTabBar extends StatelessWidget {
   /// 每帧全 QUAD 高斯。只保留半透明填充。
   final bool frosted;
 
+  /// 未选胶囊是否铺**玻璃膜**（默认 false）。
+  ///
+  /// 平底页（分类页）的未选胶囊是 onSurface@6% 的低调填充（合成 #E5E5E5）；
+  /// 压在照片/视频上时（首页悬浮头部区）实测是页面色 @0.46(亮)/纯黑
+  /// @0.59(暗) 的一层膜 —— 否则胶囊在杂乱背景上几乎读不出形状。
+  /// 取值与推导见 [MiTransparencyTokens.veilFor]；选中胶囊两态同款（近不透明）。
+  final bool overContent;
+
   @override
   Widget build(BuildContext context) {
     assert(labels.isNotEmpty, 'labels 不能为空');
@@ -75,6 +87,10 @@ class MiPillTabBar extends StatelessWidget {
       'selectedIndex 必须落在 labels 范围内',
     );
     final palette = MiPillTabPalette.of(themeMode);
+    // 未选填充两态：平底 = 低调 6% onSurface；压内容 = 玻璃膜（页底色半透明）。
+    final unselectedFill = overContent
+        ? MiTransparencyTokens.veilFor(themeMode)
+        : palette.unselectedFill;
     // 填充/文案/手势层（与磨砂分离成两层，保证模糊源里没有填充色）。
     final fills = <Widget>[];
     for (var i = 0; i < labels.length; i++) {
@@ -93,7 +109,7 @@ class MiPillTabBar extends StatelessWidget {
             width: itemWidth,
             height: MiPillTabMetrics.pillHeight,
             decoration: BoxDecoration(
-              color: selected ? palette.selectedFill : palette.unselectedFill,
+              color: selected ? palette.selectedFill : unselectedFill,
               borderRadius: BorderRadius.circular(MiDimens.radiusPill),
             ),
             alignment: Alignment.center,

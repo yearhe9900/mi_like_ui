@@ -31,6 +31,7 @@ Widget harness({
   PreferredSizeWidget? header,
   bool showSurface = true,
   bool showBlur = true,
+  bool overContent = false,
   double headerInset = MiTopBarMetrics.headerInset,
 }) {
   return MaterialApp(
@@ -60,6 +61,7 @@ Widget harness({
             header: header,
             showSurface: showSurface,
             showBlur: showBlur,
+            overContent: overContent,
             headerInset: headerInset,
           ),
         ],
@@ -865,7 +867,7 @@ void main() {
         reason: '头部区形态的叠色铺满整条顶栏（否则搜索栏 / 胶囊四周会断层）',
       );
 
-      // ③ 只开磨砂：有模糊、无压色；曲线拉到整条栏 156dp（形状不变）
+      // ③ 只开磨砂：有模糊、无压色；**一整段恒定 σ** 铺满整条栏 156dp
       await tester.pumpWidget(harness(
         title: null,
         showBack: false,
@@ -873,16 +875,16 @@ void main() {
         searchBar: const SizedBox.expand(),
         tabBar: const SizedBox.expand(),
       ));
-      expect(
-        blurLayers(),
-        findsNWidgets(
-          MiTopBar.visibleBlurBands(
-            MiTopBarPalette.dark,
-            extent: 156.0,
-            underSurface: false,
-          ).length,
-        ),
+      final headerBands = MiTopBar.uniformBlurBands(
+        MiTopBarPalette.dark,
+        extent: 156.0,
+        underSurface: false,
       );
+      expect(headerBands, hasLength(1), reason: '头部区是一段恒定 σ，不是阶梯');
+      expect(blurLayers(), findsNWidgets(headerBands.length));
+      final headerRect = tester.getRect(blurLayers());
+      expect(headerRect.top, 0);
+      expect(headerRect.height, closeTo(156.0, 0.01));
       expect(_scrimDark, findsNothing);
       expect(
         tester.getSize(find.byType(MiTopBar)).height,
@@ -931,14 +933,31 @@ void main() {
       expect(covered.length, lessThan(bare.length));
       expect(covered.last.bottom, closeTo(109.0 * k, 0.01));
 
-      // 头部区形态：同一条曲线拉到 156 才归零，且 0 起糊（那页没有压色）
-      final tall = MiTopBar.visibleBlurBands(
+      // 头部区形态**不走这条曲线**：一整段恒定 σ 铺满 0…156，到栏底硬切
+      //（首页亮/暗截图实测：搜索栏行与胶囊行后方糊得一样重，胶囊下面立刻清晰）
+      final tall = MiTopBar.uniformBlurBands(
         MiTopBarPalette.dark,
         extent: 156.0,
         underSurface: false,
       );
-      expect(tall.first.top, 0);
-      expect(tall.last.bottom, closeTo(109.0 * 156.0 / 119.0, 0.01));
+      expect(tall, hasLength(1));
+      expect(tall.single.top, 0);
+      expect(tall.single.bottom, closeTo(156.0, 0.01));
+      expect(tall.single.sigma, MiTopBarPalette.blurSigma);
+      // 深色叠色在头部区形态同样铺满整条栏：α=1 的实心段按盒高比例拉长，
+      // 之下那段模糊 100% 不可见 → 跳过（零视觉差异的省帧）
+      final tallCovered = MiTopBar.uniformBlurBands(
+        MiTopBarPalette.dark,
+        extent: 156.0,
+      );
+      expect(
+        tallCovered.single.top,
+        closeTo(
+          MiTopBarPalette.dark.scrimOpaqueBottom * 156.0 / 128.9,
+          0.01,
+        ),
+      );
+      expect(tallCovered.single.bottom, closeTo(156.0, 0.01));
 
       // 纯标题形态的叠色仍到实测材质盒 128.9
       await tester.pumpWidget(harness(offset: 40));
@@ -1216,7 +1235,7 @@ void main() {
         barBlurs(),
         findsNWidgets(
           // 头部区形态：材质盒 = 整条栏 156，叠色在（默认 showSurface: true）
-          MiTopBar.visibleBlurBands(MiTopBarPalette.dark, extent: 156.0).length,
+          MiTopBar.uniformBlurBands(MiTopBarPalette.dark, extent: 156.0).length,
         ),
         reason: '全栏只有顶栏那几条 σ(y) 段，没有零件私货',
       );
@@ -1250,6 +1269,43 @@ void main() {
       );
       expect(
         tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).frosted,
+        isTrue,
+      );
+    });
+
+    testWidgets('overContent 下发给内置零件（压内容的玻璃膜）', (tester) async {
+      _size(tester);
+      // 默认关：平底页保持 onSurface@6% 的低调填充
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        tabs: labels,
+      ));
+      expect(
+        tester.widget<MiSearchBar>(find.byType(MiSearchBar)).overContent,
+        isFalse,
+      );
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).overContent,
+        isFalse,
+      );
+
+      await tester.pumpWidget(harness(
+        title: null,
+        showBack: false,
+        showSurface: false,
+        searchHint: hint,
+        tabs: labels,
+        overContent: true,
+      ));
+      expect(
+        tester.widget<MiSearchBar>(find.byType(MiSearchBar)).overContent,
+        isTrue,
+      );
+      expect(
+        tester.widget<MiPillTabBar>(find.byType(MiPillTabBar)).overContent,
         isTrue,
       );
     });
@@ -1298,6 +1354,7 @@ void main() {
     expect(bar.tabBar, isNull);
     expect(bar.header, isNull);
     expect(bar.showSurface, isTrue);
+    expect(bar.overContent, isFalse);
     expect(bar.headerInset, MiTopBarMetrics.headerInset);
 
     const withBack = MiTopBar(title: kTitle, showBack: true);
