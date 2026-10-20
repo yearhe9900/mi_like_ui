@@ -290,45 +290,33 @@ class _DemoHomeState extends State<DemoHome> {
                           ),
                         ),
                       )
-                    else ...[
-                      // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起
-                      // 24.2dp，与参考 App 一致；edge-to-edge 下再让开手势条）。
+                    else
+                      // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起 24.2dp）。
+                      //
+                      // 浮起量是**距屏幕物理底缘**的实测值（参考截图里系统手势
+                      // 条就落在这 24.2 之内），所以不能再叠加一遍安全区 ——
+                      // edge-to-edge 之后 `padding.bottom` 拿到的是手势条高度
+                      // (~20dp)，叠加会把栏顶到 45dp、比参考高 20dp，手势条就悬
+                      // 在栏下空档里。只有安全区**本身比 24.2 还大**（三键导航
+                      // 48dp）时才抬起来，否则栏会压在系统按键上。
+                      //
+                      // 画面里的那张手势条**由系统自己画**：示例不再自绘 Home
+                      // 指示条（旧版自绘一条 138×5 的灰条 + 系统真条 = 两条，
+                      // 2026-10-20 真机反馈）。
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 24.2 +
-                            (framed ? safeBottom : 0), // measured: 24.2 dp
-                      child: MiGlassNavBar(
-                        items: items,
-                        selectedIndex: _index,
-                        onTap: (i) => setState(() => _index = i),
-                        themeMode: widget.themeMode,
-                        // 预留空位圆钮：仅选中「首页」时显示（切走收起）；
-                        // 与侧栏形态共用同一份声明。
-                        fab: fab,
-                      ),
-                      ),
-                      // home indicator (phone chrome, not part of the nav bar)
-                      // 侧栏形态没有手机 Home 指示条（那一档不是"物理手机"
-                      // 画面）——只有底栏形态才是。
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 9 + (framed ? safeBottom : 0),
-                        child: Center(
-                          child: Container(
-                            width: 138,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: light
-                                  ? const Color(0xFF959595)
-                                  : const Color(0xD9FFFFFF),
-                              borderRadius: BorderRadius.circular(2.5),
-                            ),
-                          ),
+                        bottom: math.max(24.2, safeBottom),
+                        child: MiGlassNavBar(
+                          items: items,
+                          selectedIndex: _index,
+                          onTap: (i) => setState(() => _index = i),
+                          themeMode: widget.themeMode,
+                          // 预留空位圆钮：仅选中「首页」时显示（切走收起）；
+                          // 与侧栏形态共用同一份声明。
+                          fab: fab,
                         ),
                       ),
-                    ],
                   ],
                 ),
               );

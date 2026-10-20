@@ -492,7 +492,8 @@ void main() {
       expect(overlay().statusBarIconBrightness, Brightness.dark);
     });
 
-    testWidgets('边到边：侧栏让开状态栏、底栏让开手势条', (tester) async {
+    testWidgets('边到边：侧栏让开状态栏、底栏在手势条之上（不叠加安全区）',
+        (tester) async {
       addTearDown(tester.view.reset);
 
       // 平板 + 40dp 状态栏：侧栏顶 = 40 + 25.5
@@ -506,14 +507,36 @@ void main() {
         closeTo(40 + MiGlassSideNavMetrics.railMargin, 0.01),
       );
 
-      // 手机 + 20dp 手势条：底栏仍浮起 24.2，再叠加安全区
+      // 手机 + 20dp 手势条：底栏仍浮起 24.2（**不叠加**安全区——参考截图里
+      // 系统手势条就落在这 24.2 之内；叠加会顶到 45dp、手势条悬在空档里）
       tester.view.physicalSize = const Size(393, 856);
       tester.view.padding = FakeViewPadding(bottom: 20);
       await tester.pumpWidget(DemoApp(key: UniqueKey()));
       await tester.pumpAndSettle();
       expect(
         tester.getRect(find.byType(MiGlassNavBar)).bottom,
-        closeTo(856 - 24.2 - 20, 0.01),
+        closeTo(856 - 24.2, 0.01),
+      );
+
+      // 画面里只有系统手势条：示例不再自绘 Home 指示条（自绘一条 + 系统一条
+      // = 真机两条，2026-10-20 反馈）
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Container &&
+              (w.constraints?.maxWidth ?? 0) == 138 &&
+              (w.constraints?.maxHeight ?? 0) == 5,
+        ),
+        findsNothing,
+      );
+
+      // 三键导航（48dp 安全区比 24.2 还大）：栏抬到按键上方，不压按键
+      tester.view.padding = FakeViewPadding(bottom: 48);
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byType(MiGlassNavBar)).bottom,
+        closeTo(856 - 48, 0.01),
       );
     });
   });

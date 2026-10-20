@@ -219,8 +219,12 @@ Stack(children: [
 > + 透明的状态栏 / 手势条，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`
 > 让状态栏图标随明暗翻转。否则应用窗口从状态栏下方开始，那条状态栏是**系统自己
 > 画的底色 + 压色**，看起来就是一条灰带（同一批实拍的另一半成因）。代价是浮层要
-> 自己让安全区：顶栏读 `MediaQuery.padding.top`，侧栏顶 / 底栏底 / Home 指示条
-> 各自加 `padding`。
+> 自己让安全区：顶栏读 `MediaQuery.padding.top`，侧栏顶 = `padding.top + 25.5`，
+> 底栏底 = `max(24.2, padding.bottom)`。**底栏那档不叠加**：24.2 本来就是距屏幕
+> 物理底缘的实测值，系统手势条正落在这 24.2 之内，叠加会把栏顶到 45dp、条悬在
+> 空档里；只有三键导航（48dp）这种比 24.2 还大的安全区才抬起来。
+> 画面里那条 Home 指示条**由系统自己画**，示例不再自绘（自绘一条 + 系统一条 =
+> 真机两条，2026-10-20 反馈）。
 
 - **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）决定外壳是否把画面加宽；
   **容器断点** `MiBreakpoints.usesSideNav(width)`（示例传画面的
@@ -243,8 +247,8 @@ Stack(children: [
 关键部件在窗口内 + 宽高比不变）、窗口尺寸热切换、网格 3/4/6 与 4/6/8 列；
 `test/desktop_nav_test.dart` —— `usesSideNav` 严格大于 600（600 底栏 / 601 侧栏）、
 侧栏几何与选中槽位、点按与拖拽回调、断点两侧形态唯一、铺满（圆角 0 / 无投影）、
-透明状态栏与图标亮度随主题翻转、侧栏让开状态栏 / 底栏让开手势条、跨断点来回切换
-保留滚动位置。
+透明状态栏与图标亮度随主题翻转、侧栏让开状态栏 / 底栏在手势条之上（不叠加安全区）
+且画面不自绘 Home 指示条、跨断点来回切换保留滚动位置。
 
 <img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856：1:1 + 底栏" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470：整机等比缩小 + 底栏" /> <img src="doc/preview/adaptive_tablet.png" width="200" alt="平板 768×1280：铺满窗口 + 侧栏，主题卡 4 列" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768：铺满窗口 + 侧栏，主题卡 6 列" />
 

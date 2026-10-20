@@ -17,8 +17,8 @@
 - 与底栏共用 `MiGlassNavItem`/`selectedIndex`/`onTap` + 全部动效 token（只换轴）。
 - **几何全「推导（非实测）」**：栏宽 95.4 = 格宽 82.2 + 2×6.6、条目高 49.3、间距 8、左/顶留白 25.5；`railHeightFor(n)= 2×6.6 + n×49.3 +(n−1)×8`（3 项=177.1）。胶囊中心 = `railInnerPad + itemHeight/2 + pitch×pos`（不是 `pitch×(pos+0.5)`，否则整体下移 gap/2）。fab 挂栏尾下方、栏体不让位（槽位恒定预留）。
 - **内外圈等距（用户反馈「以内圈为准」）**：`railRadius = pillRadius + railInnerPad` = 31.25（不是 railWidth/2）——端头圆弧与胶囊顶角同心、四周恒 6.6。
-- 示例：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned(left: sideNav ? gutterWidth : 0)` → 跨断点不重建、滚动保留；侧栏档外壳底色 = 页底色（否则深色有竖缝）；Home 指示条只在底栏形态。
-- **edge-to-edge**：`main.dart` 调 `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`（透明状态栏/手势条，图标亮度随明暗）。不做则窗口从状态栏下方开始，那条灰带（实测 250→183）就是系统画的。代价：侧栏顶 = `padding.top+25.5`、底栏底 = `24.2+padding.bottom`。
+- 示例：`DemoStage` 内套 `LayoutBuilder`，页面恒为 `Stack` 第一个 `Positioned(left: sideNav ? gutterWidth : 0)` → 跨断点不重建、滚动保留；侧栏档外壳底色 = 页底色（否则深色有竖缝）；**不自绘 Home 指示条**（edge-to-edge 下系统自己画，自绘=两条）。
+- **edge-to-edge**：`main.dart` 调 `SystemChrome.setEnabledSystemUIMode(edgeToEdge)`，`DemoHome` 用 `AnnotatedRegion<SystemUiOverlayStyle>`（透明状态栏/手势条，图标亮度随明暗）。不做则窗口从状态栏下方开始，那条灰带（实测 250→183）就是系统画的。代价：侧栏顶 = `padding.top+25.5`、底栏底 = **`max(24.2, padding.bottom)`**（24.2 量的是**屏幕**底缘、手势条就在这 24.2 里 → 不叠加；叠加会到 45dp，真机实测过）。
 
 ## 实测速查（dp @ 393 设计宽）
 - 页底：亮 `#F3F3F3` / 暗 `#000000`；搜索栏灰：亮 `#E7E7E7` / 暗 `#242424`。
