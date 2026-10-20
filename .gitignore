@@ -9,11 +9,8 @@ build/
 .gradle/
 
 # 逐帧抽帧原始产物（量大，仅归档分析拼图）
-.workbuddy/video_frames/drag_bug/
-.workbuddy/video_frames/light_glass/
-.workbuddy/video_frames/top_bar/
-.workbuddy/video_frames/top_bar2/
-.workbuddy/video_frames/top_bar3/
+.workbuddy/video_frames/
+.workbuddy/extract_*.py
 
 # 黄金图测试失败诊断产物（master/test/diff 图，随时再生）
 test/failures/

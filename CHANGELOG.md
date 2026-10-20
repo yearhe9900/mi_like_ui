@@ -6,7 +6,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- **搜索态：点搜索栏 → 真输入（搜索栏让位 + 取消钮 + 光标 + 键盘）**（2026-10-20，用户提供「短信」搜索录屏 592×1280 @24fps）
+  - 新增 `MiTopBar.searchActive` / `onSearchCancel` / `searchController` / `searchFocusNode` / `searchAutofocus` / `onSearchChanged` / `onSearchSubmitted` / `searchCancelInset`。置 `searchActive: true` 后：内置搜索栏换成真 `TextField`、右侧淡入取消钮、胶囊行淡出并退出排版
+  - `MiSearchBar` 新增 `editable` / `controller` / `focusNode` / `autofocus` / `onChanged` / `onSubmitted` / `textInputAction`。几何与配色完全复用：放大镜与占位文字**都不动**，光标出现在文字起点（实测行为：聚焦后 hint 不消失）
+  - 新增 `MiSearchCancelButton`（`search_cancel_button.dart` + `search_cancel_metrics.dart`）：⌀44.1 = **搜索栏高**、与栏隔 10.0、右缘贴屏（实测 0）、叉号墨盒 17.0 / 笔画 1.9、墨色是**前景墨色**（实测叉号 0 而放大镜 167，不能共用一档）
+  - 实测几何：正常态搜索栏 y 252…317px（168.4dp）→ 搜索态 78…143px（52.1dp），**高度不变 66px = 44.1dp**；取消钮 ⌀66px；栏↔钮 15px；四数在 592px 屏宽上闭合（21 + 491 + 15 + 66 = 593）
+  - 转场 **480ms**：前 10% 静止 + `easeOutQuint`（拟合逐帧位移 `252 244 194 143 112 95 86 82 80 79 79 78`，mean|Δ| = 0.008；纯 easeOutQuint 无延迟 0.035、easeInOut 族更差）。取消钮淡入**不与位移同步**，落在线性进度 0.35…0.62（实测 208/250/292ms 覆盖率 0.32/0.63/0.96）
+  - 光标：强调蓝（实测 rgb(60,130,246) → `MiColors.accent`）、高 21.3dp 钉死（实测 32px）、闪烁 500ms/500ms（实测亮灭各 12 帧 @24fps，与 Flutter 默认一致，故不另设）
+  - 颜色 token 收敛：`MiColors.accent`（主按钮填充同源）、`MiColors.pageBackground{Light,Dark}`（`veilBase*` 改为转发，值不变）
+  - 测试：新增 `test/search_state_test.dart`（14 例：几何 / 让位 / 右缘留白可覆盖 / `occupiedHeight` / 480ms 转场与淡入区间 / 进出双向 / 回调 / 输入态与 autofocus / 取消钮组件与断言）；`preview_capture_test` 新增搜索态预览两图
+
 ### Fixed
+
+- **搜索态转场一上来就跳到终态**（2026-10-20，自查发现）
+  - 两个独立成因，都会让 480ms 的转场看起来「瞬间完成」：① `AnimationController` 写成 `late final ... = AnimationController(value: widget.isSearchMode ? 1 : 0)`，那个初始化器在**第一次访问**（`didUpdateWidget` 里）才跑，此时 `widget` 已是新值 → 控制器一出生就是 1.0；改为在 `initState` 里建。② demo 首页的 `Stack` 里**条件插入**了一层搜索态遮罩，兄弟节点按下标配对，顶栏从下标 1 挪到 2 → 它的 `Element` 被当成新子树重建 → `State` 重来；给三个子级都补上 `ValueKey`
 
 - **真机多出一条手势操作横条：示例不再自绘 Home 指示条，底栏也不再叠加安全区**（2026-10-20 真机反馈，附 881×1920 截图）
   - 成因：上一版开了 edge-to-edge，应用窗口铺到手势条下面 → **系统开始自己画那条手势条**；而示例外壳仍照手机框的老样子自绘了一条 `138×5` 的灰条（`bottom: 9 + safeBottom`）。于是同一屏出现两条：自绘那条（实测宽 309px = 137.8dp、离屏底 31.1dp = 9 + 安全区 19.6 + 2.5）与系统那条（宽 281px = 125.4dp、离屏底 10.7dp），前者反而比后者高
