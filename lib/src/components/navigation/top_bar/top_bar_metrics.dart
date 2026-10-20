@@ -1,3 +1,5 @@
+import 'package:flutter/animation.dart';
+
 import '../../../theme/gradient_blur_tokens.dart';
 
 /// [MiTopBar] 的几何 / 折叠动效参数：1:1 逐帧实测自参考录屏。
@@ -244,6 +246,40 @@ class MiTopBarMetrics {
   /// 折叠完成位移 = [compactTitleFade] 末点：越过该位移后两段标题都不再变化，
   /// 故非有限位移（+∞）按此饱和处理（见 `top_bar.dart` 的位移兜底）。
   static const double collapsedOffset = 29.31;
+
+  // ── 搜索态（点按搜索栏 → 输入态） ──────────────────────────────────────
+  //
+  // 全部实测自参考录屏「短信」搜索（592×1280 @24fps，共 79 帧）。那一页的
+  // 正常态搜索栏在大标题下方（y 252px），点按后升到状态栏下方（y 78px），
+  // 位移 174px；同时右侧让出取消钮、页面内容清空、键盘升起。
+
+  /// 搜索态转场总时长（实测：起手静止 48ms + 位移 430ms ≈ 480）。
+  ///
+  /// 参考录屏里点按后**不是立刻动**：13 帧位移序列的首帧几乎没动
+  /// （252 → 244px），从第 2 帧才真正开始走。把这段「起手停一下」也算进
+  /// 时长，指令一次插值就能同时表达「先停后冲」，不用额外加定时器。
+  static const int searchTransitionMs = 480;
+
+  /// 位移曲线：**前 10% 静止 + easeOutQuint**，剩余 90% 走完全程。
+  ///
+  /// 拟合依据：逐帧位移
+  /// `252 244 194 143 112 95 86 82 80 79 79 78`（px，24fps），
+  /// 该模型 mean|Δ| = 0.008、最大偏差 0.046（比纯 easeOutQuint 无延迟的
+  /// 0.035 / 0.35 好一个量级；easeInOut 族反而更差）。
+  static const Curve searchMotion =
+      Interval(0.10, 1.0, curve: Curves.easeOutQuint);
+
+  /// 取消钮淡入区间（**线性时间**上的比例段，不受 [searchMotion] 影响）。
+  ///
+  /// 实测圆盘覆盖率（同 y 区域相对页底的偏离，稳态 16.7）：f26 5.36 →
+  /// f27 10.53 → f28 16.04 → f29 16.4（≈稳定），即 0.32 / 0.63 / 0.96 落在
+  /// 点按后 208 / 250 / 292ms。反解得「约 130ms 的淡入、起于 166ms」，
+  /// 折成 [searchTransitionMs] = 480 的比例就是 0.35…0.62 —— 也就是**转场
+  /// 中段**出现，既不跟着最后一帧一起冒出来，也不是一开始就有。
+  static const double searchCancelFadeBegin = 0.35;
+
+  /// 取消钮淡入区间终点。
+  static const double searchCancelFadeEnd = 0.62;
 
   /// 大标题不透明度（[largeTitleFade] 线性插值；负位移按 0 处理）。
   static double largeTitleOpacity(double scrollOffset) =>

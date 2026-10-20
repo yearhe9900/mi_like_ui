@@ -50,4 +50,10 @@ class MiSearchBarMetrics {
 
   /// 镜片圆半径（笔画中心线，实测 13.2~14px ≈ 6.0）。
   static const double lensRadius = 6.0;
+
+  /// 搜索态输入光标高度（实测 32px ≈ 21.3dp，栏高 44.1 的 48%，垂心居中）。
+  ///
+  /// 与 [barHeight] 一起把光标钉死：Flutter 默认光标高随字体行盒算，
+  /// 换字体族就会漂；这里给的是实测绝对值。
+  static const double caretHeight = 21.3;
 }

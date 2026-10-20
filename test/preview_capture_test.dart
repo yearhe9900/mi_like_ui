@@ -544,6 +544,37 @@ void main() {
     );
   });
 
+  testWidgets('README preview: search state (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    Future<void> capture(MiThemeMode mode, String file) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: mode == MiThemeMode.dark
+              ? ThemeData.dark(useMaterial3: true)
+              : ThemeData.light(useMaterial3: true),
+          home: Scaffold(body: MockPage(0, themeMode: mode)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MiSearchBar));
+      // 转场 420ms。**不能用 pumpAndSettle**：输入光标的闪烁是一个不会停的
+      // 定时器，settle 会一直等下去。改为只推固定时长 —— 也顺带把光标钉在
+      // 「刚点亮」那一相，截图才是确定的。
+      await tester.pump();
+      // 转场 480ms；再把时间停在 490ms —— 光标闪烁是「亮 500ms / 灭 500ms」，
+      // 只有这一小段窗口里既走完转场又能截到光标（超过 500ms 光标就灭了）。
+      await tester.pump(const Duration(milliseconds: 490));
+      await expectLater(find.byType(MockPage), matchesGoldenFile(file));
+    }
+
+    await capture(MiThemeMode.light, '../doc/preview/home_search_light.png');
+    await capture(MiThemeMode.dark, '../doc/preview/home_search_dark.png');
+  });
+
   testWidgets('README preview: theme card closeups (light & dark)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 264 * 2);

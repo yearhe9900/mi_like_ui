@@ -282,9 +282,33 @@ class _HomePageState extends State<_HomePage> {
 
   int _tab = 0;
 
+  /// 搜索态：点搜索栏进入，点取消钮退出（参考录屏的交互）。
+  bool _searching = false;
+
+  /// 搜索框的输入 / 焦点：由页面持有，退出搜索态时能主动 `unfocus` 收键盘。
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _openSearch() {
+    if (_searching) return;
+    setState(() => _searching = true);
+  }
+
+  void _closeSearch() {
+    if (!_searching) return;
+    _searchFocus.unfocus();
+    setState(() => _searching = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final light = widget.themeMode == MiThemeMode.light;
     // 首页页边距实测 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片 25~26
     // 同量级，与分类页一致）；宽屏舞台下收到 24。
     final inset = _pageInset(context, 11.9);
@@ -296,6 +320,11 @@ class _HomePageState extends State<_HomePage> {
       themeMode: widget.themeMode,
       headerInset: inset,
       searchHint: '搜索主题 / 壁纸 / 图标',
+      onSearchTap: _openSearch,
+      searchActive: _searching,
+      onSearchCancel: _closeSearch,
+      searchController: _searchController,
+      searchFocusNode: _searchFocus,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
@@ -304,12 +333,13 @@ class _HomePageState extends State<_HomePage> {
     );
     return ColoredBox(
       // 页底实测：亮 #F3F3F3 / 暗 #000000。
-      color: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+      color: MiColors.pageBackgroundFor(widget.themeMode),
       child: Stack(
         children: [
           // 列表不留给头部让位：横幅从 y = 0 起铺（含状态栏后面），滚动时从
           // 头部后方经过 —— 与参考图一致，也是磨砂的可见性来源。
           Positioned.fill(
+            key: const ValueKey('homeList'),
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
@@ -325,8 +355,27 @@ class _HomePageState extends State<_HomePage> {
               ],
             ),
           ),
+          // 搜索态：内容让位给输入（参考录屏里搜索页在键盘上方是空白的）。
+          // 用一层同色盖住而不是卸载列表 —— 退出搜索态时滚动位置不丢。
+          //
+          // ⚠️ Stack 的子级**必须带 key**：这个 Overlay 是条件插入的，没有
+          // key 时兄弟节点按**下标**配对，顶栏会从下标 1 挪到 2 → 它的 Element
+          // 被当成新子树重建 → State 重来、搜索态转场直接跳到终态（踩过）。
+          if (_searching)
+            Positioned.fill(
+              key: const ValueKey('homeSearchCover'),
+              child: ColoredBox(
+                color: MiColors.pageBackgroundFor(widget.themeMode),
+              ),
+            ),
           // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
-          Positioned(left: 0, right: 0, top: 0, child: bar),
+          Positioned(
+            key: const ValueKey('homeTopBar'),
+            left: 0,
+            right: 0,
+            top: 0,
+            child: bar,
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 
+import 'colors.dart';
 import 'theme_mode.dart';
 import 'transparency_tokens.dart';
 
@@ -48,7 +49,7 @@ class MiButtonPalette {
 
   /// 深色配方。
   static const MiButtonPalette dark = MiButtonPalette(
-    filledFill: Color(0xFF4980F7),
+    filledFill: MiColors.accent,
     filledLabel: Color(0xFFFFFFFF),
     tonalFill: Color(0xFF242424),
     tonalLabel: Color(0xFFF3F3F3),
@@ -60,7 +61,7 @@ class MiButtonPalette {
 
   /// 浅色配方。
   static const MiButtonPalette light = MiButtonPalette(
-    filledFill: Color(0xFF4980F7),
+    filledFill: MiColors.accent,
     filledLabel: Color(0xFFFFFFFF),
     tonalFill: Color(0xFFE7E7E7),
     tonalLabel: Color(0xFF161616),

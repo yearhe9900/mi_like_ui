@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 
+import 'colors.dart';
 import 'theme_mode.dart';
 
 /// **统一的透明 / 磨砂配置** —— 全项目的 alpha、blur σ、玻璃膜色只能来自这里。
@@ -106,8 +107,11 @@ class MiTransparencyTokens {
   static const int veilAlphaDark = 167;
 
   /// 页底色（亮 #F3F3F3 / 暗 #000000）—— 玻璃膜取这个色，明暗自洽。
-  static const Color veilBaseLight = Color(0xFFF3F3F3);
-  static const Color veilBaseDark = Color(0xFF000000);
+  ///
+  /// 值定义在 [MiColors]（页底是全局语义，不止玻璃膜在用），这里转发以免
+  /// 同一个色值散落两处。
+  static const Color veilBaseLight = MiColors.pageBackgroundLight;
+  static const Color veilBaseDark = MiColors.pageBackgroundDark;
 
   /// 按明暗模式取玻璃膜颜色（压在内容上的搜索栏 / 未选胶囊填充）。
   static Color veilFor(MiThemeMode mode) => mode == MiThemeMode.dark

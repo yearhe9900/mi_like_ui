@@ -18,6 +18,21 @@ class MiColors {
   static Color foregroundFor(MiThemeMode mode) =>
       mode == MiThemeMode.dark ? foreground : foregroundLight;
 
+  /// 强调蓝：主按钮填充（「我的关注」页亮/暗两张截图实测同为 #4980F7），
+  /// 也是搜索态输入光标的取色（参考录屏实测 rgb(60,130,246)，同一族强调色，
+  /// 差值来自视频压缩 / 细笔画的边缘混色）。
+  static const Color accent = Color(0xFF4980F7);
+
+  /// 页底色（浅色）：主题商店首页/分类页实测 #F3F3F3，玻璃膜的基色同源。
+  static const Color pageBackgroundLight = Color(0xFFF3F3F3);
+
+  /// 页底色（深色）：实测纯黑（OLED 直接关灯，不是深灰）。
+  static const Color pageBackgroundDark = Color(0xFF000000);
+
+  /// 按明暗模式取页底色。
+  static Color pageBackgroundFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? pageBackgroundDark : pageBackgroundLight;
+
   /// 强调绿（深色）：预留空位圆形按钮底色（暗色视频实测 rgb(37,191,67)）。
   static const Color fabGreen = Color(0xFF25BF43);
 
