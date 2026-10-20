@@ -2,6 +2,7 @@
 
 ## 约定
 - 对外只经 barrel `lib/mi_like_ui.dart`（新增组件/token 补 export）；组件 `src/components/<类别>/<组件名>/`，类 `Mi` 前缀、文件 snake_case；颜色/文字/间距一律走 `src/theme/` token，组件内不写字面量。
+- **透明参数只有一个来源**：`src/theme/transparency_tokens.dart`（σ / 各级 alpha / 玻璃膜色 / 压色曲线采样色 / 导航栏五层 alpha / 禁用态）。其它 theme 文件与组件只引用常量，**alpha 保持原生表达形式**（0.63 别换算成 161/255，否则黄金图漂）。守门测试 `test/transparency_config_test.dart` 扫源码（含「配置文件自身必须带字面量」防空转）。曲线类：色值表/σ 表在统一配置，几何（stops、段位段高）留在各 palette。
 - **实测优先**：视觉参数 1:1 从参考截图像素量；参考图没有的样式只能推导，doc 标「推导（非实测）」+ 写明来源。
 - 每个任务完成即 git commit（精确路径 add，绝不 `git add .`）；改样式后 `flutter test --update-goldens test/preview_capture_test.dart`；工作区不留未提交改动。`analyze`/`test` 由 agent 代跑（2026-10-17 用户明确），build/adb 给命令文本。
 
