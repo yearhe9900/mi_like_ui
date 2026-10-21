@@ -1,17 +1,16 @@
 import 'dart:ui';
 
-/// `ImageFilter.blur` 的**进程内缓存**（框架内部工具，不经 barrel 导出）。
+/// `ImageFilter.blur` 的进程内缓存（框架内部工具，不经 barrel 导出）。
 ///
-/// 每帧 `build` 里直接 `ImageFilter.blur(...)` 会新建 native filter 对象
-/// （FFI 调用 + 内存分配 + 首次使用时的采样表构建）。本框架的模糊 σ 全部来自
-/// 固定 token（磨砂 5.37、顶栏阶梯 5.37/5.15/4.68/…、搜索栏 同上），取值集合
-/// 是有限且不变的 —— 完全可以缓存复用同一个 `ImageFilter` 实例。
+/// 每帧 `build` 中直接 `ImageFilter.blur(...)` 会新建 native filter 对象
+/// （FFI 调用 + 内存分配 + 采样表构建）。本库的模糊 σ 全部来自固定令牌
+/// （磨砂 5.37、顶栏阶梯、搜索栏同源），取值集合有限且不变，可缓存复用
+/// 同一 `ImageFilter` 实例。
 ///
-/// `ImageFilter` 是不可变 native 对象，可安全地被多个 `BackdropFilter` 共享；
-/// 缓存按 σ（保留 3 位小数的整数 key，避免浮点误差分叉）索引。
+/// `ImageFilter` 为不可变 native 对象，可安全地被多个 `BackdropFilter`
+/// 共享；缓存按 σ（保留 3 位小数的整数 key，避免浮点误差分叉）索引。
 ///
-/// 省下的是一次 build 内 N 次 native 分配。实测（平板 768×1280 深色首页）：
-/// 顶栏 8 + 导航栏 1 + 搜索栏 1 = 10 次/帧，滚动时每帧都发生。
+/// 省去单次构建内的 N 次 native 分配（如平板深色首页 10 次/帧）。
 class MiFilterCache {
   MiFilterCache._();
 

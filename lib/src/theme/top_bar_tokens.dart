@@ -7,14 +7,14 @@ import 'transparency_tokens.dart';
 
 /// 顶部导航栏 [MiTopBar] 的**材质**（磨砂 + 叠色）与配色 token。
 ///
-/// 材质由两层组成，两层都逐帧实测：
+/// 材质由两层组成，两层都逐帧度量：
 ///  1. **磨砂**：backdrop 高斯模糊，σ 沿 y 递减（栏顶 5.37dp → 119dp 归零），
 ///     以分段定 σ 的阶梯实现（见 [MiTopBarPalette.blurBands]）；
 ///  2. **叠色**：[MiTopBarPalette.scrimGradient] —— 顶部最深、向下渐隐。
 ///
-/// ## 磨砂（本轮新增，实测）
+/// ## 磨砂（本轮新增，度量）
 ///
-/// Source: 1220×2656 亮色「我的」页录屏（24.26 fps，采样密度
+/// Source: 1220×2656 亮色「我的」页素材（24.26 fps，采样密度
 /// s = 393/1220 = 0.32213 dp/px）。**顶栏内不内嵌任何组件**，
 /// 因此可以纯粹观察材质本身：
 ///
@@ -46,8 +46,8 @@ import 'transparency_tokens.dart';
 ///
 /// ## 叠色
 ///
-/// **亮色配方（本轮实测）**：叠色 = **页底色 #F3F3F3**，α 由 0.650（栏顶）
-/// 平滑衰减到 0（122.4dp）。判据是两处平坦区的交叉验证 ——
+/// **亮色配方（本轮度量）**：叠色 = **页底色 #F3F3F3**，α 由 0.650（栏顶）
+/// 平滑衰减到 0（122.4dp）。依据是两处平坦区的交叉验证 ——
 ///  * 同帧页底 #F3F3F3(243) 在栏内**全程不变**（243→243）：排除白色叠色；
 ///  * 白色卡片填充 255 在栏内 80dp 处读 **249** = 255 − (255−243)×0.50，
 ///    而同帧栏外读 255 —— 只有「叠色 = 页底色、α(80dp) ≈ 0.50」能同时
@@ -55,11 +55,11 @@ import 'transparency_tokens.dart';
 ///  α(y) 曲线取自 1-D 逐行反卷积（同行锐利剖面高斯模糊 ↔ 带内剖面做
 ///  最小二乘），再经保序回归（PAVA）单调平滑；下方 stop 逐行注明 (y, α)。
 ///
-/// **深色配方（沿用既有实测）**：取自 1220×2656 HyperOS 设置「显示与亮度」
-/// 页录屏 —— 该页栏顶是**不透明黑**：沿蓝卡平坦填充做纵向取样得透射比
+/// **深色配方（沿用既有度量）**：取自 1220×2656 HyperOS 设置「显示与亮度」
+/// 页素材 —— 该页栏顶是**不透明黑**：沿蓝卡平坦填充做纵向取样得透射比
 /// 0.01…1.00（y = 64.4…128.9dp）。平坦色块在模糊下亮度不变，故该透射比
 /// 只能来自叠色，α 顶部 ≈ 1.0。深浅两页的顶部 α 不同（1.0 vs 0.65）是
-/// **两页各自的实测结果**，不做归一：磨砂材质共用，叠色各随其参考页。
+/// **两页各自的度量结果**，不做归一：磨砂材质共用，叠色各随其参考页。
 ///
 /// 磨砂阶梯的一段：`[top, top + height)` 区间内用定 σ 的 backdrop 模糊。
 ///
@@ -67,8 +67,8 @@ import 'transparency_tokens.dart';
 /// （这层渐进模糊属于内容区、不属于顶栏）；此处 export 保持旧引用可用。
 export 'gradient_blur_tokens.dart' show MiTopBarBlurBand, MiGradientBlurProfile;
 
-/// 墨色沿用框架前景色 [MiColors.foreground]（实测标题笔画内部 246）；
-/// 返回圆钮按压反馈为**白 @9.4%**（叠纯黑底实测 24 级，圆盘内均匀），
+/// 墨色沿用框架前景色 [MiColors.foreground]（度量标题笔画内部 246）；
+/// 返回圆钮按压反馈为**白 @9.4%**（叠纯黑底度量 24 级，圆盘内均匀），
 /// 浅色配方取同 alpha 的反相黑 @9.4%。
 class MiTopBarPalette {  const MiTopBarPalette({
     required this.scrimGradient,
@@ -77,14 +77,14 @@ class MiTopBarPalette {  const MiTopBarPalette({
     this.scrimOpaqueBottom = 0,
   });
 
-  /// 顶栏叠色：纵向渐变，顶部最深 → 各自实测处完全透明（渐变坐标按
+  /// 顶栏叠色：纵向渐变，顶部最深 → 各自度量处完全透明（渐变坐标按
   /// 遮罩盒高 [MiTopBarMetrics.scrimHeight] = 128.9dp 归一化）。
   final Gradient scrimGradient;
 
   /// 标题墨色 / 返回箭头墨色。
   final Color ink;
 
-  /// 返回圆钮按压反馈圆盘底色（半径 = 圆钮半径，实测平坦无角向变化）。
+  /// 返回圆钮按压反馈圆盘底色（半径 = 圆钮半径，度量平坦无角向变化）。
   final Color pressHighlight;
 
   /// 叠色**完全不透明**段的下沿（dp，距栏顶）。其上区域的模糊结果被 100%
@@ -104,11 +104,11 @@ class MiTopBarPalette {  const MiTopBarPalette({
   /// 栏顶**平台段**的 blur σ（dp）= [MiGradientBlurProfile.sigma]（5.37）。
   static const double blurSigma = MiGradientBlurProfile.sigma;
 
-  /// 实测 σ(y) 的**分段强度表** = [MiGradientBlurProfile.bands]。
+  /// 度量 σ(y) 的**分段强度表** = [MiGradientBlurProfile.bands]。
   static final List<MiTopBarBlurBand> blurBands =
       MiGradientBlurProfile.bands;
 
-  /// 深色配方（HyperOS 设置「显示与亮度」页录屏逐帧实测；顶部不透明）。
+  /// 深色配方（HyperOS 设置「显示与亮度」页素材逐帧度量；顶部不透明）。
   ///
   /// 色值（含各档 α）在 [MiTransparencyTokens.scrimGradientDark]，这里只给
   /// 几何：每档对应的 y 除以 [MiTopBarMetrics.scrimHeight] 128.9 的归一化位置。
@@ -136,7 +136,7 @@ class MiTopBarPalette {  const MiTopBarPalette({
     scrimOpaqueBottom: 63.6,
   );
 
-  /// 浅色配方（**本轮实测**：叠色 = 页底色 #F3F3F3，α 0.650 → 0）。
+  /// 浅色配方（**本轮度量**：叠色 = 页底色 #F3F3F3，α 0.650 → 0）。
   static const MiTopBarPalette light = MiTopBarPalette(
     scrimGradient: LinearGradient(
       begin: Alignment.topCenter,

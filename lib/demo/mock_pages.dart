@@ -5,7 +5,7 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 
 /// 页面内容左右页边距。
 ///
-/// * compact（手机）：沿用 1:1 实测值（首页 11.9 / 「我的」20）；
+/// * compact（手机）：沿用 像素级度量值（首页 11.9 / 「我的」20）；
 /// * medium / expanded（外壳已把画面铺成内容舞台）：收到 [MiDimens.spaceXxl]
 ///   24 —— 宽画布上继续贴 11.9 会让内容顶到边。
 double _pageInset(BuildContext context, double measured) =>
@@ -31,7 +31,7 @@ class MockPage extends StatelessWidget {
   final ValueChanged<MiThemeMode>? onThemeModeChanged;
 
   /// 搜索态开关（true = 页面进入搜索）。外壳据此收起浮动底栏 ——
-  /// 参考录屏里搜索页是整屏的，没有 App 级导航。
+  /// 参考素材里搜索页是整屏的，没有 App 级导航。
   final ValueChanged<bool>? onSearchActiveChanged;
 
   /// 弹框演示入口（demo 功能）：按位置弹出 [MiDialog]，由外壳挂浮层。
@@ -159,7 +159,7 @@ class _DialogDemoRow extends StatelessWidget {
 ///
 /// [MiTopBar] 是受控组件（不自带滚动），这里用 [ValueNotifier] 承接
 /// [ScrollController] 的位移，只重建顶栏一层而非整页 setState。
-/// 页底取参考页实测色（亮 #F3F3F3 / 暗 #000000）——同时让顶栏遮罩
+/// 页底取参考页度量色（亮 #F3F3F3 / 暗 #000000）——同时让顶栏遮罩
 /// 实心段与页底同色（遮罩基色即页底色）。
 ///
 /// 两种页面形态各演示一次：[showBack] 默认 `false`（顶层页，首页），
@@ -183,7 +183,7 @@ class _MockPageShell extends StatefulWidget {
   /// 是否显示返回圆钮（默认 false，对齐 [MiTopBar.showBack]）。
   final bool showBack;
 
-  /// 滚动内容内边距：左右默认 20（「我的」页沿用原值）；首页按实测
+  /// 滚动内容内边距：左右默认 20（「我的」页沿用原值）；首页按度量
   /// 页边距 11.9dp + 搜索栏档上内边距 168.5dp 覆盖（见 `MockPage.build`
   /// 的 `case 0`）。
   final EdgeInsetsGeometry padding;
@@ -234,7 +234,7 @@ class _MockPageShellState extends State<_MockPageShell> {
           // 于是整页在 loose 约束的上级（AnimatedSwitcher 内部是
           // `alignment: center` 的 Stack）里被垂直居中 —— 顶栏会跑到屏幕正中，
           // 页底黑与 ListView 只剩 152.8dp 高、内容全被裁掉。
-          // 2026-10-16 实机截图实测：整体下移 351.1dp =（856 − 152.8）/ 2。
+          // 偏移量 =（856 − 152.8）/ 2 = 351.1dp。
           Positioned(
             left: 0,
             right: 0,
@@ -266,7 +266,7 @@ class _SectionTitle extends StatelessWidget {
 
   final String text;
 
-  /// 左内缩：首页区块标题行实测 x46 ≈ 20.5dp（页边距 11.9 + 8.6），
+  /// 左内缩：首页区块标题行度量 x46 ≈ 20.5dp（页边距 11.9 + 8.6），
   /// 较卡片图区多一档缩进、与卡标题缩进同源对齐；其余页面走默认 0。
   final double inset;
 
@@ -312,7 +312,7 @@ class _GradientCard extends StatelessWidget {
 ///
 /// 结构照亮/暗两张完整截图（881×1920）：
 ///  * 顶部是一条**高频横幅**（[_HeroBanner]，底缘圆角 20dp），从屏幕最顶端
-///    （含状态栏后面）铺到实测 ~186dp；
+///    （含状态栏后面）铺到度量 ~186dp；
 ///  * 搜索栏 + 胶囊标签行**悬浮**在横幅上（[MiTopBar] 头部区形态，由顶栏
 ///    自己产出两个组件），页面只给数据；
 ///  * 列表**上内边距为 0** —— 横幅与下方区块一起从头部后方滚过，那条恒定 σ
@@ -338,7 +338,7 @@ class _HomePageState extends State<_HomePage> {
 
   int _tab = 0;
 
-  /// 搜索态：点搜索栏进入，点取消钮退出（参考录屏的交互）。
+  /// 搜索态：点搜索栏进入，点取消钮退出（参考素材的交互）。
   bool _searching = false;
 
   /// 搜索框的输入 / 焦点：由页面持有，退出搜索态时能主动 `unfocus` 收键盘。
@@ -369,13 +369,13 @@ class _HomePageState extends State<_HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 首页页边距实测 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片 25~26
+    // 首页页边距度量 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片 25~26
     // 同量级，与分类页一致）；宽屏舞台下收到 24。
     final inset = _pageInset(context, 11.9);
     // 头部区形态：搜索栏 + 胶囊行由顶栏内部产出（自带状态栏让位、间距、
-    // 页边距），磨砂是**恒定 σ 的整条栏**（参考截图实测，见 MiTopBar 文档）。
+    // 页边距），磨砂是**恒定 σ 的整条栏**（参考素材度量，见 MiTopBar 文档）。
     // `overContent: true` —— 横幅从 y=0 起铺、从头部下方滚过，搜索栏与未选
-    // 胶囊要铺那层玻璃膜才读得出来（参考图实测，见 MiTransparencyTokens）。
+    // 胶囊要铺那层玻璃膜才读得出来（参考素材度量，见 MiTransparencyTokens）。
     final bar = MiTopBar(
       themeMode: widget.themeMode,
       headerInset: inset,
@@ -392,12 +392,12 @@ class _HomePageState extends State<_HomePage> {
       overContent: true,
     );
     return ColoredBox(
-      // 页底实测：亮 #F3F3F3 / 暗 #000000。
+      // 页底度量：亮 #F3F3F3 / 暗 #000000。
       color: MiColors.pageBackgroundFor(widget.themeMode),
       child: Stack(
         children: [
           // 列表不留给头部让位：横幅从 y = 0 起铺（含状态栏后面），滚动时从
-          // 头部后方经过 —— 与参考图一致，也是磨砂的可见性来源。
+          // 头部后方经过 —— 与参考素材一致，也是磨砂的可见性来源。
           Positioned.fill(
             key: const ValueKey('homeList'),
             child: ListView(
@@ -415,7 +415,7 @@ class _HomePageState extends State<_HomePage> {
               ],
             ),
           ),
-          // 搜索态：内容让位给输入（参考录屏里搜索页在键盘上方是空白的）。
+          // 搜索态：内容让位给输入（参考素材里搜索页在键盘上方是空白的）。
           // 用一层同色盖住而不是卸载列表 —— 退出搜索态时滚动位置不丢。
           //
           // ⚠️ Stack 的子级**必须带 key**：这个 Overlay 是条件插入的，没有
@@ -445,20 +445,20 @@ class _HomePageState extends State<_HomePage> {
 /// 首页顶部横幅（示例占位）：程序化绘制的风景图。
 ///
 /// **为什么不用渐变占位**：平坦色块在模糊下亮度不变，判不了"有没有磨砂"
-/// （本项目已实测的坑）。参考页横幅是一张高频照片（天空 / 树线 / 草地），
+/// （已知行为）。参考页横幅是一张高频照片（天空 / 树线 / 草地），
 /// 这里用 [CustomPainter] 按同样构图生成 —— 树线剪影 + 随机草叶提供了足量
 /// 高频细节，滚到头部区后方时能被磨砂明显抹开。
 ///
-/// 几何取参考截图实测：底缘 ≈ 186dp、下圆角 20dp，左右**满幅**（不受页边距
+/// 几何取参考素材度量：底缘 ≈ 186dp、下圆角 20dp，左右**满幅**（不受页边距
 /// 约束，横幅是通栏图）；磨砂带（[MiTopBar.occupiedHeight] ≈ 156dp）落在
 /// 横幅上半段，所以静止态就能看到"上半被糊、下半清晰"。
 class _HeroBanner extends StatelessWidget {
   const _HeroBanner({super.key});
 
-  /// 横幅高度（实测底缘 ≈ 416px ≈ 186dp）。
+  /// 横幅高度（度量底缘 ≈ 416px ≈ 186dp）。
   static const double height = 186;
 
-  /// 下圆角（实测底缘收角 ≈ 20dp）。
+  /// 下圆角（度量底缘收角 ≈ 20dp）。
   static const double bottomRadius = 20;
 
   @override
@@ -484,7 +484,7 @@ class _HeroBanner extends StatelessWidget {
 
 /// 横幅内容：天空 → 远山 → 树线 → 草地（含随机草叶）。
 ///
-/// 全部用固定种子，保证每次布局/截图完全一致（黄金图可比）。
+/// 全部用固定种子，保证每次布局/截图完全一致（视觉回归可比）。
 class _HeroPainter extends CustomPainter {
   const _HeroPainter();
 
@@ -554,7 +554,7 @@ class _HeroPainter extends CustomPainter {
       ..close();
     canvas.drawPath(far, Paint()..color = const Color(0xFF8E8DA6));
 
-    // 5) 树线剪影：逐列随机构成锯齿顶缘 —— 模糊下最先被抹成一片的判据
+    // 5) 树线剪影：逐列随机构成锯齿顶缘 —— 模糊下最先被抹成一片的依据
     final rnd = math.Random(20261020);
     final trees = Path()..moveTo(0, h * _horizon);
     var x = 0.0;
@@ -612,8 +612,8 @@ class _HeroPainter extends CustomPainter {
 ///
 /// 分节照亮/暗参考截图：横幅下方依次是「背屏创意设计大赛」（两张大卡）→
 /// 「精选主题」（[MiThemeCard] 网格）→「热门 IP」→「经典表盘」→「更多」，
-/// 每节两行、行距 12，与参考图的节奏一致。区块标题行经 [_SectionTitle.inset]
-/// 收进 ≈20.5dp 文本列（实测 x46），卡标题再由卡片自身 8.8dp 内缩与之同列起排。
+/// 每节两行、行距 12，与参考素材的节奏一致。区块标题行经 [_SectionTitle.inset]
+/// 收进 ≈20.5dp 文本列（度量 x46），卡标题再由卡片自身 8.8dp 内缩与之同列起排。
 ///
 /// 内容量不只是"好看"：磨砂效果需要内容**不断从头部后方经过**才有东西可糊，
 /// 页面太短（比如只有一两节）在平板 / 桌面上会直接不可滚。
@@ -680,13 +680,13 @@ const List<Widget> _homeSections = [
 ///  * medium（600…1023）→ 4 列；
 ///  * expanded（≥ 1024）→ 6 列。
 ///
-/// 几何对齐参考截图实测：列距取 [MiThemeCardMetrics.columnGap]（11.9，
+/// 几何对齐参考素材度量：列距取 [MiThemeCardMetrics.columnGap]（11.9，
 /// 页边距同值）、行距取 [MiThemeCardMetrics.rowGap]（15）；标题经卡片
 /// 自身 8.8dp 内缩与区块标题「精选主题」（11.9 + 8.6 ≈ 20.5）同列起排。
 /// 卡片宽度由网格等分，预览图按 259:472 定比 → 列数变化时卡片整体缩放，
 /// 不会被横向拉伸。
-/// 预览图为实测 6 张卡壁纸主色上→下渐变占位（截图采样均值，顺序左→右、
-/// 上→下）；标题为示例命名（参考图卡名字迹不作字面复刻）。
+/// 预览图为度量 6 张卡壁纸主色上→下渐变占位（截图采样均值，顺序左→右、
+/// 上→下）；标题为示例命名（参考素材卡名字迹不作字面复刻）。
 class _ThemeCardGrid extends StatelessWidget {
   const _ThemeCardGrid();
 
@@ -749,7 +749,7 @@ class _ThemeCardGrid extends StatelessWidget {
 /// `状态栏 + 搜索框 + 间距 + 胶囊行`。顶部材质也归顶栏：整条头部区（含
 /// 搜索栏 / 胶囊行及其间隙）盖在**同一条渐进磨砂**下，零件不再各绘 backdrop。
 ///
-/// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整截图实测），用来切分
+/// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整素材度量），用来切分
 /// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位展示
 /// `nav_icons.dart` 的全部 logo（真实框架 logo），「按钮展示」组先陈列
 /// `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位补足
@@ -853,7 +853,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     final logoMode = _tab == 0;
     final logos = logoMode ? _logos(Colors.white) : const <CustomPainter>[];
     final count = _counts[_tab];
-    // 页底色与内容边距按完整截图实测：亮 #F3F3F3 / 暗 #000000，
+    // 页底色与内容边距按完整素材度量：亮 #F3F3F3 / 暗 #000000，
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）；
     // 外壳加宽成内容舞台（expanded）时页边距收到 24。
     final inset = _pageInset(context, 11.9);
@@ -892,7 +892,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       color: MiColors.pageBackgroundFor(widget.themeMode),
       child: Stack(
         children: [
-          // 滚动网格：初始让出顶栏高度 + 胶囊行底 → 内容的实测间距 12dp；
+          // 滚动网格：初始让出顶栏高度 + 胶囊行底 → 内容的度量间距 12dp；
           // 上滚后内容从胶囊行后方经过，胶囊的半透明磨砂把透上来的网格
           // 磨出毛玻璃感。
           Positioned.fill(
@@ -963,11 +963,11 @@ class _ShowcasePageState extends State<_ShowcasePage> {
 
 /// 「按钮展示」分组内容（示例层）：复刻「我的关注」页的关注按钮本体。
 ///
-/// 参考图 = 亮/暗两张完整截图（1220x2656）实测：按钮 59.9×28.3dp stadium、
-/// 填充 #4980F7 明暗同色、标签 13dp Medium 白字；行节奏沿用实测行距
+/// 参考素材 = 亮/暗两张完整截图（1220x2656）度量：按钮 59.9×28.3dp stadium、
+/// 填充 #4980F7 明暗同色、标签 13dp Medium 白字；行节奏沿用度量行距
 /// 56.1dp。三行分别是主按钮（点按在 关注 ↔ 已关注 间切换）、次级态、
 /// 禁用态；按钮直接陈列在分组页底上（亮 #F3F3F3 / 暗 #000000），
-/// 与参考图同底对照。
+/// 与参考素材同底对照。
 class _ButtonShowcase extends StatefulWidget {
   const _ButtonShowcase({required this.themeMode});
 
@@ -1026,7 +1026,7 @@ class _ButtonShowcaseState extends State<_ButtonShowcase> {
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            '实测自「我的关注」页 1220×2656：59.9×28.3dp stadium · '
+            '规格（设计度量 1220×2656 素材）：59.9×28.3dp stadium · '
             '填充 #4980F7 明暗同色 · 标签 13dp/500 · 左右内边距 17dp',
             style: _subStyle(context, 11),
           ),
@@ -1035,7 +1035,7 @@ class _ButtonShowcaseState extends State<_ButtonShowcase> {
     );
   }
 
-  /// 规格行：左说明、右按钮（参考页按钮靠右陈列），行高沿用实测行距。
+  /// 规格行：左说明、右按钮（参考页按钮靠右陈列），行高沿用度量行距。
   Widget _specRow(
     BuildContext context, {
     required String caption,

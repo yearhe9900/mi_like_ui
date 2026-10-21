@@ -11,37 +11,31 @@ import '../../../utils/filter_cache.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
 
-/// 小米主题商店风格搜索栏（深/浅色双模式）。
+/// 搜索栏（明暗双模式，静态展示 / 可输入两态）。
 ///
-/// 几何 / 配色 1:1 实测自亮/暗分类页完整截图（几何见 [MiSearchBarMetrics]、
-/// 配方见 `theme/search_bar_tokens.dart`）：stadium 高 44.1，图标 17.8 +
-/// 图文间距 12 起于左缘 15.4，占位文字 16.5dp CJK advance，全部垂心居中。
+/// 几何与配色规格见 [MiSearchBarMetrics] / `theme/search_bar_tokens.dart`：
+/// stadium 高 44.1dp，图标 17.8dp、图文间距 12dp、左缘内缩 15.4dp，
+/// 占位文字 16.5dp，全部垂直居中。
 ///
-/// **透明参数与底部导航栏同源**（`theme/transparency_tokens.dart`）：
-/// 栏体下叠与 [MiGlassNavBar] 同款 backdrop 磨砂（sigma =
-/// [MiTransparencyTokens.blurSigma]），填充为半透明表面（平底合成 =
-/// 截图实测实色 #E7E7E7 / #242424，档位推导见 palette 注释）——滚动
-/// 内容从搜索栏后方经过时透上来并被磨出毛玻璃感，与胶囊标签行、玻璃
-/// 导航栏构成同一套透明语言。
+/// **透明参数与导航栏同源**（`theme/transparency_tokens.dart`）：栏体带
+/// backdrop 磨砂（σ = [MiTransparencyTokens.blurSigma]），填充为半透明
+/// 表面色（平底合成实色亮 #E7E7E7 / 暗 #242424）——滚动内容从搜索栏后方
+/// 经过时透出磨砂质感，与胶囊标签行、玻璃导航栏同属一套透明语言。
 ///
-/// [themeMode] 为空时跟随环境 `Theme.of(context).brightness`（demo
-/// 首页列表里的 const 用法即靠此推导）；点按经 [onTap] 回调（为空则
-/// 不参与手势）。
+/// [themeMode] 为空时跟随环境 `Theme.of(context).brightness`；点按经
+/// [onTap] 回调（为空则不参与手势）。
 ///
-/// ## 搜索态：`editable: true`
+/// ## 输入态（`editable: true`）
 ///
-/// 同一个组件、同一套几何，只把中间的占位文字换成真的输入框
-/// （`TextField` + `InputDecoration.collapsed`）：点按后**放大镜与占位文字
-/// 都留在原位**，左侧多出闪烁的输入光标 —— 参考录屏实测就是这样
-///（光标与 hint 同现，不是「聚焦后 hint 消失」），Flutter 的 `TextField`
-/// 在空值 + 聚焦时恰好也是这个表现。
+/// 同一几何，占位文字位置替换为真实输入框（`TextField` +
+/// `InputDecoration.collapsed`）：放大镜与占位文字保持原位，左侧显示
+/// 闪烁光标（与占位文字同现）。
 ///
-/// 三处实测/推导：
 ///  * 光标色 = 强调蓝（[MiSearchBarPalette.caret]）；
-///  * 光标高 21.3dp（[MiSearchBarMetrics.caretHeight]）钉成绝对值，不随
-///    字体行盒漂；
-///  * 光标闪烁 500ms 亮 / 500ms 灭 —— 录屏逐帧实测亮 12 帧、灭 12 帧
-///    （24fps），与 Flutter `EditableText` 默认半周期 500ms 一致，故不另设。
+///  * 光标高 21.3dp（[MiSearchBarMetrics.caretHeight]）为绝对值，
+///    不随字体行盒漂移；
+///  * 光标闪烁 500ms 亮 / 500ms 灭，与 Flutter `EditableText` 默认半周期
+///    一致，不另行配置。
 class MiSearchBar extends StatelessWidget {
   const MiSearchBar({
     super.key,
@@ -75,7 +69,7 @@ class MiSearchBar extends StatelessWidget {
   /// 放进**自带材质的顶栏**（`MiTopBar(showSurface: true)` 的头部区）时传
   /// `false`：磨砂由顶栏那条渐进曲线统一提供，再叠一层等于两次高斯 ——
   /// 既让栏内比周围更糊（与「统一材质」相悖），也多一份每帧全 QUAD 开销。
-  /// 只保留半透明填充：平底合成仍等于截图实测实色。
+  /// 只保留半透明填充：平底合成仍等于素材度量实色。
   final bool frosted;
 
   /// 是否铺**玻璃膜**（默认 false）—— 压在照片/视频等内容上时开启。
@@ -89,7 +83,7 @@ class MiSearchBar extends StatelessWidget {
   /// 是否变成**可真输入**的搜索栏（默认 false = 只展示占位文字）。
   ///
   /// 打开后中间换成 `TextField`，聚焦即弹键盘、出光标；放大镜与占位文字
-  /// 位置不变（实测行为）。
+  /// 位置不变（度量行为）。
   final bool editable;
 
   /// 输入框控制器（仅 [editable] 生效；null = 组件自建）。
@@ -182,10 +176,10 @@ class MiSearchBar extends StatelessWidget {
   /// 可输入态：`TextField` 走同一条 hint 样式与同一段横向位置。
   ///
   /// 用 `InputDecoration.collapsed` 而不是默认装饰 —— 后者自带 12dp 左右的
-  /// 内边距与最小高，会把文字推离实测位置（hint 起点就不在 iconGap 之后了）。
+  /// 内边距与最小高，会把文字推离度量位置（hint 起点就不在 iconGap 之后了）。
   ///
-  /// 已输入文字用**前景墨色**（[MiSearchBarPalette.cancelInk]）：参考录屏
-  /// 全程没输入过文字，这档属于推导 —— 依据是同页叉号实测就是前景墨色，
+  /// 已输入文字用**前景墨色**（[MiSearchBarPalette.cancelInk]）：参考素材
+  /// 全程没输入过文字，这档属于推导 —— 依据是同页叉号度量就是前景墨色，
   /// 输入的文字没理由比它淡。
   Widget _field(MiSearchBarPalette palette) {
     final style = MiTypography.searchHint.copyWith(color: palette.cancelInk);

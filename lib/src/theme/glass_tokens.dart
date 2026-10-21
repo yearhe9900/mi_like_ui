@@ -3,19 +3,16 @@ import 'package:flutter/painting.dart';
 import 'theme_mode.dart';
 import 'transparency_tokens.dart';
 
-/// 磨砂玻璃材质配方 token（视频/截图实测，所有玻璃类组件共用）。
+/// 磨砂玻璃材质配方令牌（所有玻璃类组件共用）。
 ///
-/// 实测透射模型（深色）：遮罩 `scrim` 在干净列上满足 out = 0.37·in + 12.6；
-/// 高亮胶囊是"透镜"（在遮罩上开洞 + 暗化 + 白茶色），不是纯色块。
+/// 深色透射模型：遮罩 `scrim` 满足 out = 0.37·in + 12.6；选中胶囊为
+/// 「透镜」（遮罩开洞 + 暗化 + 白茶色调），非纯色块。
 ///
-/// 浅色同样是半透明真实玻璃（亮色录屏 1220×2656 实测）：遮罩带垂直
-/// 渐变（上更透、下更实），背后内容色彩透上来；选中胶囊是独立的暖灰
-/// 玻璃体。旧"白玻璃"参考图（近白底 #F7F7F7）实为同一配方在白底上的
-/// 表现（代入透射模型体部≈#FBFBFB、胶囊≈#EAEAEA，与旧采样吻合）。
-/// 明暗两套配方见 [MiGlassPalette]。
+/// 浅色同为半透明真实玻璃：遮罩带垂直渐变（上透下实），背后内容色彩
+/// 透出；选中胶囊为独立暖灰玻璃体。明暗两套配方见 [MiGlassPalette]。
 ///
-/// **所有 alpha / σ 都是引用**（[MiTransparencyTokens]，统一透明配置），
-/// 这里只决定「哪一层用哪档」和色相。
+/// **alpha / σ 均为引用**（[MiTransparencyTokens]），本层只决定
+/// 「哪一层用哪档」与色相。
 class MiGlassTokens {
   MiGlassTokens._();
 
@@ -64,7 +61,7 @@ class MiGlassPalette {
   /// 玻璃体遮罩（在透镜处开洞）；[scrimGradient] 非空时改按渐变绘制。
   final Color scrim;
 
-  /// 玻璃体遮罩垂直渐变（可空 = 纯色 [scrim]；亮色实测上透下实）。
+  /// 玻璃体遮罩垂直渐变（可空 = 纯色 [scrim]；亮色度量上透下实）。
   final Gradient? scrimGradient;
 
   /// 透镜暗化层（贴在开洞处的最底层）。
@@ -77,7 +74,7 @@ class MiGlassPalette {
   /// 透镜色调垂直渐变（可空 = 纯色 [lensTint]）。
   final Gradient? lensTintGradient;
 
-  /// 透镜内描边（深色 0.08 实测；浅色真值为无描边=透明，见 [MiGlassPalette.light]）。
+  /// 透镜内描边（深色 0.08 度量；浅色真值为无描边=透明，见 [MiGlassPalette.light]）。
   final Color lensStroke;
 
   /// 玻璃体外缘高光。
@@ -86,7 +83,7 @@ class MiGlassPalette {
   /// 玻璃体投影（浅色下可见；深色下为空，不产生任何绘制）。
   final List<BoxShadow> elevationShadow;
 
-  /// 深色配方（视频实测，见 [MiGlassTokens]）。
+  /// 深色配方（视频度量，见 [MiGlassTokens]）。
   static const MiGlassPalette dark = MiGlassPalette(
     scrim: MiGlassTokens.scrim,
     lensShade: MiGlassTokens.lensShade,
@@ -95,18 +92,17 @@ class MiGlassPalette {
     rim: MiGlassTokens.rim,
   );
 
-  /// 浅色配方（亮色录屏真实玻璃实测 1220×2656，采样密度≈3.07）。
+  /// 浅色配方（亮色素材真实玻璃度量 1220×2656，采样密度≈3.07）。
   ///
   /// 真实玻璃形态（区别于旧"白玻璃"近实白读数——那是白底上的表现）：
   ///  * 栏体半透明磨砂玻璃：垂直渐变遮罩 alpha 0.61→0.76→0.80（上→中→下），
   ///    色 #FBFBFB，透射模型 out = a·C + (1-a)·blurB（背后内容色彩透上来）；
   ///  * 选中胶囊是独立暖灰玻璃体（色 ≈#E6E6E7，alpha 0.66→0.78→0.82），
   ///    比栏体暗 ~13 级；lensShade 置全透明（无额外暗化）；
-  ///  * 胶囊边缘**无描边**（录屏真值：218→205 干净亮度阶跃、无亮环）；
-  ///    旧 lensStroke 白 0.30 系早期拟合虚构（帽形拟合本就不含边缘），
-  ///    会在胶囊外沿形成白亮环、与间隙带连成一片，吃掉胶囊↔栏体间距的
-  ///    可读性（明暗模式“内圈外圈相距”感知不一致的根因），2026-10-16 移除；
-  ///  * 外缘纯白 #FFFFFF 高光（实测峰值 255）；
+  ///  * 胶囊边缘**无描边**（素材真值：218→205 干净亮度阶跃、无亮环）；
+  ///    描边取白 0.30 会在胶囊外沿形成白亮环、与间隙带连成一片，影响
+  ///    胶囊与栏体的间距可读性，故描边为 0；
+  ///  * 外缘纯白 #FFFFFF 高光（度量峰值 255）；
   ///  * 投影：下缘近处约 -8 级、~50px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
     scrim: Color.fromRGBO(

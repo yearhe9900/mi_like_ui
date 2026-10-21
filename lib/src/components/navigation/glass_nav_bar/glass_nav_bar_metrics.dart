@@ -1,52 +1,44 @@
 import 'dart:math' as math;
 
-/// [MiGlassNavBar] 的几何 / 动效参数：1:1 逐帧实测自参考视频。
+/// [MiGlassNavBar] 的几何与动效规格（设计度量，393dp 设计宽）。
 ///
-/// Source frame: 1220x2656 px screen recording (Xiaomi theme store app).
-/// Scale to a 393 dp design width: s = 393 / 1220 = 0.32213.
+/// 规格取自 1220×2656 参考素材，换算系数 s = 393 / 1220 = 0.32213：
 ///
-/// | item                     | video px        | dp      |
-/// |--------------------------|-----------------|---------|
-/// | bar size                 | 1062 x 172      | 342 x 55.4 |
-/// | bar side margin          | 79              | 25.5    |
-/// | tab cell width           | 255             | 82.1    |
-/// | pill (settled)           | 277 x 153       | 89.3 x 49.3 |
-/// | pill / cell width ratio  | 277/255 = 1.086 | -       |
-/// | pill vertical inset      | ~10             | 3.05    |
-/// | icon box                 | ~68 x 72        | 21.9 x 23.2 |
-/// | label font (CJK glyph h) | 31              | 10.5    |
-/// | icon-label gap           | 17              | 5.5     |
+/// | 项目                  | 素材 px        | dp         |
+/// |-----------------------|----------------|------------|
+/// | 栏体尺寸              | 1062 x 172     | 342 x 55.4 |
+/// | 栏体左右边距          | 79             | 25.5       |
+/// | 格宽                  | 255            | 82.1       |
+/// | 胶囊（静止）          | 277 x 153      | 89.3 x 49.3 |
+/// | 胶囊 / 格宽比         | 277/255 = 1.086 | —         |
+/// | 胶囊垂直内缩          | ~10            | 3.05       |
+/// | 图标墨盒              | ~68 x 72       | 21.9 x 23.2 |
+/// | 标签字高（CJK）       | 31             | 10.5       |
+/// | 图标与标签间距        | 17             | 5.5        |
 ///
-/// 圆钮视频（1220x2656，3 tab + 绿色圆钮）补充实测：
+/// FAB 规格（3 tab + 圆钮素材补充）：
 ///
-/// | item                     | video px        | dp      |
-/// |--------------------------|-----------------|---------|
-/// | tab cell width           | 252             | 81      |
-/// | fab diameter             | 171 (=bar 170)  | 55.1 ≈ barHeight |
-/// | bar -> fab gap           | 37              | 11.9    |
+/// | 项目          | 素材 px       | dp              |
+/// |---------------|---------------|-----------------|
+/// | 格宽          | 252           | 81              |
+/// | FAB 直径      | 171           | 55.1 ≈ 栏高     |
+/// | 栏体与 FAB 间距 | 37          | 11.9            |
 ///
-/// 两段视频共同点：格宽不随 tab 数变化（255/252px），栏体宽度=内容宽
-/// （n × 格宽 + 2 × barInnerPad），整体水平居中。tab 超过 4 个时格宽
-/// 收缩以塞进 [barMarginH] 的最大栏宽（与旧版固定 342 宽行为一致）。
+/// 格宽不随 tab 数变化，栏体宽度 = 内容宽（n × 格宽 + 2 × 内边距）、整体
+/// 水平居中；tab 超过 4 个时格宽收缩以适配 [barMarginH] 的最大栏宽。
 ///
-/// Motion (tracked at 24.3 fps, pixel ground truth):
-///  * flight phase: position curve ≈ Curves.easeOutSine (best fit),
-///    duration = 260 ms + 20 ms per cell travelled (measured 260~340 ms)
-///  * jelly squash & stretch: mid-flight the pill grows up to +35% wider
-///    and -7.5% shorter (3-cell jump measured 380x142 px vs 282x153 px),
-///    peak deformation around t = 0.3 of the animation.
-///  * settle tail (the end-of-flight behaviour, measured on the 1px
-///    luminance ground truth of JUMP1/JUMP4/JUMP6): the pill does NOT dead
-///    land — it springs past the target and damps back over ~350 ms.
-///    Centre overshoot peaks at 3.7% of a cell width while the width dips
-///    -2.2% (height reacts inversely, ratio 0.214). The wave
-///    sin(π·s^0.6)·exp(-1.2·s) fits the envelope and is exactly 0 at both
-///    s = 0 and s = 1, so the settled frame is pixel-identical to before.
-///  * end clamp: the pill rect is clamped to [pillInsetV, barW-pillInsetV]
-///    (the equidistant gap bounds). At the end tabs the overshoot hits that
-///    wall and turns into extra width compression instead: measured
-///    rendered width -5.8% at the ends vs -2.2% mid-bar, which the model +
-///    clamp reproduces.
+/// 动效规格（24.3fps 素材逐帧跟踪）：
+///
+///  * **飞行**：位置曲线 ≈ `Curves.easeOutSine`，时长 = 260ms +
+///    20ms × 跨格数（度量 260~340ms）；
+///  * **果冻形变**：飞行中胶囊最宽 +35%、最矮 −7.5%（3 格跳变度量
+///    380×142px 对静止 282×153px），峰值约在 t = 0.3；
+///  * **弹性沉降**：胶囊越过目标后回弹阻尼收敛（~350ms），中心过冲峰值
+///    为格宽的 3.7%、宽度反向收缩 −2.2%（高度反向，比率 0.214）；
+///    包络 sin(π·s^0.6)·exp(−1.2·s)，在 s = 0 与 s = 1 处恰为 0 ——
+///    静止帧与迁移前逐像素一致；
+///  * **端点钳制**：胶囊矩形钳制于 [pillInsetV]…barW − [pillInsetV]，
+///    端部 tab 的过冲转化为额外宽度压缩（度量 −5.8%，中部 −2.2%）。
 ///
 /// 文字样式见 `theme/typography.dart`，颜色见 `theme/colors.dart`，
 /// 玻璃材质配方见 `theme/glass_tokens.dart`。
@@ -118,7 +110,7 @@ class MiGlassNavMetrics {
     return raw / _settleWavePeak;
   }
 
-  // --- reserved circular button slot (预留空位圆钮，圆钮视频实测) ----------
+  // --- reserved circular button slot (预留空位圆钮，圆钮视频度量) ----------
   // With the button shown, [bar, gap, button] forms a centred row: the bar
   // centre sits exactly (fabDiameter + fabGap)/2 left of the screen centre and
   // the button pops IN PLACE at W/2 + (barW+fabGap)/2 (measured cx = 1015 px

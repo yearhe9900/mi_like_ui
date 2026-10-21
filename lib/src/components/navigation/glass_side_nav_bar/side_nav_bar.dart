@@ -15,46 +15,40 @@ import '../glass_nav_bar/glass_nav_bar_metrics.dart';
 import 'side_nav_bar_metrics.dart';
 import 'side_nav_bar_painter.dart';
 
-/// 小米主题商店风格的玻璃悬浮**侧边**导航栏（桌面模式的底部栏替身）。
+/// 玻璃悬浮侧边导航栏（宽屏 / 桌面形态，明暗双模式）。
 ///
-/// 与 [MiGlassNavBar] 是**同一套导航语义的另一种布局**：
-///  * 条目类型同为 [MiGlassNavItem]（标签 + 任意图标 painter）——调用方传
-///    同一份 items，图标与标签一字不改；
-///  * 选中态同为零位移之外的**胶囊透镜**（不另改图标/标签颜色）；
-///  * `onTap(index)` 回调与底部栏完全相同，路由跳转行为不变；
-///  * 选中胶囊的飞行 / 弹性沉降 / 按压缩圈 / 拖拽跟手全部复用
-///    [MiGlassNavMetrics]（曲线与时长逐帧同源），只把**轴换成纵向**：
-///    飞行方向由 x 变 y，果冻形变由「宽拉伸 + 高压缩」变「高拉伸 + 宽压缩」。
+/// 与 [MiGlassNavBar] 同属一套导航语义、换纵向布局：
+///  * 条目类型同为 [MiGlassNavItem]（标签 + 图标 painter），同一份 items
+///    可直接复用；
+///  * 选中态同为胶囊透镜，`onTap(index)` 回调语义与底部栏一致；
+///  * 飞行 / 弹性沉降 / 按压 / 拖拽动效复用 [MiGlassNavMetrics]
+///    （曲线与时长同源），仅运动轴换向（形变由横向拉伸换为纵向拉伸）。
 ///
-/// ## 什么时候用它
+/// ## 使用场景
 ///
-/// 画面容器宽达到导航断点（`MiBreakpoints.usesSideNav`，**> 600**）时取代
-/// 底部栏；手机 / 窄窗仍用 [MiGlassNavBar]。两者**不要同时显示**。
-/// 切换是整棵子树替换（不做淡入淡出）：`Opacity` / `FadeTransition` 会给
-/// 含 `BackdropFilter` 的子树引入 saveLayer，磨砂会在切换期间直接消失
-/// （本项目已实测的坑）。
+/// 画面容器宽达到导航断点（`MiBreakpoints.usesSideNav`，严格 > 600dp）时
+/// 建议替代底部栏；手机 / 窄窗沿用 [MiGlassNavBar]，两者不同时显示。
+/// 切换形态请直接替换子树、不做淡入淡出（`Opacity` 会对含
+/// `BackdropFilter` 的子树引入 saveLayer，切换期间磨砂消失）。
 ///
-/// ## 与底部栏的两处刻意差异
+/// ## 与底部栏的差异
 ///
-///  1. **圆钮（[fab]）挂在栏尾下方、栏体不让位**：底部栏的「栏体平移让位」
-///     是为横向一排 tab 的居中腾挪设计的；侧栏锚定左上、栏体不动，圆钮
-///     纵向排在栏体下方（间距 [MiGlassSideNavMetrics.fabGap]、直径
-///     [MiGlassSideNavMetrics.fabDiameter]，均沿用底部栏实测）。显隐契约
-///     与底部栏完全一致：选中 [MiGlassNavFab.tabIndex] 对应条目时缩放+
-///     淡入弹出（同一 [MiGlassNavMetrics.fabPopMs] / easeOutCubic 曲线），
-///     切走收起。槽位**恒定预留**（收起不改组件高度，无布局跳动）。
+///  1. **FAB（[fab]）挂于栏尾下方、栏体不为其让位**（底部栏为横向排列
+///     居中而平移让位；侧栏锚定左上、栏体不动）。间距
+///     [MiGlassSideNavMetrics.fabGap]、直径
+///     [MiGlassSideNavMetrics.fabDiameter] 与底部栏同规格；显隐契约与
+///     弹出曲线同源（[MiGlassNavMetrics.fabPopMs]），槽位恒定预留、
+///     显隐无布局跳动；
 ///  2. **栏体竖向收缩到内容高**（[MiGlassSideNavMetrics.railHeightFor]），
-///     摆放位置由宿主决定（示例贴顶 + 距左缘 [MiGlassSideNavMetrics.railMargin]
-///     一档留白）—— 对应底部栏「栏宽 = 内容宽、位置由宿主给」的同构做法。
+///     摆放位置由宿主决定（建议贴顶 + 距左缘
+///     [MiGlassSideNavMetrics.railMargin]）。
 ///
 /// 玻璃材质配方与底部栏同源（[MiGlassPalette] + [MiTransparencyTokens]），
-/// 整条栏只挂**一个** `BackdropFilter`（每帧全 QUAD 高斯，层数预算见
-/// `test/perf_budget_test.dart`）。图标颜色由调用方传入 painter，需与
-/// [MiColors.foregroundFor] 保持一致。
+/// 整条栏单个 `BackdropFilter`；图标颜色由调用方随 painter 传入，建议取
+/// [MiColors.foregroundFor]。
 ///
-/// **高度随条目数线性增长**（`2×内边距 + n×条目高 + (n−1)×间隙`，见
-/// [MiGlassSideNavMetrics.railHeightFor]）：条目多到放不下时应由宿主给滚动
-/// 容器，本组件不做内部滚动（底部栏同样按内容宽直接铺开）。
+/// 高度随条目数线性增长（`2×内边距 + n×条目高 + (n−1)×间隙`），条目超出
+/// 可用空间时由宿主提供滚动容器（本组件不提供内部滚动）。
 class MiGlassSideNavBar extends StatefulWidget {
   const MiGlassSideNavBar({
     super.key,
@@ -392,7 +386,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                         behavior: HitTestBehavior.opaque,
                         onTap: () => widget.onTap(i),
                         child: Opacity(
-                          // 按下条目内容变暗（实测 ~55%）
+                          // 按下条目内容变暗（度量 ~55%）
                           opacity: _pressedIndex == i
                               ? MiGlassNavMetrics.pressDimOpacity
                               : 1.0,
@@ -492,7 +486,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                 // 时间镜像 —— 与底部栏圆钮逐帧同源。
                 // IgnorePointer 必须**包在 GestureDetector 外面**：
                 // GestureDetector 自身 opaque，若它留在命中测试里，
-                // 收起后这块不可见区域仍会吞掉点击（2026-10-18 测试暴露）。
+                // 收起后这块不可见区域仍会吞掉点击。
                 final t = Curves.easeOutCubic.transform(_fabCtrl.value);
                 return IgnorePointer(
                   ignoring: t == 0,

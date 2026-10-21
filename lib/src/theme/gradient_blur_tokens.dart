@@ -2,21 +2,16 @@ import 'package:flutter/foundation.dart';
 
 import 'transparency_tokens.dart';
 
-/// 顶部**渐进模糊**（内容区自己那层磨砂）的实测曲线 token。
+/// 顶部渐进模糊的曲线令牌（`MiGradientBlur` / `MiTopBar` 共用）。
 ///
-/// 这层模糊**不属于顶栏**：参考 App 里有一页完全没有顶栏（主题商店「每日
-/// 精选」），内容顶部照样是糊的，而且越往下越清晰、到 ~120dp 自然收尾
-/// （逐行水平梯度 `|g|`：44dp `0.05` → 75dp `0.97` → 116dp `4.32` →
-/// **120dp 后不再上升**，即已完全清晰、没有硬边）。顶栏只是位置正好压在
-/// 上面、顺带把这层画在同一处（见 `MiGradientBlur`）。
+/// 该层模糊属滚动内容自身的顶部磨砂，与顶栏相互独立（见 `MiGradientBlur`）。
 ///
-/// σ(y) 曲线本身实测自亮色「我的」页录屏（1220×2656，s = 393/1220）：
-/// 栏顶平台段 5.37dp，50dp 处 4.96、67.5dp 处 4.34、90dp 处 1.85、
-/// 103dp 处 0.76、119dp 归零。
+/// σ(y) 曲线（设计度量，393dp 设计宽）：顶部平台段 5.37dp，50dp 处 4.96、
+/// 67.5dp 处 4.34、90dp 处 1.85、103dp 处 0.76、119dp 归零。
 ///
-/// 渐进效果只能**分段定 σ 并列**实现（Flutter 没有位置相关模糊；用渐变
-/// `ShaderMask` / `Opacity` 削弱模糊层会引入新 saveLayer、把 backdrop 变空，
-/// 实测整段模糊消失）。段高 ≤ 17dp、相邻 σ 比 ≤ 1.5 时台阶肉眼不可见。
+/// 渐进效果以**分段定 σ 并列**实现（Flutter 不提供位置相关模糊，且对模糊
+/// 层施加半透明遮罩会破坏其 backdrop）；段高 ≤ 17dp、相邻 σ 比 ≤ 1.5 时
+/// 视觉无台阶。
 @immutable
 class MiTopBarBlurBand {
   const MiTopBarBlurBand({
@@ -72,7 +67,7 @@ class MiGradientBlurProfile {
   static const double minVisibleSigma = MiTransparencyTokens.minVisibleSigma;
 
   /// 8 段定 σ 阶梯：段位 / 段高是几何（见 [_tops] / [_heights]），每段的 σ
-  /// 逐档取自 [MiTransparencyTokens.blurSigmaRamp]（实测控制点分段线性插值）。
+  /// 逐档取自 [MiTransparencyTokens.blurSigmaRamp]（度量控制点分段线性插值）。
   ///
   /// 不是 `const`：σ 来自统一配置的那张表，逐档引用比把数值抄一遍可靠。
   static final List<MiTopBarBlurBand> bands =

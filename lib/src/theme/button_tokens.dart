@@ -4,21 +4,19 @@ import 'colors.dart';
 import 'theme_mode.dart';
 import 'transparency_tokens.dart';
 
-/// 按钮配色 token（明暗双配方）。
+/// 按钮配色令牌（明暗双配方）。
 ///
-/// **filled（主按钮）= 实测**：「我的关注」页关注按钮，亮/暗两张完整截图
-/// （1220x2656）填充同为 **#4980F7**、标签纯白 —— 主按钮不随明暗换配方，
-/// 两张参考图唯一不同的只有页面底色。
+/// **filled（主按钮）为度量值**：填充 #4980F7 明暗同色、标签纯白（明暗
+/// 两组参考素材一致，仅页面底色不同）。
 ///
-/// **tonal（次级 / 已关注）与 disabled（禁用）在参考图中未出现，属推导
-/// 样式**，取值一律复用已实测的 MIUI 表面灰与墨色：
-///  * tonal 填充 = 分类页搜索栏实测灰（亮 #E7E7E7 / 暗 #242424），
-///    标签 = 胶囊标签实测墨色（亮 #161616 / 暗 #F3F3F3）；
-///  * disabled = Material 常规 onSurface@12% 填充 + @38% 文字
-///    （前景色取 `MiColors.foregroundFor` 的两模式实测值，逐色写成
-///    字面量以便 const 配方）。
+/// **tonal（次级）与 disabled（禁用）为推导值**，复用已度量的表面灰与
+/// 墨色：
+///  * tonal 填充 = 搜索栏表面灰（亮 #E7E7E7 / 暗 #242424），标签 = 胶囊
+///    标签墨色（亮 #161616 / 暗 #F3F3F3）；
+///  * disabled = onSurface @12% 填充 + @38% 文字（Material 常规做法；
+///    前景色取 `MiColors.foregroundFor`，逐色写成字面量以便 const 配方）。
 ///
-/// 胶囊无描边无投影，与参考图一致。
+/// 胶囊无描边、无投影。
 class MiButtonPalette {
   const MiButtonPalette({
     required this.filledFill,
@@ -29,16 +27,16 @@ class MiButtonPalette {
     required this.disabledLabel,
   });
 
-  /// 主按钮填充（实测 #4980F7，明暗同值）。
+  /// 主按钮填充（度量 #4980F7，明暗同值）。
   final Color filledFill;
 
-  /// 主按钮标签（实测纯白，明暗同值）。
+  /// 主按钮标签（度量纯白，明暗同值）。
   final Color filledLabel;
 
-  /// 次级按钮填充（推导：搜索栏实测灰）。
+  /// 次级按钮填充（推导：搜索栏度量灰）。
   final Color tonalFill;
 
-  /// 次级按钮标签（推导：胶囊标签实测墨色）。
+  /// 次级按钮标签（推导：胶囊标签度量墨色）。
   final Color tonalLabel;
 
   /// 禁用态填充（推导：onSurface@12%）。

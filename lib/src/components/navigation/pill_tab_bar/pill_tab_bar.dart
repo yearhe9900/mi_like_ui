@@ -10,31 +10,22 @@ import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
 import 'pill_tab_bar_metrics.dart';
 
-/// 小米主题商店风格的胶囊分类标签行（深/浅色双模式）。
+/// 胶囊分类标签行（明暗双模式）。
 ///
-/// [labels] 以定宽胶囊排成一行，可横向滚动（超出视口自动裁切滚动，
-/// 与截图中第 4 个胶囊被屏幕右缘裁切的行为一致）。选中项高不透明胶囊 +
-/// 高对比标签，未选中低对比胶囊 + 反色标签；明暗配方均为完整截图
-/// 实测（亮色 = 深胶囊白字，暗色 = 白胶囊黑字 + 低调深灰未选胶囊），
-/// 取值见 `theme/pill_tab_tokens.dart`，几何见 [MiPillTabMetrics]。
+/// [labels] 以定宽胶囊排成一行，支持横向滚动（超出视口自动裁切滚动）。
+/// 选中项为高不透明胶囊 + 高对比标签，未选中为低对比胶囊 + 反色标签；
+/// 明暗配方见 `theme/pill_tab_tokens.dart`，几何见 [MiPillTabMetrics]。
 ///
-/// 透明效果与玻璃导航栏同源（`theme/transparency_tokens.dart`）：
-/// 胶囊填充为半透明表面（平底合成 = 实测实色），胶囊下叠与
-/// [MiGlassNavBar] 同款 backdrop 磨砂（sigma = [MiTransparencyTokens.blurSigma]），
-/// 内容从胶囊后方经过时透上来并被磨出毛玻璃感。渲染分两遍：
-/// 先画**整行一次**的磨砂（`ClipPath` 裁出全部胶囊形状 + 单个
-/// `BackdropFilter`，此时画布上还没有任何填充，backdrop 只含背景/身后内容，
-/// 相邻胶囊互不串色），再画全部填充/文案/手势。
+/// 透明效果与玻璃导航栏同源（`theme/transparency_tokens.dart`）：胶囊填充
+/// 为半透明表面，下叠同款 backdrop 磨砂（σ = [MiTransparencyTokens.blurSigma]），
+/// 内容从胶囊后方经过时透出磨砂质感。渲染分两遍：先以单次 `ClipPath`
+/// 裁出全部胶囊形状做一次整行磨砂（此时画布上尚无填充，相邻胶囊互不
+/// 串色），再绘制填充与文案。
 ///
-/// 旧实现是「每个胶囊一个 `ClipRRect` + `BackdropFilter`」，4 个胶囊 = 4 次
-/// 全 QUAD 高斯 + 4 个 saveLayer，滚动时每帧重算 —— 分类页的主要掉帧源。
-/// 合并成 1 次后逐像素对比：最大灰度差 1~2 级、无任何像素差 > 2（纯 AA 舍入）。
+/// 点按切换选中态，填充 / 标签色以 200ms 过渡。
 ///
-/// 点按切换选中态，填充/标签色以 200ms 过渡（截图是静态参考、无动效
-/// 实测，取标准过渡值；不引入按压缩放等未实测动效）。
-///
-/// 未选胶囊有**两种状态**（都实测）：平底页的 onSurface@6% 低调填充，
-/// 与压在照片上的玻璃膜（[overContent]），不可互相推导。
+/// 未选中胶囊有两种填充：常规页面上的低调表面（onSurface @6%），与压在
+/// 滚动内容上的玻璃膜（[overContent]，垫于低调填充之下预合成）。
 class MiPillTabBar extends StatelessWidget {
   const MiPillTabBar({
     super.key,
@@ -58,7 +49,7 @@ class MiPillTabBar extends StatelessWidget {
   /// 点按回调，参数为被点标签下标。
   final ValueChanged<int> onTap;
 
-  /// 单个胶囊宽度；null 语义不支持，默认取实测值 [MiPillTabMetrics.itemWidth]。
+  /// 单个胶囊宽度；null 语义不支持，默认取度量值 [MiPillTabMetrics.itemWidth]。
   final double itemWidth;
 
   /// 明暗模式，驱动配色配方。
@@ -100,7 +91,7 @@ class MiPillTabBar extends StatelessWidget {
       if (i > 0) fills.add(const SizedBox(width: MiPillTabMetrics.gap));
       final selected = i == selectedIndex;
       // 半透明填充 + 文案 + 手势。填充沿用 Decoration 自身圆角 AA（与截图
-      // 实测的单层边缘 AA 一致，勿再外包 ClipRRect，两层 AA 叠乘会把边缘
+      // 度量的单层边缘 AA 一致，勿再外包 ClipRRect，两层 AA 叠乘会把边缘
       // 覆盖率压成 c²）。
       fills.add(
         GestureDetector(

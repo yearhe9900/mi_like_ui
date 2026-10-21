@@ -22,11 +22,11 @@ class MiGlassNavItem {
   final CustomPainter painter;
 }
 
-/// 预留空位的圆形按钮（参考视频中的绿色圆钮）。
+/// 浮动圆钮（FAB，可选），与导航栏配套。
 ///
-/// 仅当 [MiGlassNavBar.items] ≤ 3 个时支持（超过 3 个 tab 传入 [fab]
-/// 会触发组件断言）。选中 [tabIndex] 对应 tab 时按钮以缩放+淡入弹出、
-/// 栏体平移让出空位；切到其它 tab 时镜像收起、栏体回中。
+/// 仅当 [MiGlassNavBar.items] ≤ 3 个时支持（超出会在构造期断言）。
+/// 选中 [tabIndex] 对应 tab 时按钮以缩放 + 淡入弹出、栏体平移让出空位；
+/// 切换到其它 tab 时镜像收起、栏体回中。
 class MiGlassNavFab {
   const MiGlassNavFab({
     required this.tabIndex,
@@ -41,25 +41,25 @@ class MiGlassNavFab {
   /// 圆钮内容（图标等），居中绘制在圆内。
   final Widget child;
 
-  /// 圆钮底色；null = 按导航栏 [MiGlassNavBar.themeMode] 取
-  /// [MiColors.fabGreenFor]（深色 #25BF43 / 浅色 #66CB61，明暗分别实测）。
+  /// 圆钮底色；`null` 时按 [MiGlassNavBar.themeMode] 取
+  /// [MiColors.fabGreenFor]（深 #25BF43 / 浅 #66CB61）。
   final Color? color;
 
   /// 点按回调。
   final VoidCallback? onTap;
 }
 
-/// 小米主题商店风格的玻璃悬浮底部导航栏（可复用组件，深/浅色双模式）。
+/// 玻璃悬浮底部导航栏（明暗双模式）。
 ///
-/// 交互（均为视频逐帧实测）：
-///  * 点按切换：胶囊果冻飞行 + 弹簧沉降（参数见 [MiGlassNavMetrics]）；
-///  * 按压缩圈：胶囊宽 -3% / 高 -7.5%，被按 tab 瞬时变暗 55%；
+/// 交互（动效规格见 [MiGlassNavMetrics]）：
+///  * 点按切换：胶囊飞行 + 弹簧沉降；
+///  * 按压反馈：胶囊宽 −3% / 高 −7.5%，被按 tab 即时压暗 55%；
 ///  * 拖拽切换：胶囊 1:1 跟手 + 速度拉伸，松手吸附最近 tab；
-///  * 预留空位圆钮（可选 [fab]）：配置的 tab 选中时弹出、切走收起，
-///    栏体同步平移让位（仅支持 ≤3 个 tab）。
+///  * 浮动圆钮（可选 [fab]）：配置 tab 选中时弹出、切走收起，栏体同步
+///    平移让位（仅支持 ≤3 个 tab）。
 ///
-/// 玻璃材质配方见 `theme/glass_tokens.dart`（按 [themeMode] 取明/暗配方）；
-/// 图标颜色由调用方传入 painter，需与 [MiColors.foregroundFor] 保持一致。
+/// 玻璃材质配方见 `theme/glass_tokens.dart`（按 [themeMode] 取明暗配方）；
+/// 图标颜色由调用方随 painter 传入，建议取 [MiColors.foregroundFor]。
 class MiGlassNavBar extends StatefulWidget {
   const MiGlassNavBar({
     super.key,
@@ -324,7 +324,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                 count: n,
               );
 
-          // 浅色下玻璃体带投影；深色配方投影为空，不包任何额外层（黄金图零变化）。
+          // 浅色下玻璃体带投影；深色配方投影为空，不包任何额外层（视觉回归零变化）。
           Widget glass = ClipRRect(
             borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
             child: BackdropFilter(
@@ -466,7 +466,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
           );
 
           // 预留空位圆钮：[栏体, 间隙, 圆钮] 行整体居中 —— 圆钮弹出时栏体
-          // 中心左移 (fabDiameter+fabGap)/2，圆钮原位弹出（实测 cx 恒定）。
+          // 中心左移 (fabDiameter+fabGap)/2，圆钮原位弹出（度量 cx 恒定）。
           final fab = widget.fab;
           const fabD = MiGlassNavMetrics.fabDiameter;
           const shiftDx = -(fabD + MiGlassNavMetrics.fabGap) / 2;
@@ -507,11 +507,10 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                     animation: _fabCtrl,
                     builder: (context, _) {
                       // 显示：缩放+淡入（easeOutCubic）；收起：同曲线
-                      // reverse 时间镜像，与视频实测剖面一致。
+                      // reverse 时间镜像，与视频度量剖面一致。
                       // IgnorePointer 必须**包在 GestureDetector 外面**：
                       // GestureDetector 自身 opaque，若它留在命中测试里，
-                      // 收起后这块不可见区域仍会吞掉点击（2026-10-18
-                      // 侧栏圆钮测试暴露的同款隐患，两种形态一起修）。
+                      // 收起后这块不可见区域仍会吞掉点击（侧栏同款隐患一并修复）。
                       final t = Curves.easeOutCubic.transform(_fabCtrl.value);
                       return IgnorePointer(
                         ignoring: t == 0,

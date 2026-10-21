@@ -4,15 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../theme/dimens.dart';
 
-/// 窗口尺寸等级（按**可用逻辑宽**分档）。
+/// 窗口尺寸等级（按可用逻辑宽分档）。
 ///
 /// 断点取值（见 [MiBreakpoints]）：
 ///  * `compact`  < 600dp  —— 手机竖屏、桌面小窗、分屏小半；
 ///  * `medium`   600…1023dp —— 平板竖屏、手机横屏、桌面窄窗；
 ///  * `expanded` ≥ 1024dp —— 平板横屏、桌面。
 ///
-/// 与 Material 3 的 window size class 同语义，但只留三档：本框架的组件
-/// 几何都是 1:1 实测的「手机设计宽 393dp」值，再细分档位也无额外决策。
+/// 与 Material 3 window size class 同语义、精简为三档：本库组件几何以
+/// 393dp 手机设计宽为基准，更细的分档无额外布局决策。
 enum MiWindowSize {
   compact,
   medium,
@@ -159,21 +159,19 @@ class MiViewport {
   String toString() => 'MiViewport($size, ${windowSize.name})';
 }
 
-/// 固定设计尺寸的画布，按可用空间**等比**缩放到放得下（contain）。
+/// 固定设计尺寸的画布，按可用空间等比缩放到放得下（contain）。
 ///
-/// 用于「1:1 实测」的像素级界面：设计尺寸内的几何一个不改，整体只做
-/// 单一比例的仿射缩放，因此
-///  * **不溢出**：缩放比取两个方向的较小者，画布永远完整落在可用空间内；
-///  * **不变形**：宽高共用同一个比例（不是宽高各自拉伸）；
-///  * **不模糊**：走 `FittedBox`（Skia 变换 + 矢量重绘），不是位图取样。
+/// 用于按设计尺寸（如 393×856）度量的像素级界面：设计尺寸内几何不变，
+/// 整体仅做单一比例的仿射缩放，因此
+///  * **不溢出**：缩放比取两方向较小者，画布完整落在可用空间内；
+///  * **不变形**：宽高共用同一比例；
+///  * **不模糊**：走 `FittedBox`（Skia 变换 + 矢量重绘），非位图取样。
 ///
-/// 缩放区间 `[minScale, maxScale]` 默认 `[0, 1]`：只缩小不放⼤（放大会
-/// 破坏「1dp = 1 物理 dp」的实测语义）。刻意放开 `maxScale` 时请自行确认
-/// 目标场景允许放大。
+/// 缩放区间 `[minScale, maxScale]` 默认 `[0, 1]`（只缩不放；放大不再保持
+/// 「1dp = 1 设计 dp」的度量语义）。放开 `maxScale` 前请确认场景允许放大。
 ///
-/// 子级按 `designSize` 拿到 **tight** 约束，可用 `LayoutBuilder` 感知的
-/// 是设计尺寸而非缩放后的尺寸 —— 这正是「逻辑尺寸不变、只改渲染尺寸」
-/// 的语义。
+/// 子级按 `designSize` 拿到 **tight** 约束，`LayoutBuilder` 感知到的是设计
+/// 尺寸而非缩放后尺寸 —— 逻辑尺寸不变、只改渲染尺寸。
 class MiScaledCanvas extends StatelessWidget {
   const MiScaledCanvas({
     super.key,
@@ -241,7 +239,7 @@ class MiScaledCanvas extends StatelessWidget {
           size: designSize,
           child: child,
         );
-        // 1x 时走原样路径：不引入任何变换层（黄金图逐像素稳定）。
+        // 1x 时走原样路径：不引入任何变换层（视觉回归逐像素稳定）。
         final scaled = scale == 1.0
             ? canvas
             : FittedBox(fit: BoxFit.fill, child: canvas);
@@ -254,14 +252,14 @@ class MiScaledCanvas extends StatelessWidget {
   }
 }
 
-/// 响应式网格：按**自身可用宽**切换列数，行内等分、行间留白。
+/// 响应式网格：按自身可用宽切换列数，行内等分、行间留白。
 ///
-/// 与 `Wrap` 的区别：本项目要求「行内等宽、最后一行不足的格子留空」，
-/// `Wrap` 会让末项宽度不定；这里用 `Row + Expanded`，每列宽恒为
-/// `(可用宽 - (n-1) × itemSpacing) / n`，浮点误差也不会导致意外换行。
+/// 与 `Wrap` 的区别：行内等宽、末行不足的格子留空不拉伸（`Wrap` 末项
+/// 宽度不定）；内部以 `Row + Expanded` 实现，每列宽恒为
+/// `(可用宽 - (n-1) × itemSpacing) / n`，无浮点误差导致的意外换行。
 ///
-/// 需要**有界宽**的父级（普通 Column / ListView / Padding 即可）；
-/// 放在横向滚动容器里会抛「无界宽」约束错误。
+/// 需要有界宽的父级（普通 Column / ListView / Padding 即可）；置于横向
+/// 滚动容器会抛无界宽约束错误。
 ///
 /// ```dart
 /// MiResponsiveGrid(

@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// 底部导航栏 logo 合集（全部 1:1 实测自参考视频/截图）。
+/// 底部导航栏 logo 合集（全部 像素级度量自参考视频/截图）。
 ///
 /// Contents: the 4 tab icons + the FAB dot-grid glyph (theme-store videos),
 /// and the white plus glyph of the green action button ([PlusIconPainter],
@@ -142,10 +142,10 @@ class CardsStarIconPainter extends CustomPainter {
   bool shouldRepaint(covariant CardsStarIconPainter old) => old.color != color;
 }
 
-/// 圆形按钮 — 3x3 dot matrix (九宫格)，1:1 复刻自圆形按钮视频。
+/// 浮动圆钮图标 —— 3×3 点阵（九宫格）。
 ///
-/// 实测（1220px 屏，圆钮 ⌀171px）：墨迹 56x56px、点径 12px、点距 22.3px，
-/// 归一到 100 单位高即点径 21、点距 39.1，墨迹正方形恰好铺满 100 单位。
+/// 规格（设计度量）：墨迹 56×56px、点径 12px、点距 22.3px（绿圆 ⌀171px
+/// 素材），归一到 100 单位高即点径 21、点距 39.1，墨迹铺满 100 单位方。
 class GridDotsIconPainter extends CustomPainter {
   GridDotsIconPainter(this.color);
 
@@ -213,19 +213,18 @@ class SmileyBeretIconPainter extends CustomPainter {
   bool shouldRepaint(covariant SmileyBeretIconPainter old) => old.color != color;
 }
 
-/// 顶栏返回箭头「‹」—— 1:1 实测自参考录屏（1220x2656，设置页顶栏）。
+/// 顶栏返回箭头「‹」。
 ///
-/// 实测（3.104 px/dp）：
-///  * 墨迹包围盒 36x66px = 11.6x21.3dp；两臂严格 45°（逐行左缘 −4px/4px）；
-///  * 笔画**横切** 9px → 垂直笔宽 9·sin45° = 6.36px = 2.05dp；
-///  * 端头与顶点均为**圆角**（顶点行左缘 83→85 回退；圆角顶点墨左 =
-///    顶点 x − 笔宽/2，而非尖角顶点的 −笔宽/2·√2）；
-///  * 反解中心线：墨高 = 2L + w、墨宽 = L + w（L = 臂垂直半跨）⇒
-///    L = 9.63dp，墨盒 11.68x21.31dp，与阈值实测吻合（±0.08dp）。
+/// 规格（设计度量，3.104 px/dp）：
+///  * 墨迹包围盒 36×66px = 11.6×21.3dp；两臂 45°；
+///  * 笔画横切 9px → 垂直笔宽 9·sin45° = 6.36px = 2.05dp；
+///  * 端头与顶点均为圆角（圆角顶点墨左 = 顶点 x − 笔宽/2）；
+///  * 中心线反解：墨高 = 2L + w、墨宽 = L + w（L = 臂垂直半跨）⇒
+///    L = 9.63dp，墨盒 11.68×21.31dp。
 ///
-/// 归一到 100 单位高：笔宽 9.624、顶点 (4.812, 50)、臂端 (50, 4.812)/(50, 95.188)，
-/// 墨迹恰好铺满 54.812x100 单位。建议配 [MiTopBarMetrics.chevronWidth] /
-/// [MiTopBarMetrics.chevronHeight] 使用（两者即该墨盒）。
+/// 归一到 100 单位高：笔宽 9.624、顶点 (4.812, 50)、臂端
+/// (50, 4.812)/(50, 95.188)。建议配 [MiTopBarMetrics.chevronWidth] /
+/// [MiTopBarMetrics.chevronHeight]（即该墨盒）使用。
 class BackChevronIconPainter extends CustomPainter {
   BackChevronIconPainter(this.color);
 
@@ -255,12 +254,11 @@ class BackChevronIconPainter extends CustomPainter {
   bool shouldRepaint(covariant BackChevronIconPainter old) => old.color != color;
 }
 
-/// 加号 logo —— 绿色圆钮内的白色圆角加号（电话 App 截图 1220x378 实测）。
+/// 加号 logo —— 绿色圆钮内的白色圆角加号。
 ///
-/// 实测（绿圆 ⌀171px，即亮色 FAB 绿 #66CB61）：加号墨迹 62x62px、
-/// 笔宽 8.7px、端头圆角约 2px、纯白 #FFFFFF，与圆心同心（±0.5px）。
-/// 归一到 100 单位见方即笔宽 14、圆角 3.2；配 [MiGlassNavFab] 使用时
-/// 建议 child 尺寸约 20dp（= 62px ÷ 3.09px/dp）。
+/// 规格（设计度量，绿圆 ⌀171px）：加号墨迹 62×62px、笔宽 8.7px、端头
+/// 圆角约 2px、纯白，与圆心同心。归一到 100 单位见方即笔宽 14、圆角 3.2；
+/// 配 [MiGlassNavFab] 使用时建议 child 尺寸约 20dp。
 class PlusIconPainter extends CustomPainter {
   PlusIconPainter(this.color);
 

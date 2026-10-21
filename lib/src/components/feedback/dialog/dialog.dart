@@ -8,28 +8,27 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import 'dialog_metrics.dart';
 
-/// 弹框位置（三档）。默认 [MiDialogPosition.bottom]，与参考图一致。
+/// 弹框位置（三档）。默认 [MiDialogPosition.bottom]。
 enum MiDialogPosition {
-  /// 贴顶（**推导（非实测）** —— 参考图只有底部档，取底部 32.9dp 的镜像，
-  /// 真机上再以安全区兜底让开状态栏）。
+  /// 贴顶（推导值：底部留白的镜像，真机上以安全区兜底让开状态栏）。
   top,
 
-  /// 垂直居中（**推导（非实测）**，对齐方式同样镜像自参考图的留白节奏）。
+  /// 垂直居中（推导值）。
   center,
 
-  /// 贴底（实测：卡片底缘距屏幕底 32.9dp，含手势条让位）。
+  /// 贴底（卡片底缘距屏 32.9dp，含手势条让位）。
   bottom,
 }
 
 /// 弹框按钮形态。
 enum MiDialogActionStyle {
-  /// 中性：表面灰填充 + 次级文字（实测「取消」）。
+  /// 中性：表面灰填充 + 次级文字（度量「取消」）。
   neutral,
 
-  /// 主按钮：强调蓝填充 + 白字（实测「确定」）。
+  /// 主按钮：强调蓝填充 + 白字（度量「确定」）。
   filled,
 
-  /// 破坏性：中性填充 + 红字（实测「删除」）。
+  /// 破坏性：中性填充 + 红字（度量「删除」）。
   destructive,
 }
 
@@ -51,36 +50,46 @@ class MiDialogAction {
   final MiDialogActionStyle style;
 }
 
-/// 小米系统弹框（明暗双模式、三档位置，遮罩 + 卡片一体）。
+/// 模态弹框（明暗双模式，遮罩 + 卡片一体）。
 ///
-/// 1:1 实测自两张 MIUI 系统弹框参考图（联系人「删除联系人」、主题商店
-/// 「删除1项资源」，各含亮/暗）：卡片宽 369.2 / 圆角 49.3 / 高随正文行数
-/// 增长（双行实测 207.1），标题 / 正文 / 按钮标签的**墨心落点全部由
-/// `Baseline` 钉死**（见 [MiDialogMetrics]），底缘距屏幕 32.9dp。
+/// 由全屏遮罩与弹框卡片组成：位置三档、按钮三种形态、按压动效，卡片高度
+/// 随正文行数自适应。几何与配色规格见 [MiDialogMetrics] /
+/// `theme/dialog_tokens.dart`；标题 / 正文 / 按钮标签的垂直落点以
+/// `Baseline` 锚定，跨字体稳定。
 ///
-/// ## 两个参考弹框的差异与取舍
+/// ```dart
+/// MiDialog(
+///   position: MiDialogPosition.bottom,
+///   title: '删除联系人',
+///   message: '确定从本地和云端同时删除"方太安装师傅"吗？',
+///   messageAlign: TextAlign.start,
+///   actions: [
+///     MiDialogAction(label: '取消', onPressed: close),
+///     MiDialogAction(
+///       label: '删除',
+///       style: MiDialogActionStyle.destructive,
+///       onPressed: close,
+///     ),
+///   ],
+///   onScrimTap: close,
+/// );
+/// ```
 ///
-/// 两 app 的 dialog builder 并不完全一致，组件按**联系人弹框**（原生
-/// 分辨率、精度最高）一条节奏走到底：
-///  * 正文对齐两图不同（联系人 start、主题商店 center）→ 做成参数
-///    [messageAlign]，默认 [TextAlign.center]；
-///  * 主题商店弹框整块文字低 2.4dp、少一行时卡片矮 19.7dp（行距 23.2
-///    的 0.9 行），差值如实记在 [MiDialogMetrics]，不折中。
+/// ## 行为
 ///
-/// ## 位置（[position]）
+///  * **位置**（[position]）：底部（默认）/ 顶部（让开安全区）/ 居中；
+///  * **正文对齐**（[messageAlign]）：默认居中，多行左对齐场景传
+///    [TextAlign.start]；正文行数决定卡片高度（行距 23.2dp）；
+///  * **按钮**（[actions]，0…3 个等宽均分）：形态见 [MiDialogActionStyle]；
+///    `onPressed` 为 `null` 的按钮不可点且无按压反馈；
+///  * **遮罩**：点按触发 [onScrimTap]（`null` = 不响应），是否收起由宿主
+///    决定；组件不接管自身移除，宿主可自配出场动画；
+///  * **按压动效**：按下时填充叠按压色（亮色压暗 / 暗色提亮，@0.12），
+///    标签不变、不缩放，150ms `easeOutQuad` 过渡，松开同值回弹
+///    （[MiDialogMetrics.pressDurationMs]）。
 ///
-/// [MiDialogPosition.bottom] 为默认档（实测）；top / center 为推导：
-/// top 镜像底部 32.9dp 并以安全区兜底（让开状态栏），center 垂直居中。
-///
-/// ## 按压动效（实测）
-///
-/// 参考图为静态截图、一度无动效实测，2026-10-21 用户补了**按压录屏**（24.31fps，
-/// 1220×2656）后补齐：按下时**填充叠一层按压色**（亮 = 黑 @0.12 压暗、暗 =
-/// 白 @0.12 提亮，Material state layer / 本项目返回钮按压同一语言）、
-/// **标签不变、不缩放**，150ms `easeOutQuad` 进入（逐帧 47/80/96/100%
-/// 拟合）；松开同值回弹（录屏里松手即执行关闭、未见回弹，属推导）。
-/// 遮罩点按触发 [onScrimTap]，由宿主决定是否收起；录屏里松手后弹框还有一段
-/// ~80ms 的下滑收尾，属**宿主收起动画**，组件不接管移除。
+/// 规格取自系统弹框设计度量（明暗两组素材）；正文对齐两种形态均有参考
+/// 依据，故开放为参数。
 class MiDialog extends StatelessWidget {
   const MiDialog({
     super.key,
@@ -99,14 +108,13 @@ class MiDialog extends StatelessWidget {
   /// 正文（随宽换行；对齐见 [messageAlign]）。
   final String? message;
 
-  /// 底部按钮行（0…3 个，等宽均分；间距/盒高实测）。
+  /// 底部按钮行（0…3 个，等宽均分）。
   final List<MiDialogAction> actions;
 
   /// 位置（默认 [MiDialogPosition.bottom]）。
   final MiDialogPosition position;
 
-  /// 正文对齐（默认居中，取自主题商店弹框；联系人弹框为
-  /// [TextAlign.start]，两图实测不一致）。
+  /// 正文对齐（默认 [TextAlign.center]；左对齐场景传 [TextAlign.start]）。
   final TextAlign messageAlign;
 
   /// 明暗模式；为空时跟随环境 `Theme.of(context).brightness`。
@@ -144,7 +152,7 @@ class MiDialog extends StatelessWidget {
   TextStyle _messageStyle(MiDialogPalette palette) => MiTypography.dialogMessage
       .copyWith(
         color: palette.secondaryText,
-        // 行距是实测几何（23.2dp），由 metrics 供给并进 `height`。
+        // 行距是度量几何（23.2dp），由 metrics 供给并进 `height`。
         height: MiDialogMetrics.messageLinePitch /
             MiTypography.dialogMessage.fontSize!,
       );
@@ -160,7 +168,7 @@ class MiDialog extends StatelessWidget {
 
     return Stack(
       children: [
-        // 遮罩：整屏压暗（实测亮 α0.20 / 暗 α0.60），吃点按由宿主收起。
+        // 遮罩：整屏压暗（度量亮 α0.20 / 暗 α0.60），吃点按由宿主收起。
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -290,10 +298,10 @@ class MiDialog extends StatelessWidget {
   }
 }
 
-/// 弹框按钮本体：实测圆角 15.0 / 盒高 49.9，标签墨心 = 盒心（Baseline 钉）。
+/// 弹框按钮本体：圆角 15.0 / 盒高 49.9，标签基线锚定于盒心。
 ///
-/// 按压态只把填充过渡到压色（见 [MiTransparencyTokens.dialogPressedFill]，
-/// 150ms easeOutQuad），标签与几何不动 —— 与录屏实测一致。
+/// 按压态将填充过渡至压色（[MiTransparencyTokens.dialogPressedFill]，
+/// 150ms easeOutQuad），标签与几何不变。
 class _MiDialogActionButton extends StatefulWidget {
   const _MiDialogActionButton({
     required this.action,

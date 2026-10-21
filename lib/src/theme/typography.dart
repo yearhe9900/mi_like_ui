@@ -9,7 +9,7 @@ import 'theme_mode.dart';
 class MiTypography {
   MiTypography._();
 
-  /// 导航栏标签：视频实测 CJK 字高 31px → 10.5dp、Medium 字重。
+  /// 导航栏标签：素材度量 CJK 字高 31px → 10.5dp、Medium 字重。
   static const TextStyle navLabel = TextStyle(
     color: MiColors.foreground,
     fontSize: 10.5,
@@ -21,7 +21,7 @@ class MiTypography {
   static TextStyle navLabelFor(MiThemeMode mode) =>
       mode == MiThemeMode.dark ? navLabel : navLabel.copyWith(color: MiColors.foregroundLight);
 
-  /// 胶囊分类标签：截图实测 CJK 字面 pitch 43px → 13.85dp、Medium 字重。
+  /// 胶囊分类标签：素材度量 CJK 字面 pitch 43px → 13.85dp、Medium 字重。
   ///
   /// 标签色随选中态 + 明暗模式变化，由 `pill_tab_bar` 从
   /// `theme/pill_tab_tokens.dart` 取色，故此样式不预置颜色。
@@ -31,7 +31,7 @@ class MiTypography {
     fontWeight: FontWeight.w500,
   );
 
-  /// 按钮标签：「我的关注」页实测墨高 35px、em≈40px → 13dp、Medium
+  /// 按钮标签：素材度量墨高 35px、em≈40px → 13dp、Medium
   /// （笔画核心 3px ≈ 0.075em，与胶囊标签同档）。
   ///
   /// 标签色随形态 + 明暗模式变化，由 `button` 从
@@ -42,9 +42,9 @@ class MiTypography {
     fontWeight: FontWeight.w500,
   );
 
-  /// 搜索栏占位文字：亮/暗完整截图实测 CJK 字面 advance 37px → 16.5dp
+  /// 搜索栏占位文字：亮/暗完整素材度量 CJK 字面 advance 37px → 16.5dp
   /// （两图交叉一致，栏内垂心居中）。墨色偏灰属次级信息，字重未见
-  /// 实测证据取常规 Regular。占位色随明暗由 `theme/search_bar_tokens.dart`
+  /// 字重无度量依据，取常规 Regular。占位色随明暗由 `theme/search_bar_tokens.dart`
   /// 供给，故此样式不预置颜色。
   static const TextStyle searchHint = TextStyle(
     fontSize: 16.5,
@@ -52,9 +52,9 @@ class MiTypography {
     fontWeight: FontWeight.w400,
   );
 
-  /// 顶栏大标题：录屏实测 5 字墨宽 482px、相邻字面左缘间距 98/99/100/98px
+  /// 顶栏大标题：素材度量 5 字墨宽 482px、相邻字面左缘间距 98/99/100/98px
   /// → CJK 字面 advance 98.8px ≈ **31.83dp**；笔画核心 7px ⇒ 7/98.8 =
-  /// 0.071em，与胶囊标签同档 Medium。墨色取框架前景色（实测笔画内部 246）。
+  /// 0.071em，与胶囊标签同档 Medium。墨色取框架前景色（度量笔画内部 246）。
   static const TextStyle topBarLargeTitle = TextStyle(
     color: MiColors.foreground,
     fontSize: 31.83,
@@ -67,7 +67,7 @@ class MiTypography {
       ? topBarLargeTitle
       : topBarLargeTitle.copyWith(color: MiColors.foregroundLight);
 
-  /// 顶栏紧凑标题：录屏实测 5 字墨宽 273px → advance 55.9px ≈ **18.0dp**；
+  /// 顶栏紧凑标题：素材度量 5 字墨宽 273px → advance 55.9px ≈ **18.0dp**；
   /// 笔画核心 4.5px ⇒ 0.080em，同档 Medium。与 [topBarLargeTitle] 同为中国
   /// 大陆字体度量，`height: 1.0` 下由 `MiTopBarMetrics` 按墨心定位。
   static const TextStyle topBarCompactTitle = TextStyle(
@@ -82,7 +82,7 @@ class MiTypography {
       ? topBarCompactTitle
       : topBarCompactTitle.copyWith(color: MiColors.foregroundLight);
 
-  /// 卡片标题：首页「精选主题」卡实测字符 pitch 31px → 13.85dp、Medium
+  /// 卡片标题：首页「精选主题」卡度量字符 pitch 31px → 13.85dp、Medium
   /// （笔画核心 2~3px @31px em ≈ 0.07em，与胶囊标签同档同值）。
   ///
   /// 标题墨色随明暗模式变化，由 `theme_card` 经 `MiColors.foregroundFor`
@@ -93,9 +93,9 @@ class MiTypography {
     fontWeight: FontWeight.w500,
   );
 
-  /// 弹框标题：参考图 5 字墨宽 88.3dp、字面 pitch 56px → em 18.0dp（与
+  /// 弹框标题：参考素材 5 字墨宽 88.3dp、字面 pitch 56px → em 18.0dp（与
   /// [topBarCompactTitle] 同档同值）；字重目测 Medium（笔画宽度受 JPEG
-  /// 模糊影响无法定量，按同档惯例取 w500 —— **推导（非实测）**）。
+  /// 模糊影响无法定量，按同档惯例取 w500 —— **推导值**）。
   ///
   /// 墨色随明暗由 `theme/dialog_tokens.dart` 供给，故不预置颜色。
   static const TextStyle dialogTitle = TextStyle(
@@ -105,7 +105,7 @@ class MiTypography {
   );
 
   /// 弹框正文：相邻 CJK 字面 pitch 自相关 49px/36px → em 15.78/16.06dp，
-  /// 取 15.9dp；字重目测 Regular（**推导（非实测）**）。行距另见
+  /// 取 15.9dp；字重目测 Regular（**推导值**）。行距另见
   /// `MiDialogMetrics.messageLinePitch`（构建时并进 `height`）。
   static const TextStyle dialogMessage = TextStyle(
     fontSize: 15.9,
@@ -114,7 +114,7 @@ class MiTypography {
   );
 
   /// 弹框按钮标签：纯 CJK「取消/删除」墨宽模板匹配 em 15.8…16.0dp，与
-  /// 正文同值 15.9dp；字重目测 Medium（**推导（非实测）**，与
+  /// 正文同值 15.9dp；字重目测 Medium（**推导值**，与
   /// [buttonLabel] 同档）。
   static const TextStyle dialogAction = TextStyle(
     fontSize: 15.9,

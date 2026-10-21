@@ -76,8 +76,8 @@ class DemoStageSize {
 ///
 /// **为什么大屏不再做「背景 + 圆角卡片」**：那是模拟手机外壳的产物。真机上
 /// 平板/桌面本来就是整个窗口的 App，卡片外那圈底色 + 圆角既不是 UI 的一部分，
-/// 还会让内容（以及状态栏后面那一条）与页面底色对不上 —— 2026-10-18 平板
-/// 实拍反馈「应该铺满屏幕，不需要外围卡片效果」。
+/// 还会让内容（以及状态栏后面那一条）与页面底色对不上 —— 平板 / 桌面
+/// 铺满窗口、不加外围卡片。
 ///
 /// 各档都过同一道兜底：[DemoStageSize.rendered] 由
 /// `min(1, 可用宽/逻辑宽, 可用高/逻辑高)` 得出 ——
@@ -87,11 +87,11 @@ class DemoStageSize {
 ///    无需 `setState` 或监听。
 ///
 /// 缩放只发生在 compact 档（窗口比设计画布还小）；大屏 `scale == 1`，
-/// **不加任何变换层**，黄金图逐像素稳定。
+/// **不加任何变换层**，视觉回归逐像素稳定。
 class DemoStage extends StatelessWidget {
   const DemoStage({super.key, required this.child});
 
-  /// 参考机设计画布：1220×2656 录屏 @ 393dp 设计宽（393:856 ≈ 0.459）。
+  /// 参考机设计画布：1220×2656 素材 @ 393dp 设计宽（393:856 ≈ 0.459）。
   static const Size designCanvas = Size(393, 856);
 
   /// 画面内容：拿到 [DemoStageSize.logical] 的 **tight** 约束。
@@ -151,7 +151,7 @@ class DemoHome extends StatefulWidget {
 class _DemoHomeState extends State<DemoHome> {
   int _index = 0;
 
-  /// 当前页是否处于搜索态 —— 搜索是**聚焦态**（参考录屏里那屏没有 App 级
+  /// 当前页是否处于搜索态 —— 搜索是**聚焦态**（参考素材里那屏没有 App 级
   /// 导航），所以手机档的浮动底栏要收起来。
   bool _searchActive = false;
 
@@ -205,7 +205,7 @@ class _DemoHomeState extends State<DemoHome> {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // 状态栏透明 + 图标随明暗翻转：状态栏背后就是页面自己的底色 / 顶栏磨砂，
-      // 系统不再加那层灰压色（2026-10-18 平板实拍「状态栏灰带」的成因）。
+      // 系统不再叠一层灰压色（否则出现一条系统绘制的灰带）。
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: light ? Brightness.dark : Brightness.light,
@@ -220,8 +220,8 @@ class _DemoHomeState extends State<DemoHome> {
         backgroundColor: light ? const Color(0xFFFAFAFA) : const Color(0xFF08080A),
         // **键盘弹出不能让画面重新排版**：`resizeToAvoidBottomInset` 默认 true
         // 会把 body 的高度减掉 `viewInsets.bottom`，而 [DemoStage] 是按可用
-        // 高度等比缩放画面的 —— 一弹键盘整块画布就缩水（2026-10-20 真机反馈
-        // 「输入法出现后整体缩放」）。这里关掉，让键盘**覆盖**在画面上：搜索态
+        // 高度等比缩放画面的 —— 键盘一弹整块画布就缩水。这里关掉，让键盘
+        // **覆盖**在画面上：搜索态
         // 的输入行本就在屏幕顶端，下方那块是空的，被盖住正好。
         resizeToAvoidBottomInset: false,
         body: DemoStage(
@@ -271,8 +271,8 @@ class _DemoHomeState extends State<DemoHome> {
                       // 切 tab **不做淡入淡出**（原 260ms `AnimatedSwitcher`）：
                       //  `FadeTransition` 会给整页套一层 `Opacity` → 引入
                       //  saveLayer，而 saveLayer 会让下层 `BackdropFilter` 的
-                      //  backdrop 变空（本项目已实测的坑）—— 切页的 260ms 里旧页
-                      //  磨砂直接消失、还多算一份 5 段全宽高斯（实测模糊层
+                      //  backdrop 变空（已知行为）—— 切页的 260ms 里旧页
+                      //  磨砂直接消失、还多算一份 5 段全宽高斯（度量模糊层
                       //  7 → 9、另有 6 层 opacity）。底部 tab 惯例也是瞬时切换，
                       //  参考 App 同款。
                       child: MockPage(
@@ -315,21 +315,20 @@ class _DemoHomeState extends State<DemoHome> {
                     else if (!_searchActive)
                       // 手机 / 窄窗：浮动玻璃底栏 + 绿色圆钮（栏体浮起 24.2dp）。
                       //
-                      // **搜索态收起**（`_searchActive`）：参考录屏里搜索页是
+                      // **搜索态收起**（`_searchActive`）：参考素材里搜索页是
                       // 整屏的，没有 App 级导航；不复用 Opacity 淡出 —— 那会给
-                      // 含 backdrop 的子树加 saveLayer、模糊当场消失（本项目已
-                      // 实测的坑），所以直接换结构。
+                      // 含 backdrop 的子树加 saveLayer、模糊当场消失（本库已
+                      // 已知行为），所以直接换结构。
                       //
-                      // 浮起量是**距屏幕物理底缘**的实测值（参考截图里系统手势
+                      // 浮起量是**距屏幕物理底缘**的度量值（参考截图里系统手势
                       // 条就落在这 24.2 之内），所以不能再叠加一遍安全区 ——
                       // edge-to-edge 之后 `padding.bottom` 拿到的是手势条高度
                       // (~20dp)，叠加会把栏顶到 45dp、比参考高 20dp，手势条就悬
                       // 在栏下空档里。只有安全区**本身比 24.2 还大**（三键导航
                       // 48dp）时才抬起来，否则栏会压在系统按键上。
                       //
-                      // 画面里的那张手势条**由系统自己画**：示例不再自绘 Home
-                      // 指示条（旧版自绘一条 138×5 的灰条 + 系统真条 = 两条，
-                      // 2026-10-20 真机反馈）。
+                      // 画面里的那张手势条**由系统自己画**：示例不自绘 Home
+                      // 指示条（自绘 + 系统绘制会出现两条）。
                       Positioned(
                         left: 0,
                         right: 0,
@@ -345,7 +344,7 @@ class _DemoHomeState extends State<DemoHome> {
                         ),
                       ),
                     // 弹框演示浮层（遮罩 + 卡片一体）：恒在 Stack **末尾**，
-                    // 前面子级的下标 / Element 不受影响（本项目实测的坑：
+                    // 前面子级的下标 / Element 不受影响（已知行为：
                     // Stack 子级增删按槽位配对，中插会让后面的子树重建）。
                     if (_dialogPosition != null)
                       Positioned.fill(

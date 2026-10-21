@@ -1,5 +1,5 @@
 name: mi_like_ui
-description: "Xiaomi-style extensible UI component framework (mi_like_ui) — glass jelly bottom nav bar and friends, 1:1 measured from the reference video."
+description: "Xiaomi-style (HyperOS design language) Flutter UI component library — glass navigation bars, collapsing top bar, search field, dialog and more, with pixel-accurate design specs, dark/light themes and responsive layout."
 publish_to: 'none'
 version: 1.0.0
 
