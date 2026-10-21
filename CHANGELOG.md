@@ -8,6 +8,8 @@
 
 ### Added
 
+- **`MiDialog`**：明暗双模式弹框 —— 遮罩 + 卡片一体的全屏浮层，三档位置（顶部 / 底部 / 居中，
+  默认底部），按钮中性 / 主 / 破坏性三形态，正文行数自适应卡片高度；示例「我的」页加三档演示入口
 - **搜索态**：`MiTopBar` 新增 `searchActive` / `onSearchCancel` 等入参 —— 置 `true` 后内置搜索栏换成真
   `TextField`、右侧淡入取消钮（`MiSearchCancelButton`，⌀44.1）、胶囊行淡出并退出排版。转场 480ms
   （前 10% 静止 + `easeOutQuint`），取消钮淡入与位移**不同步**、落在中段

@@ -180,6 +180,35 @@ Stack(children: [
 
 <img src="doc/preview/showcase_sticky_light.png" width="200" alt="浅色分类页吸顶材质" /> <img src="doc/preview/showcase_sticky_dark.png" width="200" alt="深色分类页吸顶材质" />
 
+### 组件：弹框（MiDialog）
+
+MIUI 系统弹框实测复刻（两张参考图各含亮/暗：联系人「删除联系人」、主题商店
+「删除1项资源」）：遮罩 + 卡片一体的全屏浮层，卡片宽 369.2 / 圆角 49.3 / 底缘
+距屏 32.9dp，标题 18.0、正文与按钮标签 15.9dp，按钮高 49.9、圆角 15.0、行内缩
+24.2、按钮间距 12.6；卡片高随正文行数走（双行实测 207.1dp，行距 23.2）。
+标题 / 正文 / 按钮标签的**墨心落点由 `Baseline` 钉死**（0.355em 规则，
+`MiDialogMetrics`），与顶栏标题同一套跨字体稳定做法。按钮三种形态（`MiDialogActionStyle`）：
+中性「取消」、主按钮蓝填充「确定」、破坏性红字「删除」。
+
+位置三档（`MiDialogPosition`，**默认底部**）：底部为实测档；顶部为镜像推导
+（以安全区兜底让开状态栏）、居中为垂直居中推导。遮罩实测亮 = 黑 @0.20、
+暗 = 黑 @0.60（白页底→#CCCCCC 反解；同缩略图暗/亮透射比恒 0.500 交叉验证）。
+
+> 两个参考弹框的 builder 并不完全一致（正文对齐 start / center、整块文字差
+> 2.4dp），组件按**联系人弹框**（原生分辨率）一条节奏走到底，正文对齐做成参数
+> `messageAlign`（默认居中）。
+
+底部档（默认）——左「删除联系人」复刻（正文 start、红字删除），右「删除1项资源」
+复刻（正文居中、蓝底确定）：
+
+<img src="doc/preview/dialog_bottom_dark.png" width="200" alt="深色底部弹框" /> <img src="doc/preview/dialog_bottom_light.png" width="200" alt="浅色底部弹框" /> <img src="doc/preview/dialog_bottom_filled_dark.png" width="200" alt="深色底部弹框（主按钮）" /> <img src="doc/preview/dialog_bottom_filled_light.png" width="200" alt="浅色底部弹框（主按钮）" />
+
+顶部 / 居中（推导档，同「删除联系人」弹框平移）：
+
+<img src="doc/preview/dialog_top_dark.png" width="200" alt="深色顶部弹框" /> <img src="doc/preview/dialog_top_light.png" width="200" alt="浅色顶部弹框" /> <img src="doc/preview/dialog_center_dark.png" width="200" alt="深色居中弹框" /> <img src="doc/preview/dialog_center_light.png" width="200" alt="浅色居中弹框" />
+
+「我的」页有三档位置的演示入口（点按弹出、遮罩或按钮点按收起）。
+
 ### 首页：悬浮搜索栏 + 胶囊行的磨砂
 
 首页改成参考图的形态：**高频横幅从屏顶铺到 186dp**（含状态栏后面），搜索栏与

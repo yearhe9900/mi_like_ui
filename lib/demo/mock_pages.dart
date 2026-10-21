@@ -23,6 +23,7 @@ class MockPage extends StatelessWidget {
     this.themeMode = MiThemeMode.dark,
     this.onThemeModeChanged,
     this.onSearchActiveChanged,
+    this.onShowDialog,
   });
 
   final int index;
@@ -32,6 +33,9 @@ class MockPage extends StatelessWidget {
   /// 搜索态开关（true = 页面进入搜索）。外壳据此收起浮动底栏 ——
   /// 参考录屏里搜索页是整屏的，没有 App 级导航。
   final ValueChanged<bool>? onSearchActiveChanged;
+
+  /// 弹框演示入口（demo 功能）：按位置弹出 [MiDialog]，由外壳挂浮层。
+  final ValueChanged<MiDialogPosition>? onShowDialog;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +72,25 @@ class MockPage extends StatelessWidget {
             if (onThemeModeChanged != null)
               _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
             if (onThemeModeChanged != null) const SizedBox(height: 12),
+            // 弹框演示：三档位置（默认底部），遮罩点按收起
+            if (onShowDialog != null) ...[
+              const _SectionTitle('弹框演示'),
+              _DialogDemoRow(
+                caption: '底部弹框（默认）',
+                onTap: () => onShowDialog!(MiDialogPosition.bottom),
+              ),
+              const SizedBox(height: 12),
+              _DialogDemoRow(
+                caption: '顶部弹框',
+                onTap: () => onShowDialog!(MiDialogPosition.top),
+              ),
+              const SizedBox(height: 12),
+              _DialogDemoRow(
+                caption: '居中弹框',
+                onTap: () => onShowDialog!(MiDialogPosition.center),
+              ),
+              const SizedBox(height: 12),
+            ],
             ..._mineItems,
           ],
         );
@@ -106,6 +129,27 @@ class _ThemeModeSwitch extends StatelessWidget {
             onChanged: (v) => onChanged(v ? MiThemeMode.dark : MiThemeMode.light),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 弹框演示入口行（demo 功能项，非框架组件）：点按把弹框挂到外壳浮层。
+class _DialogDemoRow extends StatelessWidget {
+  const _DialogDemoRow({required this.caption, required this.onTap});
+
+  final String caption;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: _GradientCard(
+        height: 56,
+        colors: const [Color(0xFF2E3A8C), Color(0xFF49A09D)],
+        caption: caption,
       ),
     );
   }

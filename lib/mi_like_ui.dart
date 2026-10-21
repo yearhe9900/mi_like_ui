@@ -24,6 +24,7 @@ export 'src/theme/button_tokens.dart';
 export 'src/theme/search_bar_tokens.dart';
 export 'src/theme/top_bar_tokens.dart';
 export 'src/theme/gradient_blur_tokens.dart';
+export 'src/theme/dialog_tokens.dart';
 
 // ── 组件层 ────────────────────────────────────────────────────────────────
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar.dart';
@@ -42,6 +43,8 @@ export 'src/components/inputs/search_bar/search_cancel_button.dart';
 export 'src/components/inputs/search_bar/search_cancel_metrics.dart';
 export 'src/components/cards/theme_card/theme_card.dart';
 export 'src/components/cards/theme_card/theme_card_metrics.dart';
+export 'src/components/feedback/dialog/dialog.dart';
+export 'src/components/feedback/dialog/dialog_metrics.dart';
 
 // ── 效果层（不依赖具体页面形态） ──────────────────────────────────────────
 export 'src/components/effects/gradient_blur/gradient_blur.dart';

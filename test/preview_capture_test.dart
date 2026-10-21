@@ -641,7 +641,147 @@ void main() {
       matchesGoldenFile('../doc/preview/card_dark.png'),
     );
   });
+
+  testWidgets('README preview: dialogs (positions x light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadCjkFont(tester);
+
+    // 背景放**已知色块**（蓝 #3B6BF5 / 白 #FFFFFF / 灰 #808080）：遮罩是
+    // 实心黑 @0.20（亮）/ @0.60（暗），色块透射后应为原色 ×0.8 / ×0.4 ——
+    // 预览图直接可量，遮罩 alpha 有据可查。卡片内文按两套参考弹框复刻：
+    //  * 「删除联系人」（联系人弹框）：正文 start 对齐两行、取消 + 删除（红字）；
+    //  * 「删除1项资源」（主题商店弹框）：正文居中一行、取消 + 确定（蓝底白字）。
+    Widget frame(
+      MiThemeMode mode, {
+      MiDialogPosition position = MiDialogPosition.bottom,
+      bool filled = false,
+    }) {
+      final light = mode == MiThemeMode.light;
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor: light ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+          body: KeyedSubtree(
+            key: const ValueKey('dialogPreview'),
+            child: Stack(
+              children: [
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(11.9, 60, 11.9, 60),
+                  child: Column(
+                    children: [
+                      for (final color in const [
+                        Color(0xFF3B6BF5),
+                        Color(0xFF808080),
+                        Color(0xFF3B6BF5),
+                        Color(0xFF808080),
+                      ])
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              // 无 child 的 DecoratedBox 在**松约束**下取
+                              // `constraints.smallest`（交叉轴松 → 宽 0）会
+                              // 整块隐形；SizedBox.expand 顶满交叉轴。
+                              child: const SizedBox.expand(),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: MiDialog(
+                  position: position,
+                  themeMode: mode,
+                  title: filled ? '删除1项资源' : '删除联系人',
+                  message: filled
+                      ? '确定删除所选的1项资源吗？'
+                      : '确定从本地和云端同时删除“方太安装师傅”吗？',
+                  messageAlign: filled ? TextAlign.center : TextAlign.start,
+                  actions: [
+                    const MiDialogAction(label: '取消', onPressed: _noop),
+                    MiDialogAction(
+                      label: filled ? '确定' : '删除',
+                      style: filled
+                          ? MiDialogActionStyle.filled
+                          : MiDialogActionStyle.destructive,
+                      onPressed: _noop,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Future<void> capture(
+      MiThemeMode mode, {
+      MiDialogPosition position = MiDialogPosition.bottom,
+      bool filled = false,
+      required String file,
+    }) async {
+      await tester.pumpWidget(
+        frame(mode, position: position, filled: filled),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      await expectLater(
+        find.byKey(const ValueKey('dialogPreview')),
+        matchesGoldenFile(file),
+      );
+    }
+
+    // 底部（默认档，实测）：两套参考弹框各明/暗
+    await capture(MiThemeMode.dark, file: '../doc/preview/dialog_bottom_dark.png');
+    await capture(MiThemeMode.light, file: '../doc/preview/dialog_bottom_light.png');
+    await capture(
+      MiThemeMode.dark,
+      filled: true,
+      file: '../doc/preview/dialog_bottom_filled_dark.png',
+    );
+    await capture(
+      MiThemeMode.light,
+      filled: true,
+      file: '../doc/preview/dialog_bottom_filled_light.png',
+    );
+    // 顶部 / 居中（推导档）：同「删除联系人」弹框平移
+    await capture(
+      MiThemeMode.dark,
+      position: MiDialogPosition.top,
+      file: '../doc/preview/dialog_top_dark.png',
+    );
+    await capture(
+      MiThemeMode.light,
+      position: MiDialogPosition.top,
+      file: '../doc/preview/dialog_top_light.png',
+    );
+    await capture(
+      MiThemeMode.dark,
+      position: MiDialogPosition.center,
+      file: '../doc/preview/dialog_center_dark.png',
+    );
+    await capture(
+      MiThemeMode.light,
+      position: MiDialogPosition.center,
+      file: '../doc/preview/dialog_center_light.png',
+    );
+  });
 }
+
+/// 弹框预览的空回调（预览不接行为）。
+void _noop() {}
 
 /// 顶栏预览的背景内容：设置页行卡（参考页配色），按 [shift] 上移模拟滚动。
 ///

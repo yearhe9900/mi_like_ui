@@ -219,4 +219,38 @@ class MiTransparencyTokens {
 
   /// 亮色：栏体投影（下缘近处约 −8 级、~50px 内衰减完）。
   static const Color glassShadowLight = Color(0x0F000000);
+
+  // ══ 六、弹框（遮罩 / 次级文字）════════════════════════════════════════════
+
+  /// 弹框遮罩 alpha（黑，明暗各一档，实测）：
+  ///
+  ///  * 亮：白页底 → #CCCCCC（204/255 = 0.8 透射）→ α = 0.20；
+  ///  * 暗：同一缩略图内容暗/亮均值比恒为 0.500（5 块采样 0.497…0.501）
+  ///    → (1−α暗)/(1−0.20) = 0.5 → α = 0.60。
+  static const double dialogScrimAlphaLight = 0.20;
+  static const double dialogScrimAlphaDark = 0.60;
+
+  /// 弹框遮罩色（黑 @ 上述 alpha）。
+  static const Color dialogScrimLight =
+      Color.fromRGBO(0, 0, 0, dialogScrimAlphaLight);
+  static const Color dialogScrimDark =
+      Color.fromRGBO(0, 0, 0, dialogScrimAlphaDark);
+
+  /// 按明暗模式取弹框遮罩色。
+  static Color dialogScrimFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? dialogScrimDark : dialogScrimLight;
+
+  /// 弹框次级文字（正文 + 中性按钮标签）alpha：onSurface @0.80。
+  ///
+  /// 反解口径：同一批像素在**两种填充**上读数差 ≈6 级（正文压卡片
+  /// #242424 读 #D0…D4、按钮标签压填充 #434343 读 #D8），固定灰读不出
+  /// 这个差、只有 alpha 合成能 —— 按 α=0.80 预测 211 / 217，双模式四组
+  /// 读数全部落进 mode 邻域（亮：51 / 48 对 #333 / #303）。
+  static const double dialogTextSecondaryAlpha = 0.80;
+
+  /// 弹框次级文字色（纯白 / 纯黑 @ 上述 alpha；标题为同基准 1.0 不透明）。
+  static const Color dialogTextSecondaryDark =
+      Color.fromRGBO(255, 255, 255, dialogTextSecondaryAlpha);
+  static const Color dialogTextSecondaryLight =
+      Color.fromRGBO(0, 0, 0, dialogTextSecondaryAlpha);
 }

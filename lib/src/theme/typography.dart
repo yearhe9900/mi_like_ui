@@ -92,4 +92,33 @@ class MiTypography {
     height: 1.0,
     fontWeight: FontWeight.w500,
   );
+
+  /// 弹框标题：参考图 5 字墨宽 88.3dp、字面 pitch 56px → em 18.0dp（与
+  /// [topBarCompactTitle] 同档同值）；字重目测 Medium（笔画宽度受 JPEG
+  /// 模糊影响无法定量，按同档惯例取 w500 —— **推导（非实测）**）。
+  ///
+  /// 墨色随明暗由 `theme/dialog_tokens.dart` 供给，故不预置颜色。
+  static const TextStyle dialogTitle = TextStyle(
+    fontSize: 18.0,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
+
+  /// 弹框正文：相邻 CJK 字面 pitch 自相关 49px/36px → em 15.78/16.06dp，
+  /// 取 15.9dp；字重目测 Regular（**推导（非实测）**）。行距另见
+  /// `MiDialogMetrics.messageLinePitch`（构建时并进 `height`）。
+  static const TextStyle dialogMessage = TextStyle(
+    fontSize: 15.9,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// 弹框按钮标签：纯 CJK「取消/删除」墨宽模板匹配 em 15.8…16.0dp，与
+  /// 正文同值 15.9dp；字重目测 Medium（**推导（非实测）**，与
+  /// [buttonLabel] 同档）。
+  static const TextStyle dialogAction = TextStyle(
+    fontSize: 15.9,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
 }

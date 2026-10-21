@@ -160,6 +160,10 @@ class _DemoHomeState extends State<DemoHome> {
     setState(() => _searchActive = value);
   }
 
+  /// 弹框演示：当前弹出的位置（null = 未弹）。「我的」页三个入口触发，
+  /// 遮罩点按 / 按钮点按都收起。
+  MiDialogPosition? _dialogPosition;
+
   @override
   Widget build(BuildContext context) {
     final light = widget.themeMode == MiThemeMode.light;
@@ -277,6 +281,8 @@ class _DemoHomeState extends State<DemoHome> {
                         themeMode: widget.themeMode,
                         onThemeModeChanged: widget.onThemeModeChanged,
                         onSearchActiveChanged: _setSearchActive,
+                        onShowDialog: (position) =>
+                            setState(() => _dialogPosition = position),
                       ),
                     ),
                     if (sideNav)
@@ -336,6 +342,35 @@ class _DemoHomeState extends State<DemoHome> {
                           // 预留空位圆钮：仅选中「首页」时显示（切走收起）；
                           // 与侧栏形态共用同一份声明。
                           fab: fab,
+                        ),
+                      ),
+                    // 弹框演示浮层（遮罩 + 卡片一体）：恒在 Stack **末尾**，
+                    // 前面子级的下标 / Element 不受影响（本项目实测的坑：
+                    // Stack 子级增删按槽位配对，中插会让后面的子树重建）。
+                    if (_dialogPosition != null)
+                      Positioned.fill(
+                        key: const ValueKey('dialogOverlay'),
+                        child: MiDialog(
+                          position: _dialogPosition!,
+                          themeMode: widget.themeMode,
+                          onScrimTap: () =>
+                              setState(() => _dialogPosition = null),
+                          title: '删除联系人',
+                          message: '确定从本地和云端同时删除“方太安装师傅”吗？',
+                          messageAlign: TextAlign.start,
+                          actions: [
+                            MiDialogAction(
+                              label: '取消',
+                              onPressed: () =>
+                                  setState(() => _dialogPosition = null),
+                            ),
+                            MiDialogAction(
+                              label: '删除',
+                              style: MiDialogActionStyle.destructive,
+                              onPressed: () =>
+                                  setState(() => _dialogPosition = null),
+                            ),
+                          ],
                         ),
                       ),
                   ],
