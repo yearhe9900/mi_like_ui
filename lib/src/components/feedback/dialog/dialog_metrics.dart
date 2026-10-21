@@ -100,6 +100,14 @@ class MiDialogMetrics {
   static double get actionLabelBaseline =>
       actionHeight / 2 + inkAboveBaseline * MiTypography.dialogAction.fontSize!;
 
+  /// 按压态过渡时长（ms）。**实测**（用户按压录屏 24.31fps）：按下后逐帧
+  /// 进度 47/80/96/100%（f29…f32），拟合 150ms easeOutQuad（mean|Δ|=0.02）；
+  /// 回弹镜像同值（录屏里松手即执行关闭、未见回弹，属**推导**）。
+  ///
+  /// 叠色配方（黑/白 @0.12，只压填充不碰标签）见
+  /// [MiTransparencyTokens.dialogPressAlpha]。
+  static const int pressDurationMs = 150;
+
   /// 按钮盒顶缘（[lines] = 正文行数）：双行实测 133.0，行数每 ±1 平移一行距。
   static double actionsTopFor(int lines) =>
       actionsTopY + (lines - 2) * messageLinePitch;

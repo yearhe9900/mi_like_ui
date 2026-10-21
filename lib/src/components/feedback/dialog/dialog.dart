@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/dialog_tokens.dart';
 import '../../../theme/theme_mode.dart';
+import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import 'dialog_metrics.dart';
 
@@ -71,10 +72,15 @@ class MiDialogAction {
 /// [MiDialogPosition.bottom] 为默认档（实测）；top / center 为推导：
 /// top 镜像底部 32.9dp 并以安全区兜底（让开状态栏），center 垂直居中。
 ///
-/// ## 无动效
+/// ## 按压动效（实测）
 ///
-/// 参考图为静态截图、无转场实测，故不引入弹出 / 收起动画（与 [MiButton]
-/// 同一取舍）；遮罩点按触发 [onScrimTap]，由宿主决定是否收起。
+/// 参考图为静态截图、一度无动效实测，2026-10-21 用户补了**按压录屏**（24.31fps，
+/// 1220×2656）后补齐：按下时**填充叠一层按压色**（亮 = 黑 @0.12 压暗、暗 =
+/// 白 @0.12 提亮，Material state layer / 本项目返回钮按压同一语言）、
+/// **标签不变、不缩放**，150ms `easeOutQuad` 进入（逐帧 47/80/96/100%
+/// 拟合）；松开同值回弹（录屏里松手即执行关闭、未见回弹，属推导）。
+/// 遮罩点按触发 [onScrimTap]，由宿主决定是否收起；录屏里松手后弹框还有一段
+/// ~80ms 的下滑收尾，属**宿主收起动画**，组件不接管移除。
 class MiDialog extends StatelessWidget {
   const MiDialog({
     super.key,
@@ -182,7 +188,7 @@ class MiDialog extends StatelessWidget {
                       MiDialogPosition.bottom => maxH - bottomOffset - cardHeight,
                       MiDialogPosition.center => (maxH - cardHeight) / 2,
                     },
-                    child: _card(context, palette, lines),
+                    child: _card(context, palette, mode, lines),
                   ),
                 ],
               );
@@ -193,7 +199,12 @@ class MiDialog extends StatelessWidget {
     );
   }
 
-  Widget _card(BuildContext context, MiDialogPalette palette, int lines) {
+  Widget _card(
+    BuildContext context,
+    MiDialogPalette palette,
+    MiThemeMode mode,
+    int lines,
+  ) {
     final messageText = message;
     return Semantics(
       container: true,
@@ -264,6 +275,7 @@ class MiDialog extends StatelessWidget {
                           child: _MiDialogActionButton(
                             action: actions[i],
                             palette: palette,
+                            themeMode: mode,
                           ),
                         ),
                       ],
@@ -279,14 +291,38 @@ class MiDialog extends StatelessWidget {
 }
 
 /// 弹框按钮本体：实测圆角 15.0 / 盒高 49.9，标签墨心 = 盒心（Baseline 钉）。
-class _MiDialogActionButton extends StatelessWidget {
-  const _MiDialogActionButton({required this.action, required this.palette});
+///
+/// 按压态只把填充过渡到压色（见 [MiTransparencyTokens.dialogPressedFill]，
+/// 150ms easeOutQuad），标签与几何不动 —— 与录屏实测一致。
+class _MiDialogActionButton extends StatefulWidget {
+  const _MiDialogActionButton({
+    required this.action,
+    required this.palette,
+    required this.themeMode,
+  });
 
   final MiDialogAction action;
   final MiDialogPalette palette;
+  final MiThemeMode themeMode;
+
+  @override
+  State<_MiDialogActionButton> createState() => _MiDialogActionButtonState();
+}
+
+class _MiDialogActionButtonState extends State<_MiDialogActionButton> {
+  bool _pressed = false;
+
+  bool get _enabled => widget.action.onPressed != null;
+
+  void _setPressed(bool value) {
+    if (!_enabled || _pressed == value) return;
+    setState(() => _pressed = value);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final action = widget.action;
+    final palette = widget.palette;
     final (fill, labelColor) = switch (action.style) {
       MiDialogActionStyle.neutral =>
         (palette.neutralActionFill, palette.secondaryText),
@@ -297,13 +333,24 @@ class _MiDialogActionButton extends StatelessWidget {
     };
     return Semantics(
       button: true,
-      enabled: action.onPressed != null,
+      enabled: _enabled,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: action.onPressed,
-        child: DecoratedBox(
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        child: AnimatedContainer(
+          duration:
+              const Duration(milliseconds: MiDialogMetrics.pressDurationMs),
+          curve: Curves.easeOutQuad,
           decoration: BoxDecoration(
-            color: fill,
+            color: _pressed
+                ? MiTransparencyTokens.dialogPressedFill(
+                    fill,
+                    widget.themeMode,
+                  )
+                : fill,
             borderRadius: BorderRadius.circular(MiDialogMetrics.actionRadius),
           ),
           child: Baseline(

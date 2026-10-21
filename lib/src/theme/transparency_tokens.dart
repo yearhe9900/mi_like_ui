@@ -253,4 +253,30 @@ class MiTransparencyTokens {
       Color.fromRGBO(255, 255, 255, dialogTextSecondaryAlpha);
   static const Color dialogTextSecondaryLight =
       Color.fromRGBO(0, 0, 0, dialogTextSecondaryAlpha);
+
+  // ══ 七、弹框按钮按压（state layer）════════════════════════════════════════
+
+  /// 按钮按压态叠色 alpha（Material state layer 语言：亮 = 黑压、暗 = 白提，
+  /// 与 [pressHighlightAlpha] 的返回钮按压同一套方向）。
+  ///
+  /// **亮色实测**（用户按压录屏 24.31fps，1220×2656）：「确定」蓝填充
+  /// (52,129,254) → (46,113,226)，等比 ×0.88 ≡ 黑 @0.12；白字核心 255
+  /// **不变**（叠色只压填充、在标签之下）；按钮盒边缘不动（无缩放）。
+  /// 逐帧进度 47/80/96/100% 拟合 150ms easeOutQuad（mean|Δ|=0.02）。
+  /// 暗色反向提亮为推导（Material state layer / 返回钮按压同语言）。
+  static const double dialogPressAlpha = 0.12;
+
+  /// 按压叠色（黑 @0.12 亮 / 白 @0.12 暗），只压填充、不碰标签。
+  static const Color dialogPressLight =
+      Color.fromRGBO(0, 0, 0, dialogPressAlpha);
+  static const Color dialogPressDark =
+      Color.fromRGBO(255, 255, 255, dialogPressAlpha);
+
+  /// 按明暗模式取按压叠色。
+  static Color dialogPressFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? dialogPressDark : dialogPressLight;
+
+  /// 按压态填充：把按压叠色压到 [fill] 上（预合成单色，不引 saveLayer）。
+  static Color dialogPressedFill(Color fill, MiThemeMode mode) =>
+      Color.alphaBlend(dialogPressFor(mode), fill);
 }

@@ -141,7 +141,9 @@ void main() {
           ),
         ],
       ));
-      await tester.pump();
+      // 明暗切换时填充同样走 150ms 补间（AnimatedContainer），等它落定再读渲染值
+      await tester
+          .pump(const Duration(milliseconds: MiDialogMetrics.pressDurationMs));
 
       // 卡片填充
       final cardDecoration = tester
@@ -245,6 +247,86 @@ void main() {
       find.descendant(of: find.byType(MiDialog), matching: find.textContaining('确定从本地')),
     );
     expect(text.textAlign, TextAlign.start);
+  });
+
+  testWidgets('按压：填充 150ms 过渡到压色、松开回弹；禁用无反馈', (tester) async {
+    _useReferenceCanvas(tester);
+    for (final mode in MiThemeMode.values) {
+      final palette = MiDialogPalette.of(mode);
+      await tester.pumpWidget(_harness(
+        mode: mode,
+        actions: const [
+          MiDialogAction(
+            label: '确定',
+            style: MiDialogActionStyle.filled,
+            onPressed: _noop,
+          ),
+          MiDialogAction(label: '删除', style: MiDialogActionStyle.destructive),
+        ],
+      ));
+      await tester.pump();
+
+      Color? fillOf(String label) => (tester
+              .widget<AnimatedContainer>(find
+                  .ancestor(
+                    of: find.text(label),
+                    matching: find.byType(AnimatedContainer),
+                  )
+                  .first)
+              .decoration as BoxDecoration)
+          .color;
+
+      // 静止填充
+      expect(fillOf('确定'), palette.filledActionFill);
+
+      // 按下 → 150ms 过渡到压色（填充叠色、标签不变）
+      final gesture =
+          await tester.startGesture(tester.getCenter(find.text('确定')));
+      await tester.pump();
+      await tester
+          .pump(const Duration(milliseconds: MiDialogMetrics.pressDurationMs));
+      expect(
+        fillOf('确定'),
+        MiTransparencyTokens.dialogPressedFill(
+          palette.filledActionFill,
+          mode,
+        ),
+      );
+
+      // 松开 → 回弹（镜像同值）
+      await gesture.up();
+      await tester.pump();
+      await tester
+          .pump(const Duration(milliseconds: MiDialogMetrics.pressDurationMs));
+      expect(fillOf('确定'), palette.filledActionFill);
+
+      // 禁用（onPressed null）：按下不进压色
+      final disabled =
+          await tester.startGesture(tester.getCenter(find.text('删除')));
+      await tester.pump();
+      await tester
+          .pump(const Duration(milliseconds: MiDialogMetrics.pressDurationMs));
+      expect(fillOf('删除'), palette.neutralActionFill);
+      await disabled.up();
+    }
+  });
+
+  testWidgets('压色配方：亮 = 黑 @0.12 压、暗 = 白 @0.12 提（实测 + 推导）', (tester) async {
+    int ch(double v) => (v * 255).round();
+    // 亮色实测：蓝填充 (51,131,255) → ×0.88 ≈ (45,115,224)（录屏读数 (46,113,226)）
+    final pressedLight = MiTransparencyTokens.dialogPressedFill(
+      const Color(0xFF3383FF),
+      MiThemeMode.light,
+    );
+    expect(ch(pressedLight.r), inInclusiveRange(43, 48));
+    expect(ch(pressedLight.g), inInclusiveRange(112, 118));
+    expect(ch(pressedLight.b), inInclusiveRange(221, 228));
+    // 暗色推导：同一 state layer 反向提亮
+    final pressedDark = MiTransparencyTokens.dialogPressedFill(
+      const Color(0xFF434343),
+      MiThemeMode.dark,
+    );
+    expect(ch(pressedDark.r), inInclusiveRange(85, 94));
   });
 }
 

@@ -194,6 +194,13 @@ MIUI 系统弹框实测复刻（两张参考图各含亮/暗：联系人「删�
 （以安全区兜底让开状态栏）、居中为垂直居中推导。遮罩实测亮 = 黑 @0.20、
 暗 = 黑 @0.60（白页底→#CCCCCC 反解；同缩略图暗/亮透射比恒 0.500 交叉验证）。
 
+**按压动效**（按压录屏实测）：按下时填充叠一层压色 —— 亮 = 黑 @0.12 压暗、
+暗 = 白 @0.12 提亮（Material state layer / 返回钮按压同一语言）—— **标签不变、
+不缩放**，150ms `easeOutQuad` 进入（逐帧 47/80/96/100% 拟合）、松开同值回弹。
+下图右列「确定」为按压态：
+
+<img src="doc/preview/dialog_bottom_filled_light.png" width="200" alt="浅色弹框静止态" /> <img src="doc/preview/dialog_pressed_light.png" width="200" alt="浅色弹框按压态" /> <img src="doc/preview/dialog_bottom_filled_dark.png" width="200" alt="深色弹框静止态" /> <img src="doc/preview/dialog_pressed_dark.png" width="200" alt="深色弹框按压态" />
+
 > 两个参考弹框的 builder 并不完全一致（正文对齐 start / center、整块文字差
 > 2.4dp），组件按**联系人弹框**（原生分辨率）一条节奏走到底，正文对齐做成参数
 > `messageAlign`（默认居中）。

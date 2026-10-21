@@ -731,16 +731,29 @@ void main() {
       MiThemeMode mode, {
       MiDialogPosition position = MiDialogPosition.bottom,
       bool filled = false,
+      bool pressed = false,
       required String file,
     }) async {
       await tester.pumpWidget(
         frame(mode, position: position, filled: filled),
       );
       await tester.pump(const Duration(milliseconds: 300));
+      TestGesture? gesture;
+      if (pressed) {
+        // 按住「确定」进按压态（填充叠压色，150ms 落定）。先 pump 一帧让
+        // setState 生效、补间启动，再推 150ms 到位 —— 少第一帧会截到起点值。
+        gesture = await tester.startGesture(
+          tester.getCenter(find.text(filled ? '确定' : '删除')),
+        );
+        await tester.pump();
+        await tester
+            .pump(const Duration(milliseconds: MiDialogMetrics.pressDurationMs));
+      }
       await expectLater(
         find.byKey(const ValueKey('dialogPreview')),
         matchesGoldenFile(file),
       );
+      await gesture?.up();
     }
 
     // 底部（默认档，实测）：两套参考弹框各明/暗
@@ -776,6 +789,19 @@ void main() {
       MiThemeMode.light,
       position: MiDialogPosition.center,
       file: '../doc/preview/dialog_center_light.png',
+    );
+    // 按压态（录屏实测：填充叠黑/白 @0.12、标签不变、不缩放）
+    await capture(
+      MiThemeMode.light,
+      filled: true,
+      pressed: true,
+      file: '../doc/preview/dialog_pressed_light.png',
+    );
+    await capture(
+      MiThemeMode.dark,
+      filled: true,
+      pressed: true,
+      file: '../doc/preview/dialog_pressed_dark.png',
     );
   });
 }
