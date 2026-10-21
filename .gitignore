@@ -19,3 +19,6 @@ test/failures/
 .workbuddy/measure_*.py
 .workbuddy/tmp_*.png
 .workbuddy/tmp_*/
+
+# 参考截图原图（用户提供，含联系人/手机号等隐私内容，只存本地）
+.workbuddy/dialog_ref/

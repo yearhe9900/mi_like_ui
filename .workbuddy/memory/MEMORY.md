@@ -37,6 +37,7 @@
 - MiButton：`#4980F7`（明暗同色）、高 28.3、左右 17、13dp w500、stadium；列表行距 56.1。
 - MiSearchBar：高 44.1、inset 15.4、icon 17.8（笔画 1.8/镜片 6.9/r6.0）、gap 12、字 16.5 w400；填充 alpha 亮 13 / 暗 36，backdrop sigma 28；hint 亮 `#848484`/暗 `#6D6D6D`，icon `#9A9A9A`。
 - MiGlassNavBar：栏 342×55.4、边距 25.5、格宽 82.2、内边距 6.6、pill 竖 inset 3.05 → pill 宽 89.3、icon 高 23.2、icon→label 5.5、label 10.5 w500；fab ⌀55.4、gap 11.9；飞行 easeOutSine 260+20/cell ms + settle 350（overshoot .037 cell、squash .022）、按压 90ms。
+- MiDialog（2026-10-21）：卡宽 369.2（边距 11.9）/ 圆角 49.3（正圆）/ 底距屏 32.9 / 无投影；标题 18.0（墨心 36.4）、正文 15.9（行距 23.2、墨心行1 75.55、内缩 28）、按钮盒 133..183（高 49.9）圆角 15.0、行内缩 24.2、gap 12.6、底留白 24.1、标签墨心=盒心；卡高=133+(行数−2)×23.2+49.9+24.1。色：卡 #242424/#FFF、中性钮 #434343/#F0F0F0、主钮 #478AFF/#3383FF、破坏红 #DA5244、次级文字 纯白/黑@0.80、遮罩黑 @0.20(亮)/@0.60(暗)。两参考 app builder 不一致（正文 start/center、整块差 2.4dp）→ 按联系人弹框一条节奏。
 - MiThemeCard：预览图 259:472≈0.549（有界父级内 AspectRatio 必铺满）、圆角 20（拟合 19.6）、标题 13.85 w500 左对齐内缩 8.8、图→题 8 / 行距 15 / 列距 11.9；页面双轨页边距 = 壳层 11.9 + 文本列 20.5（区块标题 inset 8.6）。
 - **玻璃膜（压在内容上的搜索栏 / 未选胶囊，`overContent`）**：亮 = 页底 #F3F3F3 @117/255(0.46)、暗 = 纯黑 @150/255(0.59)。实测依据：胶囊内侧 vs 同 y 间隙 亮 200/167（+33）、暗 70/170（−100）；模糊不改局部均值，落差只能来自膜。平底页那档 onSurface@6% 是**另一状态**，两态不可互推。复核我们预览：亮 +36、暗 −72。
 
@@ -68,6 +69,7 @@
 - **判据别被描边骗**：量卡片填充顶缘用色差阈值会先撞描边（曾误报 177.17，真值 183.0）；沿列剖面找单行硬跳变。
 
 ## 已知坑：布局
+- **无 child 的 `DecoratedBox` / `Container` 在松约束下取 `constraints.smallest`**（交叉轴松 → 宽 0 → 整块隐形，还不报错）：要顶满加 `child: SizedBox.expand()`，或让父级给紧约束（`Positioned` 左右都给才是紧宽）。
 - **网格断点必须按「容器宽」标定**：舞台 1000 − 48 页边距 = 952 < 1024，沿用窗口断点会永远 medium（实拍 4 列）。
 - **`MiPillTabBar` 在宽父级里会居中**（横向 ScrollView shrink-wrap + Column 默认 center）→ 宽屏包 `Align(centerStart)`。
 - **全屏页壳的 Stack 子级一律 `Positioned`**：有非定位子级时 Stack 收缩到该子级尺寸，遇 loose 上级整页被居中 → 顶栏跑到屏幕正中（实测偏移 351.6dp）。
@@ -84,6 +86,7 @@
 - **行盒高被引擎向上取整**：31.83 + height 1.0 → 32.0，容差别写 0.01。
 
 ## 已知坑：测试与流程
+- **`flutter test` 报 `Unable to connect to flutter_tester ... Invalid WebSocket upgrade request` ≠ 代码问题**：环境 `HTTP_PROXY` 劫持本地 WebSocket，跑测试一律加 `NO_PROXY=localhost,127.0.0.1`（不加则既有测试同样挂）。
 - **改了几何 token 预览图逐字节不变 = 有代码自算几何绕过 token**（如 painter 里 `Radius.circular(size.width/2)`）；ClipRRect 半径改小也裁不到像素。先 grep 自算点，再用 PIL `ImageChops.difference(...).getbbox()` 定位差异区。
 - **`test/` 不参与 app 构建**：动过 `test/` 至少跑一次 `dart analyze`（`C:\src\flutter\bin\dart.bat`，0 error 才算过）。
 - 构造期断言在 `harness()` 同步构造时就抛 → `expect(() => harness(...), throwsA(isA<AssertionError>()))`。
