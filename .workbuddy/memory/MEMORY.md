@@ -6,6 +6,7 @@
 - **实测优先**：视觉参数 1:1 从参考截图像素量；参考图没有的样式只能推导，doc 标「推导（非实测）」+ 写明来源。
 - 每个任务完成即 git commit（精确路径 add，绝不 `git add .`）；改样式后 `flutter test --update-goldens test/preview_capture_test.dart`；工作区不留未提交改动。`analyze`/`test` 由 agent 代跑（2026-10-17 用户明确），build/adb 给命令文本。
 - **CHANGELOG 只写发布级变更**（2026-10-20 用户两次要求精简）：一条 1~2 行，写「改了什么 + 为什么」；**不写**实测出处（谁提供的录屏/截图）、像素与拟合数据、测试例数、预览图与文件清单、实现细节。细节留在 README（设计叙事）、代码注释与 `.workbuddy/memory/`。同一版本内不重复 `### Added` / `### Changed` 小标题。
+- **对外口径（2026-10-21）**：README / CHANGELOG / pubspec / 公共 dartdoc 用「设计度量 / 推导值 / 参考素材」术语、专业 API 文档口吻；**不写过程叙事**（日期、用户反馈、踩坑、黄金图、判据、内部项目名）。度量细节留在 metrics/token 注释与 memory。
 
 ## 响应式（`src/utils/responsive.dart`）
 - **三处断点各管一件事**，混用必错：① 窗口宽 `MiViewport`/`ofWidth`（compact<600 / medium 600…1023 / expanded≥1024）→ 外壳是否加宽；② **画面容器宽** `MiBreakpoints.usesSideNav(w)= w>600` → 底栏 vs 侧栏；③ **内容容器宽** `MiResponsiveGrid.compactMax/mediumMax` → 网格列数。
