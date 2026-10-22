@@ -61,6 +61,7 @@ MiGlassNavBar(
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
 | `MiThemeCard` | 竖向预览卡片（主题卡） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、三种按钮形态、按压动效） |
+| `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格 |
 
 ## 组件
@@ -240,6 +241,29 @@ MiDialog(
 
 <img src="doc/preview/dialog_top_dark.png" width="200" alt="深色顶部弹框" /> <img src="doc/preview/dialog_top_light.png" width="200" alt="浅色顶部弹框" /> <img src="doc/preview/dialog_center_dark.png" width="200" alt="深色居中弹框" /> <img src="doc/preview/dialog_center_light.png" width="200" alt="浅色居中弹框" />
 
+### 页面推入转场（MiCardPageRoute）
+
+自右缘推入新页、前缘带大圆角，下层页同时左移视差并压暗 —— 用于「搜索页 /
+详情页」这类推进一级的场景。用法与 `MaterialPageRoute` 一致：
+
+```dart
+Navigator.of(context).push(MiCardPageRoute<void>(
+  builder: (_) => const SearchPage(),
+));
+```
+
+**规格**（详见 `MiCardPageRouteMetrics`）：时长 400ms、位置曲线 `easeOutCubic`；
+新页前缘圆角 61.2dp；下层页左移 `0.25 × 页宽`（只平移、不缩放）；下层页压暗
+由 0 线性升至黑 @0.55。新页归位后不保留任何变换层与遮罩（静止页零额外绘制）。
+
+- **两种角色**：`buildTransitions` 同时处理「本页正在进入」与「本页被上层压住」。
+  下层页的视差依赖下层路由同样为本类（`secondaryAnimation` 钩子）；下层是平台
+  自带路由时仍有压暗，只是没有视差。
+- **压暗以纯色填充实现**，不用 `Opacity` / `FadeTransition` —— 后者会给整页引入
+  saveLayer，使下层 `BackdropFilter` 的 backdrop 变空、磨砂整段消失。
+
+<img src="doc/preview/push_transition_light.png" width="180" alt="浅色推入转场中" /> <img src="doc/preview/push_transition_dark.png" width="180" alt="深色推入转场中" /> <img src="doc/preview/search_page_dark.png" width="180" alt="落定后的搜索页头部" />
+
 ## 材质与透明体系
 
 透明相关参数（模糊 σ、各级填充 / 叠色 alpha、玻璃膜、按压叠色）**只定义于**
@@ -253,18 +277,22 @@ MiDialog(
 
 ## 搜索态
 
-点按搜索栏可进入搜索态（由宿主 `MiTopBar.searchActive` 驱动）：
+搜索两条路径都支持，按页面结构选用：
 
-- 搜索栏切换为真实输入框，显示闪烁光标（500ms 亮 / 500ms 灭）、聚焦弹键盘；
-- 右侧淡入取消钮（`MiSearchCancelButton`），搜索栏右缘左移让位（间隙 10dp）；
-- 胶囊标签行淡出并退出排版（`occupiedHeight` 由 156dp 收至 100.1dp）；
-- 转场 480ms（起手静止 48ms + 位移 `easeOutQuint` 430ms）；取消钮淡入与
-  位移不同步，落在转场中段。
+**① 原地搜索态**（`MiTopBar.searchActive`）—— 搜索栏就地变输入框，右侧淡入
+取消钮（`MiSearchCancelButton`），胶囊标签行淡出并退出排版（`occupiedHeight`
+由 156dp 收至 100.1dp）；转场 480ms（起手静止 48ms + 位移 `easeOutQuint`），
+取消钮淡入与位移不同步、落在转场中段。示例在「分类」页。
 
-<img src="doc/preview/home_search_light.png" width="200" alt="浅色搜索态" /> <img src="doc/preview/home_search_dark.png" width="200" alt="深色搜索态" />
+**② 推入搜索页**（`MiCardPageRoute`）—— 整页自右缘滑入（见上一节），落定后
+头部为「返回圆钮 + 输入框 + 搜索钮」三段：头部行顶缘 52.2dp、圆钮 ⌀44.1dp、
+圆钮与输入框 / 输入框与搜索钮各间距 11dp、搜索钮 53.5×40.9dp。示例在首页。
 
-> 宿主建议：搜索态下收起浮动底栏（专注输入），且键盘弹出时保持画面尺寸
+<img src="doc/preview/search_state_light.png" width="180" alt="浅色原地搜索态" /> <img src="doc/preview/search_state_dark.png" width="180" alt="深色原地搜索态" /> <img src="doc/preview/search_page_dark.png" width="180" alt="推入搜索页" />
+
+> 宿主建议：搜索态下收起 App 级导航（专注输入），且键盘弹出时保持画面尺寸
 > （`Scaffold(resizeToAvoidBottomInset: false)`），由键盘覆盖而非压缩布局。
+
 > 切换底栏显隐请用换结构（`Visibility` / 条件子树）而非 `Opacity` 淡出，
 > 理由同上文「形态切换」。
 
@@ -334,7 +362,7 @@ lib/
 └── src/
     ├── theme/               # 样式令牌层（颜色 / 文字 / 间距 / 透明与磨砂，明暗双配方）
     ├── components/          # 组件层（类别 / 组件名 / 两级目录）
-    │   ├── navigation/      #   glass_nav_bar · glass_side_nav_bar · pill_tab_bar · top_bar
+    │   ├── navigation/      #   glass_nav_bar · glass_side_nav_bar · pill_tab_bar · top_bar · card_page_route
     │   ├── buttons/         #   button
     │   ├── inputs/          #   search_bar（含取消钮）
     │   ├── cards/           #   theme_card
@@ -407,6 +435,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiGradientBlur` — 顶部渐进模糊
 - [x] `MiThemeCard` — 主题卡片
 - [x] `MiDialog` — 弹框
+- [x] `MiCardPageRoute` — 页面推入转场
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`
 - [ ] `MiForm` — 表单
 - [ ] `MiTheme` — 主题聚合
