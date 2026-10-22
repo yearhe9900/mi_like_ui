@@ -43,11 +43,9 @@ class MockPage extends StatelessWidget {
       case 0:
         // 首页 = 参考页形态：**悬浮头部**（搜索栏 + 胶囊标签行）压在高频横幅
         // 上，横幅与下方区块一起从头部后方滚过 —— 头部区那层恒定 σ 磨砂在
-        // 这一页才看得见（见 [_HomePage]）。
-        return _HomePage(
-          themeMode: themeMode,
-          onSearchActiveChanged: onSearchActiveChanged,
-        );
+        // 这一页才看得见（见 [_HomePage]）。点搜索栏由本页自己推入搜索页，
+        // 不需要外壳配合。
+        return _HomePage(themeMode: themeMode);
       case 1:
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
         return _ShowcasePage(
@@ -323,10 +321,9 @@ class _GradientCard extends StatelessWidget {
 /// 与「我的」页的分工：那页保留**大标题折叠**形态（`showBack: true`），
 /// 本页换成头部区形态 —— 顶栏两种形态在 demo 里各有一处。
 class _HomePage extends StatefulWidget {
-  const _HomePage({required this.themeMode, this.onSearchActiveChanged});
+  const _HomePage({required this.themeMode});
 
   final MiThemeMode themeMode;
-  final ValueChanged<bool>? onSearchActiveChanged;
 
   @override
   State<_HomePage> createState() => _HomePageState();
@@ -338,33 +335,18 @@ class _HomePageState extends State<_HomePage> {
 
   int _tab = 0;
 
-  /// 搜索态：点搜索栏进入，点取消钮退出（参考素材的交互）。
-  bool _searching = false;
-
-  /// 搜索框的输入 / 焦点：由页面持有，退出搜索态时能主动 `unfocus` 收键盘。
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocus = FocusNode();
-
-  @override
-  void dispose() {
-    // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
-    if (_searching) widget.onSearchActiveChanged?.call(false);
-    _searchController.dispose();
-    _searchFocus.dispose();
-    super.dispose();
-  }
-
+  /// 点搜索栏 = **推入搜索页**（参考素材的交互），转场见 [MiCardPageRoute]。
+  ///
+  /// 与「分类」页的**原地搜索态**（`MiTopBar.searchActive`）是两条并行路径：
+  /// 那一页搜索栏就地变成输入框、胶囊行淡出；这一页整页推入，下层页左移
+  /// 压暗。两种都支持，示例各演示一种。
   void _openSearch() {
-    if (_searching) return;
-    setState(() => _searching = true);
-    widget.onSearchActiveChanged?.call(true);
-  }
-
-  void _closeSearch() {
-    if (!_searching) return;
-    _searchFocus.unfocus();
-    setState(() => _searching = false);
-    widget.onSearchActiveChanged?.call(false);
+    Navigator.of(context).push(
+      MiCardPageRoute<void>(
+        settings: const RouteSettings(name: 'demo-search'),
+        builder: (_) => DemoSearchPage(themeMode: widget.themeMode),
+      ),
+    );
   }
 
   @override
@@ -381,10 +363,6 @@ class _HomePageState extends State<_HomePage> {
       headerInset: inset,
       searchHint: '搜索主题 / 壁纸 / 图标',
       onSearchTap: _openSearch,
-      searchActive: _searching,
-      onSearchCancel: _closeSearch,
-      searchController: _searchController,
-      searchFocusNode: _searchFocus,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
@@ -415,20 +393,10 @@ class _HomePageState extends State<_HomePage> {
               ],
             ),
           ),
-          // 搜索态：内容让位给输入（参考素材里搜索页在键盘上方是空白的）。
-          // 用一层同色盖住而不是卸载列表 —— 退出搜索态时滚动位置不丢。
-          //
-          // ⚠️ Stack 的子级**必须带 key**：这个 Overlay 是条件插入的，没有
-          // key 时兄弟节点按**下标**配对，顶栏会从下标 1 挪到 2 → 它的 Element
-          // 被当成新子树重建 → State 重来、搜索态转场直接跳到终态（踩过）。
-          if (_searching)
-            Positioned.fill(
-              key: const ValueKey('homeSearchCover'),
-              child: ColoredBox(
-                color: MiColors.pageBackgroundFor(widget.themeMode),
-              ),
-            ),
           // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
+          //
+          // ⚠️ Stack 的子级一律带 key：增删兄弟节点时按下标配对，否则后面的
+          // 子树会被当成新子树重建（顶栏 State 重来 → 搜索态转场直接跳到终态）。
           Positioned(
             key: const ValueKey('homeTopBar'),
             left: 0,
@@ -1176,3 +1144,210 @@ const List<Widget> _mineItems = [
   SizedBox(height: 12),
   _GradientCard(height: 90, colors: [Color(0xFF0F3443), Color(0xFF34E89E)], caption: '会员中心 / 客服与反馈  ›'),
 ];
+
+/// 搜索页（示例层）：首页点搜索栏后由 [MiCardPageRoute] 推入。
+///
+/// 头部几何为**度量值**（参考素材 1220×2656，s = 1220 / 393 = 3.104 px/dp）：
+///
+/// | 项目                 | 素材 px        | dp          |
+/// |----------------------|----------------|-------------|
+/// | 头部行顶缘           | 162            | 52.2        |
+/// | 返回圆钮             | ⌀137 / 左 38   | ⌀44.1 / 11.9 |
+/// | 圆钮 ↔ 输入框        | 34             | 11.0        |
+/// | 输入框               | 777 × 137      | 250.3 × 44.1（弹性占满） |
+/// | 输入框 ↔ 搜索钮      | 34             | 11.0        |
+/// | 搜索钮               | 166 × 127      | 53.5 × 40.9 |
+/// | 搜索钮右缘距屏幕右缘 | 39             | 12.6 ≈ 11.9 |
+///
+/// 三数闭合校验：11.9 + 44.1 + 11.0 + 250.3 + 11.0 + 53.5 + 11.9 = 393.7
+/// ≈ 屏宽 393（±0.7dp，AA 与取整）。
+///
+/// 头部顶缘取 `max(52.2, 安全区 + 12)`：52.2 是素材的绝对值，叠加安全区
+/// 是**推导**（素材状态栏约 40dp，头部在其下 ~12dp），保证真机不被状态栏压住。
+///
+/// 正文是示例内容（主题卡网格），与参考素材的「热搜榜单」无关：搜索结果的
+/// 排版属于宿主 App，本示例只演示**推入转场 + 头部交互**。
+class DemoSearchPage extends StatefulWidget {
+  const DemoSearchPage({
+    super.key,
+    this.themeMode = MiThemeMode.dark,
+    this.hint = '搜索主题 / 壁纸 / 图标',
+  });
+
+  final MiThemeMode themeMode;
+  final String hint;
+
+  @override
+  State<DemoSearchPage> createState() => _DemoSearchPageState();
+}
+
+class _DemoSearchPageState extends State<DemoSearchPage> {
+  // ── 头部几何（度量，见类文档）──
+  static const double _headerTop = 52.2;
+  static const double _headerInset = 11.9;
+  static const double _controlGap = 11.0;
+  static const double _actionWidth = 53.5;
+  static const double _actionHeight = 40.9;
+  static const double _controlHeight = MiSearchBarMetrics.barHeight;
+  static const double _fieldTextInset = 12.6;
+
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // 进页即聚焦（参考素材：推入过程中键盘已经在弹）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.themeMode;
+    final palette = MiSearchBarPalette.of(mode);
+    final ink = MiColors.foregroundFor(mode);
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final headerTop = math.max(_headerTop, safeTop + 12);
+    final inset = _pageInset(context, _headerInset);
+
+    return Scaffold(
+      backgroundColor: MiColors.pageBackgroundFor(mode),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(inset, headerTop, inset, 0),
+            child: SizedBox(
+              height: _controlHeight,
+              child: Row(
+                children: [
+                  _BackCircle(
+                    key: const ValueKey('searchBack'),
+                    ink: ink,
+                    palette: palette,
+                  ),
+                  const SizedBox(width: _controlGap),
+                  Expanded(child: _field(palette)),
+                  const SizedBox(width: _controlGap),
+                  _searchAction(ink: ink, palette: palette),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(inset, MiDimens.spaceXl, inset, 20),
+              children: const [
+                _SectionTitle('精选主题', inset: 8.6),
+                _ThemeCardGrid(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 输入框：stadium + 半透明表面填充（与静态搜索栏同一档填充色）。
+  ///
+  /// 参考素材这一页的输入框**没有放大镜**、占位左缩进 12.6dp —— 与首页那条
+  /// 搜索栏（放大镜 + 15.4dp 缩进）不是同一个零件，故此处不复用
+  /// [MiSearchBar]，只共用配色 token。
+  Widget _field(MiSearchBarPalette palette) {
+    return DecoratedBox(
+      key: const ValueKey('searchField'),
+      decoration: BoxDecoration(
+        color: palette.fill,
+        borderRadius: BorderRadius.circular(_controlHeight / 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _fieldTextInset),
+        child: Center(
+          child: TextField(
+            controller: _controller,
+            focusNode: _focus,
+            style: MiTypography.searchHint.copyWith(color: palette.cancelInk),
+            cursorColor: palette.caret,
+            cursorHeight: MiSearchBarMetrics.caretHeight,
+            textAlignVertical: TextAlignVertical.center,
+            decoration: InputDecoration.collapsed(
+              hintText: widget.hint,
+              hintStyle:
+                  MiTypography.searchHint.copyWith(color: palette.hint),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 搜索钮：度量 53.5×40.9 的浅灰圆角块 + 纯前景墨色标签。
+  Widget _searchAction({required Color ink, required MiSearchBarPalette palette}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Container(
+        width: _actionWidth,
+        height: _actionHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: palette.fill,
+          borderRadius: BorderRadius.circular(_actionHeight / 2),
+        ),
+        child: Text(
+          '搜索',
+          style: MiTypography.searchHint.copyWith(
+            color: ink,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 返回圆钮（示例层）：⌀44.1 圆盘 + 顶栏同一枚箭头墨迹。
+class _BackCircle extends StatelessWidget {
+  const _BackCircle({super.key, required this.ink, required this.palette});
+
+  final Color ink;
+  final MiSearchBarPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).maybePop(),
+      child: Container(
+        width: MiSearchBarMetrics.barHeight,
+        height: MiSearchBarMetrics.barHeight,
+        decoration: BoxDecoration(
+          color: palette.fill,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Transform.translate(
+            // 箭头墨心左偏一档（顶栏回退钮同一套光学偏置，度量）
+            offset: const Offset(MiTopBarMetrics.chevronCenterDx, 0),
+            child: CustomPaint(
+              painter: BackChevronIconPainter(palette.cancelInk),
+              size: const Size(
+                MiTopBarMetrics.chevronWidth,
+                MiTopBarMetrics.chevronHeight,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

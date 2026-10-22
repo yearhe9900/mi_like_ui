@@ -277,4 +277,25 @@ class MiTransparencyTokens {
   /// 按压态填充：把按压叠色压到 [fill] 上（预合成单色，不引 saveLayer）。
   static Color dialogPressedFill(Color fill, MiThemeMode mode) =>
       Color.alphaBlend(dialogPressFor(mode), fill);
+
+  // ── 页面推入（`MiCardPageRoute`）────────────────────────────────────────
+  //
+  // 下层页压暗：度量取「同一像素在转场前后的亮度比」。参考素材里下层页
+  // 的平坦区（页底）全程稳定在 0.64 倍亮度 → 黑 @0.36 的等效值。按转场
+  // 进度线性插值时，0.36 落在进度 0.65 附近，故终值取 0.55。
+  //
+  // **只压色、不加 `Opacity`**：半透明 `Opacity` 会给含 `BackdropFilter`
+  // 的子树引入 saveLayer，使 backdrop 变空、磨砂失效；半透明纯色填充只是
+  // 一次普通绘制，不做离屏合成。
+
+  /// 页面推入转场里下层页压暗的**终值** alpha（线性 0 → 本值）。
+  static const double pushDimAlphaMax = 0.55;
+
+  /// 推入转场进度 [progress]（0…1）对应的下层页压暗色。
+  static Color pushDimAt(double progress) => Color.fromRGBO(
+        0,
+        0,
+        0,
+        (pushDimAlphaMax * progress.clamp(0.0, 1.0)),
+      );
 }

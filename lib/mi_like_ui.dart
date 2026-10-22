@@ -35,6 +35,8 @@ export 'src/components/navigation/pill_tab_bar/pill_tab_bar.dart';
 export 'src/components/navigation/pill_tab_bar/pill_tab_bar_metrics.dart';
 export 'src/components/navigation/top_bar/top_bar.dart';
 export 'src/components/navigation/top_bar/top_bar_metrics.dart';
+export 'src/components/navigation/card_page_route/card_page_route.dart';
+export 'src/components/navigation/card_page_route/card_page_route_metrics.dart';
 export 'src/components/buttons/button/button.dart';
 export 'src/components/buttons/button/button_metrics.dart';
 export 'src/components/inputs/search_bar/search_bar.dart';

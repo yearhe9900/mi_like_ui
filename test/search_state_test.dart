@@ -356,6 +356,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MiGlassNavBar), findsOneWidget);
 
+      // 原地搜索态在「分类」页演示：首页那条搜索栏改成**推入搜索页**
+      // （`MiCardPageRoute`，见 card_page_route_test）。两条路径都支持。
+      await tester.tap(find.descendant(
+        of: find.byType(MiGlassNavBar),
+        matching: find.text('分类'),
+      ));
+      await tester.pumpAndSettle();
+
       await tester.tap(find.byType(MiSearchBar));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 520));

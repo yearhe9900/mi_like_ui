@@ -27,9 +27,16 @@ class _DemoAppState extends State<DemoApp> {
       debugShowCheckedModeBanner: false,
       title: 'Glass Jelly Bottom Nav Demo',
       theme: light ? ThemeData.light(useMaterial3: true) : ThemeData.dark(useMaterial3: true),
-      home: DemoHome(
-        themeMode: _mode,
-        onThemeModeChanged: (m) => setState(() => _mode = m),
+      // 首页**也走 [MiCardPageRoute]**：推入转场的「下层页左移视差」需要下层
+      // 路由同样支持 `secondaryAnimation`，平台自带路由没有这个钩子（而且
+      // Android 默认的 Zoom 转场会自己缩放退出页，与视差叠加）。
+      initialRoute: '/',
+      onGenerateRoute: (settings) => MiCardPageRoute<void>(
+        settings: settings,
+        builder: (_) => DemoHome(
+          themeMode: _mode,
+          onThemeModeChanged: (m) => setState(() => _mode = m),
+        ),
       ),
     );
   }

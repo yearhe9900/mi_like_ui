@@ -544,52 +544,80 @@ void main() {
     );
   });
 
-  testWidgets('README preview: search state (light & dark)', (tester) async {
+  testWidgets('README preview: in-place search state (light & dark)', (tester) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
+    // 原地搜索态在「分类」页（首页那条搜索栏是**推入搜索页**，见下一例）
     Future<void> capture(MiThemeMode mode, String file) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: mode == MiThemeMode.dark
               ? ThemeData.dark(useMaterial3: true)
               : ThemeData.light(useMaterial3: true),
-          home: Scaffold(body: MockPage(0, themeMode: mode)),
+          home: Scaffold(body: MockPage(1, themeMode: mode)),
         ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byType(MiSearchBar));
-      // 转场 420ms。**不能用 pumpAndSettle**：输入光标的闪烁是一个不会停的
-      // 定时器，settle 会一直等下去。改为只推固定时长 —— 也顺带把光标钉在
-      // 「刚点亮」那一相，截图才是确定的。
+      // **不能用 pumpAndSettle**：输入光标的闪烁是一个不会停的定时器。
+      // 转场 480ms；再把时间停在 490ms —— 光标「亮 500ms / 灭 500ms」，
+      // 只有这一小段窗口里既走完转场又能截到光标。
       await tester.pump();
-      // 转场 480ms；再把时间停在 490ms —— 光标闪烁是「亮 500ms / 灭 500ms」，
-      // 只有这一小段窗口里既走完转场又能截到光标（超过 500ms 光标就灭了）。
       await tester.pump(const Duration(milliseconds: 490));
       await expectLater(find.byType(MockPage), matchesGoldenFile(file));
     }
 
-    await capture(MiThemeMode.light, '../doc/preview/home_search_light.png');
-    await capture(MiThemeMode.dark, '../doc/preview/home_search_dark.png');
+    await capture(MiThemeMode.light, '../doc/preview/search_state_light.png');
+    await capture(MiThemeMode.dark, '../doc/preview/search_state_dark.png');
   });
 
-  testWidgets('README preview: demo shell in search state', (tester) async {
+  testWidgets('README preview: page push transition (light & dark)', (tester) async {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(393, 856);
     addTearDown(tester.view.reset);
     await _loadCjkFont(tester);
 
-    await tester.pumpWidget(const DemoApp());
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(MiSearchBar));
-    await tester.pump();
-    // 同「搜索态」用例：不用 pumpAndSettle（光标闪烁会一直有帧）
-    await tester.pump(const Duration(milliseconds: 490));
+    Future<void> openSearch({required bool light}) async {
+      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpAndSettle();
+      if (light) {
+        // 模式切换入口在「我的」页顶部，切完回首页
+        await tester.tap(find.text('我的').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byType(Switch));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('首页').last);
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    // 转场中（120ms，easeOutCubic 已走 66%）：新页带着 61.2 圆角压进来，
+    // 首页左移 0.25 × 页宽并压暗 —— 两张图各截一帧浅/深。
+    await openSearch(light: true);
+    await tester.pump(const Duration(milliseconds: 120));
     await expectLater(
-      find.byType(DemoHome),
-      matchesGoldenFile('../doc/preview/demo_search_dark.png'),
+      find.byType(DemoApp),
+      matchesGoldenFile('../doc/preview/push_transition_light.png'),
+    );
+
+    await openSearch(light: false);
+    await tester.pump(const Duration(milliseconds: 120));
+    await expectLater(
+      find.byType(DemoApp),
+      matchesGoldenFile('../doc/preview/push_transition_dark.png'),
+    );
+
+    // 落定后的搜索页（头部：返回圆钮 + 输入框 + 搜索钮）
+    await tester.pump(const Duration(milliseconds: 400));
+    await expectLater(
+      find.byType(DemoApp),
+      matchesGoldenFile('../doc/preview/search_page_dark.png'),
     );
   });
 
