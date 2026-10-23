@@ -15,7 +15,10 @@
   （见各组件 `*_metrics.dart`），跨字体排版稳定（基线锚定）
 - **透明 / 磨砂体系**：模糊、叠色、玻璃膜参数集中在
   `MiTransparencyTokens` 单一来源，组件只引用不重复定义
-- **响应式**：手机 / 平板 / 桌面三档断点，导航形态、网格列数、等比缩放画布
+- **响应式**：手机 / 平板 / 桌面三档断点，导航形态（底部栏 / 窄侧栏 /
+  展开侧栏）、网格列数、等比缩放画布
+- **桌面语义**：指针悬停叠色与卡片快捷操作条、键盘焦点环与 ⌘K 快捷键 ——
+  触屏素材没有这些样张，按通行桌面惯例**推导**
 - **性能预算化**：每帧模糊层数与覆盖面积入回归预算，防止渲染开销回退
 
 ## 快速开始
@@ -64,6 +67,7 @@ MiGlassNavBar(
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
+| `MiFocusRing` | 键盘焦点环 + Enter / Space 激活（桌面可达性） |
 
 ## 组件
 
@@ -89,15 +93,26 @@ FAB 直径 55.4dp。玻璃配方（σ = 28dp 磨砂、栏体遮罩、透镜、�
 两者共用同一份 `MiGlassNavItem`、`selectedIndex` 与 `onTap`，选中反馈与交互
 语义完全一致；玻璃配方、动效曲线复用底部栏 token，仅运动轴换向。
 
-**规格**（详见 `MiGlassSideNavMetrics`）：栏宽 95.4dp、条目高 49.3dp、
-条目间距 8dp、栏体圆角与胶囊同心（内外圈等距 6.6dp）；FAB 挂于栏尾下方、
-栏体不为其让位。侧栏几何为底部栏规格的纵向换算（推导值）。
+**两种形态**：
+
+| 形态 | 判定 | 栏宽 | 条目排布 |
+|------|------|------|----------|
+| 窄栏（默认） | 容器宽 > 600 | 95.4dp（度量换算） | 图标在上、小字在下 |
+| **展开栏**（`expanded: true`） | 容器宽 ≥ 1024（`usesExpandedRail`） | **240dp**（推导值） | 图标在左、标签在右 |
+
+展开栏是**桌面档的常驻侧栏**：240dp 与 Material / Windows Settings 的
+200…320 同量级（图标 24 + 间距 12 + 标签区 ~150）；平板竖屏仍走窄栏 ——
+让出 240dp 会吃掉三成画布宽。两种形态的纵向节奏（条目高 49.3、间距 8、
+栏体圆角与胶囊同心等距 6.6）与飞行动效逐帧同源。
+
+**规格**（详见 `MiGlassSideNavMetrics`）：条目高 49.3dp、条目间距 8dp；
+FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格的纵向换算（推导值）。
 
 > **形态切换建议直接替换子树、不做淡入淡出**：`Opacity` /
 > `AnimatedSwitcher` 会对含 `BackdropFilter` 的子树引入 saveLayer，
 > 切换期间磨砂会整段消失。
 
-<img src="doc/preview/nav_side_light.png" width="150" alt="浅色侧边导航栏" /> <img src="doc/preview/nav_side_dark.png" width="150" alt="深色侧边导航栏" />
+<img src="doc/preview/nav_side_light.png" width="150" alt="浅色侧边导航栏" /> <img src="doc/preview/nav_side_dark.png" width="150" alt="深色侧边导航栏" /> <img src="doc/preview/adaptive_desktop.png" width="300" alt="桌面展开侧栏" />
 
 ### 胶囊分类标签行（MiPillTabBar）
 
@@ -147,7 +162,20 @@ FAB 直径 55.4dp。玻璃配方（σ = 28dp 磨砂、栏体遮罩、透镜、�
   构造期校验）；
 - **搜索态**（`searchActive` / `onSearchCancel`）：内置搜索栏切换为输入态，
   右侧淡入取消钮、胶囊标签淡出并退出排版；
-- **材质开关**：`showBlur`（顶部磨砂）与 `showSurface`（顶部压色）独立控制。
+- **材质开关**：`showBlur`（顶部磨砂）与 `showSurface`（顶部压色）独立控制；
+- **宽屏收敛**（三个参数，手机档传默认值逐像素不变）：
+  - `headerTopInset` —— 头部区顶部让位。桌面传 **24**（`desktopHeaderTopInset`，
+    推导值：窗口没有状态栏，留度量 56 会悬出一条空带）；
+  - `searchBarMaxWidth` —— 搜索栏限宽。桌面传 **520**（推导值：1120dp 列上一条
+    满宽搜索框难用也不像桌面应用，右侧留给动作区）；
+  - `actions` —— 搜索栏右侧的动作区（按钮 / 图标一排，右对齐到 `headerInset`）。
+    随搜索转场淡出并退出排版（同胶囊行动画契约）；`Opacity` 只包**无磨砂**的
+    动作件，磨砂子树进这层会让 backdrop 变空。
+- **`sigmaScale`（滚动降 σ）** —— 磨砂 σ 缩放系数，默认 1.0（度量材质）。
+  滚动中 backdrop 每帧重算是最贵的一块，宿主可在滚动期间压到 0.6、停下后
+  传回 1.0：σ 与高斯成本近似线性，运动掩蔽下视觉几乎无差，GPU 省近半。
+  作用于两套磨砂规律（渐进曲线与恒定段），两档 σ 各自走 `MiFilterCache`
+  缓存、跨帧复用。
 
 **规格**（详见 `MiTopBarMetrics`）：紧凑标题 18.0dp Medium（居中）、
 大标题 31.83dp Medium；内容首行顶缘分两档 —— 卡片类 `contentTopInset`
@@ -190,10 +218,22 @@ Stack(children: [
 遮住的段落以节省渲染（此配置下压色必须不透明）。`MiTopBar(showBlur: true)`
 内部即复用本组件，曲线与几何同源。
 
+**`sigmaScale`（滚动降 σ，推导值）**：σ 缩放系数，默认 1.0 = 度量材质。
+传 < 1（如 0.6）可等比压低**运动中**每段的 σ —— 曲线形状（段位 / 段高）
+不变、只改强度，σ 与高斯成本近似线性；低于 `minVisibleSigma` 的尾段照常
+剔除（亚像素模糊与「不模糊」不可分辨，属于预期的省帧行为）。宿主在滚动
+期间压低、停下后传回即可。
+
 ### 主题卡片（MiThemeCard）
 
 竖向预览卡片：上部预览图（定比 259:472、圆角 20dp）、下部单行标题
 （13.85dp Medium，较图左缘内缩 8.8dp，与区块标题同列起排）。
+
+**悬停快捷操作**（`quickActions`，桌面）：非空时指针悬停会让预览图**底部**
+滑出一条操作条（黑 @45% 底，`MiTransparencyTokens.cardQuickActionsScrim`），
+移出后滑回。静止态**零像素变化**（结构恒定，黄金图不受影响）；滑入用
+`AnimatedSlide`（Transform，**不引 saveLayer**），不用 `Opacity`。操作条按钮
+的点按不冒泡到卡片的 `onTap`。手机档不传（触屏无悬停语义）。
 
 <img src="doc/preview/card_light.png" width="360" alt="浅色主题卡片" /> <img src="doc/preview/card_dark.png" width="360" alt="深色主题卡片" />
 
@@ -234,6 +274,12 @@ MiDialog(
 - **按压动效**：按下时填充叠按压色（亮色压暗 / 暗色提亮，@0.12），标签
   不变、不缩放，150ms `easeOutQuad` 过渡，松开回弹。
 
+**宽屏档**（容器宽 ≥ 1024，`MiDialogMetrics.isWide`）：卡片改为**居中窄卡** ——
+限宽 **440dp**、圆角 **16**、`position` 只在手机档生效。两者都是**推导值**
+（正文行长 ~40 字的可读上限；居中卡通行圆角 —— 手机的 49.3 圆角是「贴底
+圆角卡」的度量，居中形态没有这条语义）。正文行数按**实际卡宽**排版，窄容器
+里卡片收到可用宽内、不溢出。
+
 静止态（左「删除联系人」/ 右「删除1项资源」两种内容形态）与按压态（右列）：
 
 <img src="doc/preview/dialog_bottom_dark.png" width="200" alt="深色弹框" /> <img src="doc/preview/dialog_bottom_light.png" width="200" alt="浅色弹框" /> <img src="doc/preview/dialog_bottom_filled_dark.png" width="200" alt="深色弹框（主按钮）" /> <img src="doc/preview/dialog_pressed_dark.png" width="200" alt="深色弹框（主按钮按压态）" />
@@ -262,6 +308,15 @@ Navigator.of(context).push(MiCardPageRoute<void>(
   自带路由时仍有压暗，只是没有视差。
 - **压暗以纯色填充实现**，不用 `Opacity` / `FadeTransition` —— 后者会给整页引入
   saveLayer，使下层 `BackdropFilter` 的 backdrop 变空、磨砂整段消失。
+
+**宽屏档**（窗口 ≥ 1024，`MiCardPageRouteMetrics.isWide`）：换桌面通行的
+「**4dp 抬起 + 同色幕布淡入**」，视觉时长 **220ms**、前缘圆角 ≤ 16 ——
+手机档的「大圆角滑入 + 视差」在桌面读作「两个窗口叠在一起」。淡入同样
+**不用 `Opacity`**：新页含磨砂顶栏，套 saveLayer 会让它自己的 backdrop 变空；
+改在新页之上盖一层**页底色实色**（`ColoredBox`，普通绘制）做 alpha 1→0，
+观感即「从页面底色里浮出来」。下层页不做视差、不压暗。220ms 通过
+`Interval(0, 0.55)` 落在原 400ms 路由时长的前 55% 段（`transitionDuration`
+在构造时定死、拿不到上下文里的窗口宽）。
 
 <img src="doc/preview/push_transition_light.png" width="180" alt="浅色推入转场中" /> <img src="doc/preview/push_transition_dark.png" width="180" alt="深色推入转场中" /> <img src="doc/preview/search_page_dark.png" width="180" alt="落定后的搜索页头部" />
 
@@ -305,12 +360,14 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 | 档位 | 窗口逻辑宽 | 内容列宽 | 网格列数（主题卡 / 展示位） | 导航形态 |
 |---|---|---|---|---|
 | compact | < 600dp | ≤ 画布宽（393 设计宽） | 3 竖版 / 4 | 底部栏 |
-| medium | 600…1023dp | 铺满（页边距 32） | 3 竖版 / 6 | 侧栏 |
-| expanded | ≥ 1024dp | **≤ 1120 居中** | 6 横版 / 8 | 侧栏 |
+| medium | 600…1023dp | 铺满（页边距 32） | 3 竖版 / 6 | 侧栏（窄栏 95.4） |
+| expanded | ≥ 1024dp | **≤ 1120 居中** | 6 横版 / 8 | 侧栏（**展开栏 240**） |
 
 - **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）：决定外壳是否加宽内容；
 - **容器断点**（`MiBreakpoints.usesSideNav`，严格 > 600）：决定导航形态；
   判据跟随容器宽度而非窗口宽度，手机画布嵌入宽窗口也不会切换形态；
+  同一断点链上再分一层：容器宽 ≥ 1024 换**展开侧栏**（`usesExpandedRail`），
+  平板竖屏仍走窄栏 —— 让出 240dp 会吃掉三成画布；
 - **内容断点**（`MiResponsiveGrid`，按容器宽切列）：决定网格列数；
   给了 `maxCellWidth` 时列数还会随宽度**连续增长**，只加列、不把卡片拉宽。
 
@@ -331,6 +388,11 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 | 卡片比例 | 手机竖版 259:472（度量）→ 桌面 16:10 横版 | 推导：1366×768 竖版卡一屏只 1.4 行，横版 2 行以上 |
 | 单元宽上限 | 主题卡 240dp（`MiResponsiveGrid.maxCellWidth`） | 推导：平板竖屏 736 宽 → 3 列，桌面 → 6 列 |
 | 表单内容列 | 720dp（示例「我的」页） | 推导：再宽「标签在左、开关在右」要来回扫视 |
+| 展开侧栏 | 240dp（`MiGlassSideNavMetrics.expandedRailWidth`） | 推导：与 Material / Windows Settings 的 200…320 同量级；带文字是桌面常驻侧栏通行形态 |
+| 顶栏顶部让位 | 24dp（`MiTopBarMetrics.desktopHeaderTopInset`） | 推导：窗口没有状态栏，留度量 56 会悬出空带 |
+| 搜索栏限宽 | 520dp（`MiTopBar.searchBarMaxWidth`） | 推导：1120 列上满宽搜索框难用且不像桌面应用，右侧留给动作区 |
+| 桌面弹窗 | 限宽 440dp / 圆角 16（`MiDialogMetrics` 宽屏档） | 推导：正文行长 ~40 字可读上限；居中卡通行圆角（手机 49.3 是贴底卡度量） |
+| 桌面推入转场 | 4dp 抬起 + 同色幕布淡入 220ms（`MiCardPageRouteMetrics` 宽屏档） | 推导：大圆角滑入 + 视差在桌面读作「两个窗口叠在一起」 |
 
 `MiContentColumn` 只限制**内容**：页面底色仍铺满窗口，纵向撑满，不加任何
 视觉包装（不做圆角卡片、不加投影）。手机 / 平板画面本来 ≤ 1120dp，套上
@@ -356,6 +418,23 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 
 <img src="doc/preview/adaptive_desktop_light.png" width="520" alt="桌面 1366×768 浅色" />
 
+### 键盘可达性
+
+参考素材来自触屏手机，键盘语义是**推导**的（与悬停同一前提）：
+
+- **`MiFocusRing`** —— Tab 聚焦可点元素时，在其**边界外侧**画 2dp 强调描边
+  （亮 = 强调蓝 / 暗 = 白，推导值），Enter / Space 触发 `onActivate`。
+  描边是**实色 `AnimatedContainer`**：未聚焦时全透明、结构恒定 → 黄金图零变化；
+  `enabled: false` 时连 `Focus` 都不挂（不参与 Tab 遍历）。已接入 `MiButton`。
+- **`MiSearchShortcuts`**（示例层）—— ⌘ / Ctrl + K 聚焦搜索、Esc 退出当前
+  浮层 / 搜索态（`onEscape: null` 时不注册 Esc、继续冒泡给系统）。
+  快捷键沿焦点链冒泡，所以搜索框获得焦点后 ⌘K 仍被这一层接住。
+
+> **包装层必须结构恒定**：`_keyboardScope` 三档都挂 `MiSearchShortcuts`，
+> 只切其 `autofocus`（手机档不抢焦点 —— 触屏没有物理键盘，抢一次焦点还会把
+> 搜索光标的闪烁相位推偏）。跨断点**增删**这层会让页面 Element 重建、滚动
+> 位置归零，与「内容列不能按断点增删」是同一条坑。
+
 ## 性能
 
 磨砂（`BackdropFilter`）是本库最主要的绘制开销：每帧对 backdrop 重算全
@@ -366,7 +445,15 @@ QUAD 高斯，滚动时随 backdrop 变化。为此将「单次构建的模糊�
 |---|---|
 | 手机 393×856 | 首页 / 分类 2 层 / 75,701 dp² · 我的 6 层 / 35,799 dp² |
 | 平板 768×1280 | 首页 / 分类 2 层 / 117,843 dp² · 我的 6 层 / 52,142 dp² |
-| 桌面 1366×768 | 首页 / 分类 2 层 / 191,615 dp² · 我的 6 层 / 77,900 dp² |
+| 桌面 1366×768 | 首页 / 分类 2 层 / 214,182 dp² · 我的 6 层 / 77,900 dp² |
+
+> 桌面档面积比窄栏时代（191,615）多 ~22.5k：**展开侧栏**（240dp）比窄栏宽
+> 144.6dp，这是「常驻侧栏带文字」的固有代价；**层数没变**（一次大 filter 比
+> 多次小 filter 便宜），阈值按新形态重标为 220,000。
+
+**滚动降 σ**：滚动中把磨砂 σ 等比压低（示例取 0.6），停下 120ms 恢复度量
+材质 —— σ 与高斯成本近似线性，运动掩蔽下视觉几乎无差，GPU 省近半。
+入口是 `MiGradientBlur.sigmaScale` / `MiTopBar.sigmaScale`（默认 1.0）。
 
 桌面那一档被**内容列 1120dp 上限**封顶：不加限宽时是 1245 × 156 ≈ 194,236
 dp² 且随窗口继续线性增长，加了之后 1366 宽落在 191,615 dp²、更宽的窗口也

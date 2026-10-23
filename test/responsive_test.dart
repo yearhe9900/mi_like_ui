@@ -327,18 +327,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
-      // 手机 → 桌面：画面铺满窗口、底部栏换成侧栏；**内容列**限宽 1120 居中
-      //（列宽 = min(窗口 − 侧栏列, 1120)，两侧留白相等）。
+      // 手机 → 桌面：画面铺满窗口、底部栏换成**展开侧栏**（≥1024 换形态）；
+      // **内容列**限宽 1120 居中（列宽 = min(窗口 − 侧栏列, 1120)，两侧留白
+      // 相等）。
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final wide = tester.getRect(find.byType(MockPage));
-      final area = 1366 - MiGlassSideNavMetrics.gutterWidth;
+      final gutter = MiGlassSideNavMetrics.gutterWidthFor(expanded: true);
+      final area = 1366 - gutter;
       final column = math.min(area, MiBreakpoints.contentMaxWidth);
       expect(wide.width, closeTo(column, 0.01));
       expect(
         wide.left,
-        closeTo(MiGlassSideNavMetrics.gutterWidth + (area - column) / 2, 0.01),
+        closeTo(gutter + (area - column) / 2, 0.01),
       );
 
       // 桌面 → 小窗：又缩回等比 contain

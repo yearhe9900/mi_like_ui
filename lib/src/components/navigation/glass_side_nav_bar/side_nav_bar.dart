@@ -58,6 +58,7 @@ class MiGlassSideNavBar extends StatefulWidget {
     required this.onTap,
     this.fab,
     this.themeMode = MiThemeMode.dark,
+    this.expanded = false,
   });
   // items 数量、fab 适配与 fab.tabIndex 范围校验均在 initState：const 构造
   // 断言不支持 `.length` / 参数字段求值（放构造器会封死 const 构造，
@@ -80,6 +81,19 @@ class MiGlassSideNavBar extends StatefulWidget {
 
   /// 明暗模式：决定玻璃材质配方与标签墨色（默认深色）。
   final MiThemeMode themeMode;
+
+  /// 是否**展开**（带文字标签的常驻侧栏，桌面档）。
+  ///
+  ///  * `false`（默认）：窄栏 95.4dp —— 图标在上、小字标签在下（与底部栏
+  ///    同一套度量纵向换轴），平板 / 窄窗用；
+  ///  * `true`：展开栏 [MiGlassSideNavMetrics.expandedRailWidth]（240dp）——
+  ///    图标在左、标签在右、整条目是一个胶囊，桌面用。全部几何取
+  ///    [MiGlassSideNavMetrics] 的展开态推导值；纵向节奏（条目高 / 间隙 /
+  ///    内边距 / 飞行-沉降-按压动效）与窄栏逐帧同源。
+  ///
+  /// 切换形态请直接替换子树（同 [MiGlassNavBar] ⇄ 本组件的契约）：两者
+  /// 结构不同，不做淡入淡出。
+  final bool expanded;
 
   @override
   State<MiGlassSideNavBar> createState() => _MiGlassSideNavBarState();
@@ -293,7 +307,9 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
     final labelStyle = MiTypography.navLabelFor(widget.themeMode);
     final n = widget.items.length;
     final h = _railHeight;
-    const railW = MiGlassSideNavMetrics.railWidth;
+    final expanded = widget.expanded;
+    final railW = MiGlassSideNavMetrics.railWidthFor(expanded: expanded);
+    final pillW = MiGlassSideNavMetrics.itemWidthFor(expanded: expanded);
 
     // 整条栏只糊一次：胶囊透镜与遮罩都画在这一层之上（同底部栏）。
     Widget glass = ClipRRect(
@@ -343,7 +359,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                 squash += MiGlassNavMetrics.pressSquashH * press;
 
                 var ph = MiGlassSideNavMetrics.itemHeight * (1 + stretch);
-                final pw = MiGlassSideNavMetrics.itemWidth * (1 - squash);
+                final pw = pillW * (1 - squash);
                 // 条目 i 的胶囊中心 = 内边距 + 半个条目高 + i × 步进：
                 // 半条目高是「首条目中心」的偏移，步进里含间隙，故不能直接用
                 // pitch × (pos + 0.5)（那样会整体下移半个间隙 = 4dp）。
@@ -398,22 +414,58 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                             opacity: _pressedIndex == i
                                 ? MiGlassNavMetrics.pressDimOpacity
                                 : 1.0,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CustomPaint(
-                                  painter: widget.items[i].painter,
-                                  size: const Size(
-                                    MiGlassSideNavMetrics.iconSize,
-                                    MiGlassSideNavMetrics.iconHeight,
+                            // 两种形态只差内容排布：窄栏 = 图标在上小字在下
+                            // （底部栏纵向换轴）；展开栏 = 图标在左、标签在右，
+                            // 整条目一个胶囊（桌面常驻侧栏形态）。
+                            child: expanded
+                                ? SizedBox(
+                                    // 钉到胶囊宽：外层 Column 是居中对齐，不给
+                                    // 定宽的话 Row 会按「图标+标签」自然宽居中，
+                                    // 内缩就不是从胶囊左缘量起了。
+                                    width: MiGlassSideNavMetrics
+                                        .expandedItemWidth,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(
+                                          width: MiGlassSideNavMetrics
+                                              .expandedItemInset,
+                                        ),
+                                        CustomPaint(
+                                          painter: widget.items[i].painter,
+                                          size: const Size(
+                                            MiGlassSideNavMetrics.iconSize,
+                                            MiGlassSideNavMetrics.iconHeight,
+                                          ),
+                                        ),
+                                        const SizedBox(
+                                          width: MiGlassSideNavMetrics
+                                              .expandedIconLabelGap,
+                                        ),
+                                        Text(widget.items[i].label,
+                                            style: labelStyle),
+                                      ],
+                                    ),
+                                  )
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CustomPaint(
+                                        painter: widget.items[i].painter,
+                                        size: const Size(
+                                          MiGlassSideNavMetrics.iconSize,
+                                          MiGlassSideNavMetrics.iconHeight,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height:
+                                            MiGlassSideNavMetrics.iconLabelGap,
+                                      ),
+                                      Text(widget.items[i].label,
+                                          style: labelStyle),
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(
-                                  height: MiGlassSideNavMetrics.iconLabelGap,
-                                ),
-                                Text(widget.items[i].label, style: labelStyle),
-                              ],
-                            ),
                           ),
                         ),
                       ),

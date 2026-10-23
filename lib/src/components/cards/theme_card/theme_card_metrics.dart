@@ -49,4 +49,16 @@ class MiThemeCardMetrics {
 
   /// 网格列间距（度量 26.5px ≈ 11.8dp，与页边距同量级取 11.9）。
   static const double columnGap = 11.9;
+
+  // ── 悬停快捷操作条（桌面，推导值） ────────────────────────────────────────
+  //
+  // 参考素材只有触屏手机，没有悬停样张。以下两项是布局常量而非度量值：
+  // 取值参照通行的「预览图内嵌操作条」形态（视频卡片 / 文件缩略图）。
+
+  /// 悬停快捷操作条高度 **36**：能容一行 28.3 高的 `MiButton`（度量按钮高）
+  /// 加下 4dp 贴边留白，又不至于吃掉太多预览图。
+  static const double quickActionsHeight = 36;
+
+  /// 操作条内按钮间距 **8**（= [MiDimens.spaceSm] 档）。
+  static const double quickActionsGap = 8;
 }

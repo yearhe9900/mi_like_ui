@@ -88,18 +88,23 @@ void main() {
 
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
-    // 桌面档：铺满窗口（1366）+ 侧栏 → 内容列**限宽 1120**（`MiContentColumn`），
-    // 头部区那一段 1120 × 156 = 174,720 + 侧栏 16,896 = 191,616dp²，仍只有 2 层。
-    // 限宽把"面积随窗口线性增长"截断了：1366 宽时比不加限宽（1245.1 × 156）
-    // 少 ~19,500dp²，再宽的窗口也不会继续涨。
+    // 桌面档：铺满窗口（1366）+ **展开侧栏**（240dp 带文字，≥1024 换形态）→
+    // 内容列 = 1366 − 265.5 = 1100.5（还没到 1120 上限），头部区那一段
+    // 1100.5 × 156 = 171,678 + 展开栏 240 × 177.1 = 42,504 → 214,182dp²，
+    // 仍只有 2 层。
+    //
+    // 面积比窄栏时代（191,615）多 ~22,500：展开栏比窄栏宽 144.6dp，这是
+    // 「常驻侧栏带文字」的固有代价 —— 换来的是桌面档不再让图标悬在空白里、
+    // 条目可读性与 Material / Windows Settings 同档。层数没变（一次大 filter
+    // 比多次小 filter 便宜），阈值按新形态重标。
     final desktop = await measure(tester, const Size(1366, 768));
     expect(desktop.count, lessThanOrEqualTo(3), reason: '桌面 $desktop');
-    expect(desktop.area, lessThanOrEqualTo(196000), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(220000), reason: '桌面 $desktop');
 
     // 分类页同一形态 → 同预算
     final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
     expect(showcase.count, lessThanOrEqualTo(3), reason: '桌面分类 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(196000), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(220000), reason: '桌面分类 $showcase');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

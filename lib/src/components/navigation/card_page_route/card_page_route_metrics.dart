@@ -49,4 +49,31 @@ class MiCardPageRouteMetrics {
   /// 素材实测：下层页同位置亮度比 0.64（进度 0.35…0.70 稳定），
   /// 即黑 @0.36；按线性插值反推终值 0.55（见 [MiTransparencyTokens.pushDimAt]）。
   static const double dimAlpha = 0.55;
+
+  // ── 宽屏档（桌面，推导值） ────────────────────────────────────────────────
+  //
+  // 参考素材只有手机档（上面的度量全部来自「整页从右缘滑入 + 前缘大圆角 +
+  // 下层左移视差」）。桌面窗口的通行转场是「淡入 + 极小位移」（macOS /
+  // Windows 推入页 / Material 历史）—— 大圆角与视差在桌面读作「两个窗口
+  // 叠在一起」，不合适。以下全部是布局常量而非度量值。
+
+  /// 桌面档视觉时长 **220ms**。
+  ///
+  /// 实现上不改 [durationMs]（`transitionDuration` 在路由构造时定死、拿不到
+  /// 上下文里的窗口宽），而是把视觉进度压进前 55%（220/400）：桌面档用
+  /// `Interval(0, 0.55)` 曲线，220ms 时视觉已落定，其后的空转不影响观感。
+  static const int wideDurationMs = 220;
+
+  /// [durationMs] 中视觉完成的比例（220 / 400 = 0.55）。
+  static const double wideVisualFraction = wideDurationMs / durationMs;
+
+  /// 桌面档新页的纵向位移 **4dp**（自下而上轻微抬起；不横移、不缩放）。
+  static const double wideRiseDp = 4;
+
+  /// 桌面档新页前缘圆角 **16**（同 [MiDialogMetrics.wideCardRadius] 的通行
+  /// 档；转场结束归零）。
+  static const double wideCornerRadius = 16;
+
+  /// 是否用桌面档转场（按**窗口宽**判定，与 [MiBreakpoints.desktop] 同值）。
+  static bool isWide(double windowWidth) => windowWidth >= 1024;
 }

@@ -99,7 +99,18 @@
 - 动过 `test/` 至少跑一次 `dart analyze`（0 error）。断言速记：构造断言 `expect(() => harness(...), throwsA(isA<AssertionError>()))`；`getDistanceToBaseline` 不能在测试体调 → 断 `Baseline.baseline`；`MaterialApp.theme` 是 200ms `AnimatedTheme` → `pump(300ms)`；`const` 断言不能求值 `.length`；位移用 `position.jumpTo`。
 - **路由**：`push` 后 pump 两帧才挂上；`getTopLeft/getRect` **会应用祖先变换**；上层不透明路由时下层 offstage → `skipOffstage: false`；量容器左缘别用内部 `TextField`。
 - **鼠标悬停测试**：`tester.createGesture(kind: PointerDeviceKind.mouse)` + `addPointer` + `moveTo`，再 pump 两帧走完 150ms 过渡；`find.byType(MouseRegion)` 会被 MaterialApp 自身干扰 → 按 `cursor == SystemMouseCursors.click` 过滤。
+- **键盘测试**：本 SDK `sendKeyEvent` **没有修饰键参数** → 组合键用 `sendKeyDownEvent(modifier)` + `sendKeyEvent(key)` + `sendKeyUpEvent(modifier)`；`find.byType(Focus).first` 会先命中 MaterialApp 自己的 Focus → 必须 `descendant(of: 目标组件)` 限定。
+- **断点切包装层 = 换 Element = 滚动位置归零**：任何「按断点增删的外壳层」（键盘作用域 / Focus / 内容列）必须**三档恒挂、只切参数**，不能写「compact 原样返回 child」（2026-10-23 踩过：`_keyboardScope` 导致跨断点测试红）。抢焦点的 `Focus(autofocus)` 手机档要关掉 —— 会把搜索光标闪烁相位推偏（黄金图 0.01% 差）。
 - 截含光标的页面**不能 pumpAndSettle** → 固定 pump 到确定时长。
+
+## 宽屏第二批配方（2026-10-23，全部推导 —— 素材只有手机档）
+- **展开侧栏** `MiGlassSideNavBar.expanded`：容器 ≥1024（`usesExpandedRail`）换 **240dp**（`expandedItemWidth` 226.8、内缩 18、图文距 12），条目横排 icon+label；平板仍窄栏 95.4。⚠️ 横排 Row **必须钉 `expandedItemWidth` 定宽**（外层 Column 是居中对齐，不定宽会按自然宽居中、内缩不从胶囊左缘量起）。
+- **顶栏三参数**（手机传默认值逐像素不变）：`headerTopInset` 桌面 **24**、`searchBarMaxWidth` 桌面 **520**、`actions` 右侧动作区（搜索转场淡出退排版）。`_searchRow` 分手机 Stack / 宽屏 Row 两条路径，**手机路径一字不动**。
+- **桌面弹窗** `MiDialogMetrics.isWide(容器 ≥1024)`：居中限宽 **440**、圆角 **16**、`position` 失效；手机档用 `left/right=sideMargin` **自适应**（写死 width 369.2 会让窄容器溢出、平板原行为是撑满边距之间）。正文行数按**实际卡宽**排版。
+- **桌面路由** `MiCardPageRouteMetrics.isWide(窗口 ≥1024)`：**4dp 抬起 + 同色幕布**（`ColoredBox` 页底色 alpha 1→0）**220ms**（`Interval(0,0.55)` 落在原 400ms 里 —— `transitionDuration` 构造期定死、拿不到窗口宽）、圆角 ≤16；下层无视差不压暗。⚠️ **淡入禁用 `Opacity`/`FadeTransition`**（新页含磨砂顶栏，saveLayer 清空自己的 backdrop）→ 用同色幕布。测试读 alpha 用 `MiCardPageRoute.wideVeilKey`。
+- **悬停快捷操作** `MiThemeCard.quickActions`：黑@45%（token `cardQuickActionsScrim`）+ `AnimatedSlide` 滑入（Transform 无 saveLayer）、`IgnorePointer.ignoring` 联动；`quickActions==null` 不挂（手机档）。悬停态由 `MiHoverFeedback.onHoverChanged` 单点维护。
+- **滚动降 σ** `MiGradientBlur.sigmaScale` / `MiTopBar.sigmaScale`（默认 1.0）：demo 滚动中 0.6、停 120ms 恢复。形状（段位/段高）不变只改强度，低于 `minVisibleSigma` 的尾段照常剔除；两档 σ 各自进 `MiFilterCache`。
+- **桌面模糊预算**：1366 面积 191,615 → **214,182 dp²**（展开栏宽 +144.6，**层数仍 2**），阈值 196,000 → **220,000**（README 表已同步）。
 
 ## 工具
 - 像素脚本 `.workbuddy/measure_*.py / extract_*.py / fit_*.py`（PIL，非交付物，不入库）；venv `C:\Users\zmt\.workbuddy\binaries\python\envs\default\Scripts\python.exe`（`imageio` 可抽帧，ffmpeg 不在 PATH）。

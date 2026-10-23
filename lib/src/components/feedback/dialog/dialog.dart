@@ -125,7 +125,9 @@ class MiDialog extends StatelessWidget {
 
   /// 正文行数（按正文宽度排版求解 —— 卡片高与按钮行位置都随行数走，
   /// 同一排版环境下确定性可复现）。
-  int _messageLineCount(BuildContext context) {
+  ///
+  /// [cardWidth] 是卡片实际宽（桌面档限宽 440，正文行更长、行数更少）。
+  int _messageLineCount(BuildContext context, double cardWidth) {
     final text = message;
     if (text == null || text.isEmpty) return 0;
     final painter = TextPainter(
@@ -134,10 +136,7 @@ class MiDialog extends StatelessWidget {
         style: _messageStyle(MiDialogPalette.of(_modeOf(context))),
       ),
       textDirection: Directionality.of(context),
-    )..layout(
-        maxWidth:
-            MiDialogMetrics.cardWidth - 2 * MiDialogMetrics.messageInset,
-      );
+    )..layout(maxWidth: cardWidth - 2 * MiDialogMetrics.messageInset);
     final lines = painter.computeLineMetrics().length;
     painter.dispose();
     return lines;
@@ -161,8 +160,6 @@ class MiDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final mode = _modeOf(context);
     final palette = MiDialogPalette.of(mode);
-    final lines = _messageLineCount(context);
-    final cardHeight = MiDialogMetrics.cardHeightFor(lines);
     final safeTop = MediaQuery.paddingOf(context).top;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
 
@@ -180,23 +177,51 @@ class MiDialog extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final maxH = constraints.maxHeight;
+              final maxW = constraints.maxWidth;
+              // 桌面档（容器宽 ≥ 1024）：**居中窄卡** —— 手机的「贴边圆角卡」
+              // 是底部弹出形态的度量，宽屏没有这条语义（Material / Windows
+              // Settings / macOS Alerts 的桌面弹窗都是居中卡）。宽度收到 440、
+              // 圆角 16、位置强制居中（[position] 只在手机档生效）。
+              final wide = MiDialogMetrics.isWide(maxW);
+              // 卡片**实际**宽：手机档 = 容器宽 − 2×边距（参考机 393 上即度量
+              // 369.2；平板上照旧撑满边距之间 —— 不 clamp，保持既有行为）；
+              // 桌面档 = min(440, 容器宽 − 2×边距)。正文排版、按钮行都按它算。
+              final cardWidth = wide
+                  ? math.min(
+                      MiDialogMetrics.wideCardMaxWidth,
+                      maxW - 2 * MiDialogMetrics.sideMargin,
+                    )
+                  : maxW - 2 * MiDialogMetrics.sideMargin;
+              final radius = wide
+                  ? MiDialogMetrics.wideCardRadius
+                  : MiDialogMetrics.cardRadius;
+              final lines = _messageLineCount(context, cardWidth);
+              final cardHeight = MiDialogMetrics.cardHeightFor(lines);
               final bottomOffset = math.max(
                 MiDialogMetrics.edgeInset,
                 safeBottom,
               );
               final topOffset = math.max(MiDialogMetrics.edgeInset, safeTop);
+              final top = wide
+                  ? (maxH - cardHeight) / 2
+                  : switch (position) {
+                      MiDialogPosition.top => topOffset,
+                      MiDialogPosition.bottom =>
+                        maxH - bottomOffset - cardHeight,
+                      MiDialogPosition.center => (maxH - cardHeight) / 2,
+                    };
               return Stack(
                 children: [
                   Positioned(
-                    left: MiDialogMetrics.sideMargin,
-                    right: MiDialogMetrics.sideMargin,
+                    // 手机档：左右各留边距（**自适应**，窄容器里不溢出 ——
+                    // 度量 369.2 = 393 − 2×11.9 正是这个式子在参考机上的值）。
+                    // 桌面档：居中定宽（left = (容器宽 − 卡宽) / 2）。
+                    left: wide ? (maxW - cardWidth) / 2 : MiDialogMetrics.sideMargin,
+                    right: wide ? null : MiDialogMetrics.sideMargin,
+                    width: wide ? cardWidth : null,
                     height: cardHeight,
-                    top: switch (position) {
-                      MiDialogPosition.top => topOffset,
-                      MiDialogPosition.bottom => maxH - bottomOffset - cardHeight,
-                      MiDialogPosition.center => (maxH - cardHeight) / 2,
-                    },
-                    child: _card(context, palette, mode, lines),
+                    top: top,
+                    child: _card(context, palette, mode, lines, cardWidth, radius),
                   ),
                 ],
               );
@@ -212,6 +237,8 @@ class MiDialog extends StatelessWidget {
     MiDialogPalette palette,
     MiThemeMode mode,
     int lines,
+    double cardWidth,
+    double radius,
   ) {
     final messageText = message;
     return Semantics(
@@ -219,12 +246,12 @@ class MiDialog extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(MiDialogMetrics.cardRadius),
+          borderRadius: BorderRadius.circular(radius),
         ),
         // 裁剪圆角：按钮 / 文字都不出圈（`Clip.antiAlias` 恒定，避免状态切换
         // 增删裁剪层重建子树）。
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(MiDialogMetrics.cardRadius),
+          borderRadius: BorderRadius.circular(radius),
           child: Stack(
             children: [
               if (title != null)
@@ -257,8 +284,7 @@ class MiDialog extends StatelessWidget {
                     baseline: MiDialogMetrics.messageBaseline,
                     baselineType: TextBaseline.alphabetic,
                     child: SizedBox(
-                      width: MiDialogMetrics.cardWidth -
-                          2 * MiDialogMetrics.messageInset,
+                      width: cardWidth - 2 * MiDialogMetrics.messageInset,
                       child: Text(
                         messageText,
                         textAlign: messageAlign,

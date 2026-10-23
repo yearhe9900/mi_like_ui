@@ -26,10 +26,17 @@ class MiHoverFeedback extends StatefulWidget {
     this.borderRadius,
     this.enabled = true,
     this.duration = const Duration(milliseconds: 150),
+    this.onHoverChanged,
   }) : assert(duration > Duration.zero);
 
   /// 叠色层的 key（测试用来读当前叠色；不是公开 API 语义）。
   static const Key overlayKey = Key('mi-hover-overlay');
+
+  /// 悬停态变化回调（true = 进入）。
+  ///
+  /// 供需要「悬停时才显示额外 UI」的宿主用（如卡片的悬停快捷操作）——
+  /// 悬停状态只在本组件里维护一份，不重复挂 `MouseRegion`。
+  final ValueChanged<bool>? onHoverChanged;
 
   /// 叠色形状跟随的圆角（如胶囊 / 圆角卡）；null = 直角。
   final BorderRadius? borderRadius;
@@ -63,10 +70,16 @@ class _MiHoverFeedbackState extends State<MiHoverFeedback> {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {
-        if (!_hovered) setState(() => _hovered = true);
+        if (!_hovered) {
+          setState(() => _hovered = true);
+          widget.onHoverChanged?.call(true);
+        }
       },
       onExit: (_) {
-        if (_hovered) setState(() => _hovered = false);
+        if (_hovered) {
+          setState(() => _hovered = false);
+          widget.onHoverChanged?.call(false);
+        }
       },
       child: Stack(
         fit: StackFit.passthrough,

@@ -241,6 +241,10 @@ class _DemoHomeState extends State<DemoHome> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final sideNav = MiBreakpoints.usesSideNav(constraints.maxWidth);
+              // 展开侧栏（带文字标签）：容器宽 ≥ 1024 才换 —— 平板竖屏让出
+              // 240dp 会吃掉三成画布，桌面让出后仍剩 ≥758dp。
+              final expandedRail =
+                  sideNav && MiBreakpoints.usesExpandedRail(constraints.maxWidth);
               return Container(
                 // `clipBehavior` 恒为 antiAlias（圆角在铺满时给 `zero`）：
                 // 切换 framed 若增删裁剪层，`Container` 内部的 widget 结构会变，
@@ -271,7 +275,11 @@ class _DemoHomeState extends State<DemoHome> {
                 child: Stack(
                   children: [
                     Positioned(
-                      left: sideNav ? MiGlassSideNavMetrics.gutterWidth : 0,
+                      left: sideNav
+                          ? MiGlassSideNavMetrics.gutterWidthFor(
+                              expanded: expandedRail,
+                            )
+                          : 0,
                       top: 0,
                       right: 0,
                       bottom: 0,
@@ -306,7 +314,9 @@ class _DemoHomeState extends State<DemoHome> {
                         left: 0,
                         top: 0,
                         bottom: 0,
-                        width: MiGlassSideNavMetrics.gutterWidth,
+                        width: MiGlassSideNavMetrics.gutterWidthFor(
+                          expanded: expandedRail,
+                        ),
                         child: Padding(
                           padding: EdgeInsets.only(
                             left: MiGlassSideNavMetrics.railMargin,
@@ -319,6 +329,7 @@ class _DemoHomeState extends State<DemoHome> {
                             selectedIndex: _index,
                             onTap: (i) => setState(() => _index = i),
                             themeMode: widget.themeMode,
+                            expanded: expandedRail,
                             // 绿色圆钮挂在栏尾下方（选中「首页」时弹出）
                             fab: fab,
                           ),

@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import '../../../theme/colors.dart';
 import '../../../theme/transparency_tokens.dart';
 import 'card_page_route_metrics.dart';
 
@@ -47,6 +50,9 @@ class MiCardPageRoute<T> extends PageRoute<T> {
   /// 新页内容。
   final WidgetBuilder builder;
 
+  /// 宽屏档淡入幕布的 key（测试用来读当前 alpha；不是公开 API 语义）。
+  static const Key wideVeilKey = Key('mi-route-wide-veil');
+
   /// 新页前缘圆角（默认 [MiCardPageRouteMetrics.cornerRadius]）。
   final double cornerRadius;
 
@@ -87,6 +93,33 @@ class MiCardPageRoute<T> extends PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    // 宽屏档（窗口 ≥ 1024）：换桌面通行的「淡入 + 4dp 抬起」转场 ——
+    // 手机档的「大圆角滑入 + 视差」在桌面读作「两个窗口叠在一起」。
+    //
+    // ⚠️ 淡入**不能**用 `Opacity` / `FadeTransition`：新页里含磨砂顶栏
+    // （`BackdropFilter`），给它套 saveLayer 会让 backdrop 变空 —— 转场期间
+    // 磨砂整段消失（本项目已实测的坑）。改用**同色幕布**：新页本身不透明、
+    // 上面盖一层页底色实色（`ColoredBox`，无离屏合成），幕布 alpha 1 → 0
+    // 就是观感上的淡入。
+    final wide = MiCardPageRouteMetrics.isWide(
+      MediaQuery.sizeOf(context).width,
+    );
+    if (wide) {
+      // 下层：桌面窗口不做视差（也不压暗 —— 幕布由上层画）。
+      if (secondaryAnimation.status != AnimationStatus.dismissed) {
+        return child;
+      }
+      if (animation.status != AnimationStatus.dismissed) {
+        return _MiPushWide(
+          animation: animation,
+          motion: motion,
+          cornerRadius:
+              math.min(cornerRadius, MiCardPageRouteMetrics.wideCornerRadius),
+          child: child,
+        );
+      }
+      return child;
+    }
     // 下层：被别的路由压住 → 左移视差（压暗由上层负责，避免叠两次）。
     if (secondaryAnimation.status != AnimationStatus.dismissed) {
       return _MiPushParallax(
@@ -188,6 +221,84 @@ class _MiPushParallax extends StatelessWidget {
             offset: Offset(-fraction * constraints.maxWidth * visual, 0),
             child: page,
           ),
+        );
+      },
+    );
+  }
+}
+
+/// 上层页（**桌面档**）：4dp 抬起落位 + 同色幕布淡入（前缘小圆角）。
+///
+/// 与手机档的 [_MiPushIncoming] 的差别（全部推导，见
+/// [MiCardPageRouteMetrics] 宽屏档注释）：
+///
+///  * **不横移、不压暗下层**（桌面窗口没有「叠两个窗口」的读法）；
+///  * **淡入用幕布而不是 `Opacity`**：新页含磨砂顶栏（`BackdropFilter`），
+///    给它套 saveLayer 会让 backdrop 变空 —— 转场期间磨砂整段消失（本项目
+///    已实测的坑）。改在新页**之上**盖一层页底色实色（`ColoredBox`，
+///    一次普通绘制、无离屏合成），alpha 1 → 0 即观感上的淡入；
+///  * 视觉时长 = 前 [MiCardPageRouteMetrics.wideVisualFraction] 段
+///    （220ms，`Interval`），之后直接返回原页（零额外图层）。
+class _MiPushWide extends StatelessWidget {
+  const _MiPushWide({
+    required this.animation,
+    required this.motion,
+    required this.cornerRadius,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final Curve motion;
+  final double cornerRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // 幕布色 = 页底色（亮 #F3F3F3 / 暗 #000000），与本库页面同底 ——
+    // 淡入读作「从页面底色里浮出来」，不是「从黑色里亮起来」。
+    final veilColor = Theme.of(context).brightness == Brightness.light
+        ? MiColors.pageBackgroundLight
+        : MiColors.pageBackgroundDark;
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, page) {
+        final progress = animation.value.clamp(0.0, 1.0);
+        // 归位（视觉完成）：不加变换层、不裁剪、不铺幕布（零额外绘制）。
+        if (progress >= MiCardPageRouteMetrics.wideVisualFraction) return page!;
+        // 视觉进度：0 → 1 落在前 55%（220ms）里，其后由上面的分支接管。
+        final visual = motion
+            .transform(
+              (progress / MiCardPageRouteMetrics.wideVisualFraction)
+                  .clamp(0.0, 1.0),
+            )
+            .clamp(0.0, 1.0);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 4dp 抬起落位（自下而上）+ 转场期小圆角。
+            Transform.translate(
+              offset: Offset(0, MiCardPageRouteMetrics.wideRiseDp * (1 - visual)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(cornerRadius),
+                child: page,
+              ),
+            ),
+            // 同色幕布：alpha 1 → 0。`IgnorePointer` 防止淡入途中吃点击。
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ColoredBox(
+                  key: MiCardPageRoute.wideVeilKey,
+                  color: Color.fromRGBO(
+                    veilColor.red,
+                    veilColor.green,
+                    veilColor.blue,
+                    1 - visual,
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/dimens.dart';
 import '../../../theme/theme_mode.dart';
+import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/hover_feedback.dart';
 import 'theme_card_metrics.dart';
@@ -26,7 +27,20 @@ import 'theme_card_metrics.dart';
 /// [previewAspectRatio] 是**横版变体**的入口：手机竖屏按度量值走竖版
 /// 海报比例，桌面（低视口高、宽卡片）换成横版（如 16:10）才能在同样高度
 /// 里多排一行 —— 竖版卡在 1366×768 的一屏只放得下 1.4 行。
-class MiThemeCard extends StatelessWidget {
+///
+/// ## 悬停快捷操作（桌面）
+///
+/// [quickActions] 非空时，指针悬停会在预览图**底部**滑出一条操作条
+/// （黑 @45% 底 + 调用方给的按钮），移出后滑回。语义：
+///
+///  * **只在悬停时出现**，静止态零像素变化（黄金图不受影响）；
+///  * 滑入滑出用 `AnimatedSlide`（Transform，**不引 saveLayer**）——
+///    操作条压在预览图上，若用 `Opacity` 淡入，含 `BackdropFilter` 的
+///    子树会被 saveLayer 清空底图（本项目已实测的坑）；预览图自身虽无
+///    磨砂，但整卡常被顶栏的磨砂盖住，保持同一套约束最稳；
+///  * 条内按钮的点按**不冒泡**到卡片的 [onTap]（操作与「打开」是两件事，
+///    由调用方在回调里自行处理）。
+class MiThemeCard extends StatefulWidget {
   const MiThemeCard({
     super.key,
     required this.title,
@@ -34,6 +48,7 @@ class MiThemeCard extends StatelessWidget {
     this.onTap,
     this.themeMode,
     this.previewAspectRatio = MiThemeCardMetrics.imageAspectRatio,
+    this.quickActions,
   }) : assert(previewAspectRatio > 0);
 
   /// 卡片标题（单行，超宽省略）。
@@ -51,12 +66,65 @@ class MiThemeCard extends StatelessWidget {
   /// 预览区宽高比（宽 / 高）；默认取度量值 259:472。
   final double previewAspectRatio;
 
+  /// 悬停快捷操作（桌面）：悬停时在预览图底部滑出的操作条内容。
+  ///
+  /// null 或空 = 不显示操作条（手机档 / 无悬停语义的场景）。操作条高度
+  /// 取 [MiThemeCardMetrics.quickActionsHeight]，按钮由调用方自备
+  /// （建议 `MiButton` 尺寸的一半或图标钮 —— 操作条只有 ~36dp 高）。
+  final List<Widget>? quickActions;
+
+  @override
+  State<MiThemeCard> createState() => _MiThemeCardState();
+}
+
+class _MiThemeCardState extends State<MiThemeCard> {
+  /// 悬停态（由 [MiHoverFeedback.onHoverChanged] 驱动，只维护一份）。
+  bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
-    final mode = themeMode ??
+    final mode = widget.themeMode ??
         (Theme.of(context).brightness == Brightness.light
             ? MiThemeMode.light
             : MiThemeMode.dark);
+    final actions = widget.quickActions;
+    final hasActions = actions != null && actions.isNotEmpty;
+
+    // 预览图区：可选的悬停操作条叠在底部（裁在图区圆角内）。
+    Widget previewArea = AspectRatio(
+      aspectRatio: widget.previewAspectRatio,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(MiDimens.radiusLg),
+        child: hasActions
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  widget.preview,
+                  // 操作条：贴底、随悬停滑入滑出（Transform，无 saveLayer）。
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      // 未悬停时整体不吃点击（滑出状态在图区外，但仍要挡命中）。
+                      ignoring: !_hovered,
+                      child: AnimatedSlide(
+                        offset: _hovered ? Offset.zero : const Offset(0, 1),
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: _QuickActionsBar(
+                          mode: mode,
+                          children: actions,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : widget.preview,
+      ),
+    );
+
     final card = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -64,20 +132,14 @@ class MiThemeCard extends StatelessWidget {
         // 预览图：宽随父级、按比例定高（AspectRatio 给子级 tight 约束，
         // 任意 preview 都铺满）；ClipRRect 单层裁切 AA（preview 是任意
         // 内容，不能像纯色填充那样借 Decoration 自带圆角）。
-        AspectRatio(
-          aspectRatio: previewAspectRatio,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(MiDimens.radiusLg),
-            child: preview,
-          ),
-        ),
+        previewArea,
         Padding(
           padding: const EdgeInsets.only(
             left: MiThemeCardMetrics.titleIndent,
             top: MiThemeCardMetrics.titleTopGap,
           ),
           child: Text(
-            title,
+            widget.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: MiTypography.cardTitle.copyWith(
@@ -87,16 +149,56 @@ class MiThemeCard extends StatelessWidget {
         ),
       ],
     );
-    if (onTap == null) return card;
+    if (widget.onTap == null) return card;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
+      onTap: widget.onTap,
       // 悬停叠色铺在**整张卡**上（含标题行），圆角只作用于图区 ——
       // 与按压反馈的覆盖范围一致：整卡可点，就给整卡反馈。
       child: MiHoverFeedback(
         mode: mode,
         borderRadius: BorderRadius.circular(MiDimens.radiusLg),
+        // 悬停态同时驱动操作条（回调里 setState；结构恒定，只改 offset）。
+        onHoverChanged: hasActions
+            ? (hovered) {
+                if (hovered != _hovered) setState(() => _hovered = hovered);
+              }
+            : null,
         child: card,
+      ),
+    );
+  }
+}
+
+/// 悬停快捷操作条本体：黑 @45% 底（[MiTransparencyTokens.
+/// cardQuickActionsScrim]）+ 一行按钮。
+///
+/// 高度 [MiThemeCardMetrics.quickActionsHeight]，按钮水平居中、间距
+/// [MiThemeCardMetrics.quickActionsGap]。底色是**实色**（一次普通绘制），
+/// 不引 saveLayer。
+class _QuickActionsBar extends StatelessWidget {
+  const _QuickActionsBar({required this.mode, required this.children});
+
+  final MiThemeMode mode;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MiThemeCardMetrics.quickActionsHeight,
+      color: MiTransparencyTokens.cardQuickActionsScrim,
+      child: Center(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0)
+                const SizedBox(width: MiThemeCardMetrics.quickActionsGap),
+              children[i],
+            ],
+          ],
+        ),
       ),
     );
   }

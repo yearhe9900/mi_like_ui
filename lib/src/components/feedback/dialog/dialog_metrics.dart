@@ -37,6 +37,23 @@ class MiDialogMetrics {
   /// 卡片宽（= 393 − 2×[sideMargin]）。
   static const double cardWidth = 369.2;
 
+  // ── 宽屏档（桌面，推导值） ────────────────────────────────────────────────
+  //
+  // 参考素材只有手机档（369.2 宽 / 49.3 圆角是**度量**）；桌面弹窗的通行
+  // 形态是「居中窄卡」（Material / Windows Settings / macOS Alerts 同款），
+  // 以下两项是布局常量而非度量值。
+
+  /// 桌面档卡片**最大**宽度 440：正文行长控制在 ~40 字内（可读性上限），
+  /// 又不至于像手机卡那样贴边。
+  static const double wideCardMaxWidth = 440;
+
+  /// 桌面档卡片圆角 16（手机档 49.3 是「底部贴边圆角卡」的度量；居中卡
+  /// 没有「贴边」语义，改用通行的 16）。
+  static const double wideCardRadius = 16;
+
+  /// 卡片宽是否进入桌面档（按容器宽判定，与 [MiBreakpoints.desktop] 同值）。
+  static bool isWide(double containerWidth) => containerWidth >= 1024;
+
   // ── 标题 / 正文 ─────────────────────────────────────────────────────────
 
   /// 墨心相对基线的比例（同 `MiTopBarMetrics.titleInkAboveBaseline`，见类注释）。

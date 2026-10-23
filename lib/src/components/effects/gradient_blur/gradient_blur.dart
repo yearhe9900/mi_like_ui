@@ -38,8 +38,10 @@ class MiGradientBlur extends StatelessWidget {
     this.height = MiGradientBlurProfile.nominalExtent,
     this.opaqueScrimBottom = 0,
     this.underSurface = true,
+    this.sigmaScale = 1.0,
   }) : assert(height > 0, 'height 必须为正'),
-       assert(opaqueScrimBottom >= 0, 'opaqueScrimBottom 不能为负');
+       assert(opaqueScrimBottom >= 0, 'opaqueScrimBottom 不能为负'),
+       assert(sigmaScale > 0, 'sigmaScale 必须为正');
 
   /// 作用区高度（dp）—— 曲线拉伸到这个高度并在底部归零。
   ///
@@ -60,6 +62,18 @@ class MiGradientBlur extends StatelessWidget {
   /// 等于顶部一片清晰（实机踩过）。
   final bool underSurface;
 
+  /// σ 缩放系数（**推导值**，默认 1.0 = 不缩放）。
+  ///
+  /// 滚动中 backdrop 每帧重算，是本库最贵的一块 —— 传 < 1 的值（如 0.6）
+  /// 可在**运动中**把每段 σ 等比压低，GPU 成本随 σ 线性下降；停下来后传回
+  /// 1.0 即恢复度量材质。曲线**形状**不变（各段同比例缩放，仍是单调递减、
+  /// 无缝铺满），只改强度。
+  ///
+  /// 与 [minVisibleSigma] 的关系：缩放后 σ 低于阈值的段会被照常剔除
+  /// （亚像素模糊与「不模糊」不可分辨），所以低速滚动时段数可能变少 ——
+  /// 这是预期的省帧行为。
+  final double sigmaScale;
+
   /// 实际要绘制的模糊段（剔除视觉上不存在的段），按 y 升序、首尾相接。
   ///
   /// 剔除两类：
@@ -73,6 +87,7 @@ class MiGradientBlur extends StatelessWidget {
     double extent = MiGradientBlurProfile.nominalExtent,
     double opaqueScrimBottom = 0,
     bool underSurface = true,
+    double sigmaScale = 1.0,
   }) {
     if (extent <= 0) return const <MiTopBarBlurBand>[];
     final nominal = MiGradientBlurProfile.bands.last.bottom;
@@ -81,7 +96,8 @@ class MiGradientBlur extends StatelessWidget {
     final opaque = underSurface ? opaqueScrimBottom : 0.0;
     final bands = <MiTopBarBlurBand>[];
     for (final band in MiGradientBlurProfile.bands) {
-      if (band.sigma < MiGradientBlurProfile.minVisibleSigma) continue;
+      final sigma = band.sigma * sigmaScale;
+      if (sigma < MiGradientBlurProfile.minVisibleSigma) continue;
       final top = band.top * k;
       final bottom = band.bottom * k;
       final clipped = top > opaque ? top : opaque;
@@ -89,7 +105,7 @@ class MiGradientBlur extends StatelessWidget {
       bands.add(MiTopBarBlurBand(
         top: clipped,
         height: bottom - clipped,
-        sigma: band.sigma,
+        sigma: sigma,
       ));
     }
     return bands;
@@ -101,6 +117,7 @@ class MiGradientBlur extends StatelessWidget {
       extent: height,
       opaqueScrimBottom: opaqueScrimBottom,
       underSurface: underSurface,
+      sigmaScale: sigmaScale,
     );
     return IgnorePointer(
       child: SizedBox(

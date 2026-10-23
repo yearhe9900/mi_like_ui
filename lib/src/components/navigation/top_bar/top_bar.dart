@@ -174,6 +174,10 @@ class MiTopBar extends StatefulWidget {
     this.onSearchChanged,
     this.onSearchSubmitted,
     this.searchCancelInset = MiSearchCancelMetrics.trailingInset,
+    this.headerTopInset = MiTopBarMetrics.headerTopInset,
+    this.searchBarMaxWidth,
+    this.actions,
+    this.sigmaScale = 1.0,
   })  : assert(scrollOffset >= 0, 'scrollOffset 不能为负（未滚动时传 0）'),
         assert(
             header == null ||
@@ -190,6 +194,11 @@ class MiTopBar extends StatefulWidget {
         assert(tabBarHeight > 0, 'tabBarHeight 必须为正'),
         assert(headerInset >= 0, 'headerInset 不能为负'),
         assert(searchCancelInset >= 0, 'searchCancelInset 不能为负'),
+        assert(headerTopInset >= 0, 'headerTopInset 不能为负'),
+        assert(
+            searchBarMaxWidth == null || searchBarMaxWidth > 0,
+            'searchBarMaxWidth 必须为正（或不传 = 不限宽）'),
+        assert(sigmaScale > 0, 'sigmaScale 必须为正'),
         assert(selectedTab >= 0, 'selectedTab 不能为负'),
         assert(!searchActive || (searchBar != null || searchHint != null),
             'searchActive 只在有搜索栏时有意义：先给 searchHint（或 searchBar 插槽）'),
@@ -350,6 +359,48 @@ class MiTopBar extends StatefulWidget {
   /// 裁掉 —— 参考实现就是贴着屏幕右缘。想改成留白就覆盖这个值。
   final double searchCancelInset;
 
+  // ── 宽屏收敛（桌面档专属，推导值） ────────────────────────────────────────
+  //
+  // 参考素材只有手机档，以下三项都是**推导值**：手机传默认值时逐像素不变。
+
+  /// 头部区顶部让位（默认 [MiTopBarMetrics.headerTopInset] 56 —— 手机档
+  /// **度量**：搜索栏顶缘 y = 56）。
+  ///
+  /// 桌面窗口没有状态栏，传 [MiTopBarMetrics.desktopHeaderTopInset]（24）：
+  /// 继续留 56 会在窗口顶部悬出一条空带。
+  final double headerTopInset;
+
+  /// 内置搜索栏的最大宽度（dp）；null = 不限宽（铺满 headerInset 之间的区域）。
+  ///
+  /// 手机档不需要它（393dp 宽本来就窄）；桌面 1120dp 的内容列上一条 1000dp+
+  /// 的搜索框既难用也不像桌面应用 —— 传 480…560 一档（示例取 520），搜索栏
+  /// 靠左停在 [headerInset] 处，右侧留给 [actions] 与空白。
+  ///
+  /// 只作用于**内置/插槽搜索栏的排版宽度**：搜索态转场的「右缘让位」几何
+  /// 照旧（限宽后让位量不变，取消钮仍落在同一相对位置）。
+  final double? searchBarMaxWidth;
+
+  /// 头部区搜索栏**右侧**的动作区（桌面档）：一排按钮 / 图标，右对齐到
+  /// [headerInset]。
+  ///
+  /// 与搜索栏同一行（搜索栏限宽后右侧的空白就归它）；搜索态转场时随整行
+  /// 一起淡出（与胶囊行同一段转场，`Opacity` 只包**无磨砂**的动作件，
+  /// 磨砂子树不许进这一层 —— 见类文档的 saveLayer 约束）。
+  ///
+  /// null = 不渲染（手机档默认）。纵向占位 = [searchBarHeight]。
+  final List<Widget>? actions;
+
+  /// 磨砂 σ 缩放系数（默认 1.0 = 度量材质，逐像素不变）。
+  ///
+  /// **滚动降 σ**：滚动中 backdrop 每帧重算，是本库最贵的一块。宿主在滚动
+  /// 期间把它压到 < 1（如 0.6），停下后传回 1.0 —— σ 与高斯成本近似线性，
+  /// 视觉上运动中的模糊弱一点几乎不可察觉（运动掩蔽），GPU 却省下近半。
+  ///
+  /// 作用于**两套磨砂规律**：无头部区的渐进曲线（[MiGradientBlur]）与有
+  /// 头部区的恒定段（[uniformBlurBands]）。σ 是 [MiFilterCache] 的缓存键，
+  /// 两档各自缓存、跨帧复用，来回切不会每帧新建 native filter。
+  final double sigmaScale;
+
   /// 头部区是否有搜索栏（声明式入参或插槽任一生效）。
   bool get hasSearchBar => searchBar != null || searchHint != null;
 
@@ -384,6 +435,7 @@ class MiTopBar extends StatefulWidget {
     if (!hasHeaderSlot) return 0;
     var extent = MiTopBarMetrics.headerTopInsetFor(
       MediaQuery.paddingOf(context).top,
+      topInset: headerTopInset,
     );
     if (header != null) return extent + header!.preferredSize.height;
     if (hasSearchBar) extent += searchBarHeight;
@@ -455,9 +507,10 @@ class MiTopBar extends StatefulWidget {
     MiTopBarPalette palette, {
     required double extent,
     bool underSurface = true,
+    double sigmaScale = 1.0,
   }) {
     if (extent <= 0) return const <MiTopBarBlurBand>[];
-    const sigma = MiTopBarPalette.blurSigma;
+    final sigma = MiTopBarPalette.blurSigma * sigmaScale;
     if (sigma < MiGradientBlurProfile.minVisibleSigma) {
       return const <MiTopBarBlurBand>[];
     }
@@ -614,6 +667,7 @@ class MiTopBar extends StatefulWidget {
                             palette,
                             extent: materialHeight,
                             underSurface: showSurface,
+                            sigmaScale: sigmaScale,
                           ),
                         )
                       else
@@ -622,6 +676,7 @@ class MiTopBar extends StatefulWidget {
                           opaqueScrimBottom: palette.scrimOpaqueBottom *
                               (materialHeight / MiTopBarMetrics.scrimHeight),
                           underSurface: showSurface,
+                          sigmaScale: sigmaScale,
                         ),
                     // 2) 叠色：顶部最深 → 渐隐（亮色 = 页底色 @0.65→0，深色 = 黑
                     //    @1→0，两页各自度量，见 MiTopBarPalette 文档）。
@@ -728,6 +783,7 @@ class MiTopBar extends StatefulWidget {
                   padding: EdgeInsets.only(
                     top: MiTopBarMetrics.headerTopInsetFor(
                       MediaQuery.paddingOf(context).top,
+                      topInset: headerTopInset,
                     ),
                   ),
                   child: Column(
@@ -787,6 +843,12 @@ class MiTopBar extends StatefulWidget {
   ///
   /// [t] 是**缓动之后**的位移进度（0…1），[progress] 是线性时间进度；
   /// 取消钮的淡入区间落在后者上（度量它与位移不同步）。
+  ///
+  /// ## 宽屏路径（给了 [searchBarMaxWidth] 或 [actions] 时）
+  ///
+  /// 换成 `Row`：搜索栏限宽后**靠左**停在 [headerInset]，右侧依次是
+  /// [actions]（随转场淡出、`t = 1` 退出排版 —— 与胶囊行同一契约）与取消钮。
+  /// 手机路径（两者都没给）保持原 Stack 几何，逐像素不变。
   Widget _searchRow({
     required Widget bar,
     required MiThemeMode mode,
@@ -795,45 +857,102 @@ class MiTopBar extends StatefulWidget {
   }) {
     const double gap = MiSearchCancelMetrics.barGap;
     const double diameter = MiSearchCancelMetrics.diameter;
-    // 让位量：0 → (间隙 + 直径)，再叠加右缘留白从 headerInset 收到目标值。
-    final barRight =
-        headerInset + (searchCancelInset + gap + diameter - headerInset) * t;
-    final cancelRight =
-        searchCancelInset + (headerInset - searchCancelInset) * (1 - t);
+    final hasActions = actions != null && actions!.isNotEmpty;
+    final wide = hasActions || searchBarMaxWidth != null;
+
     final cancelFade = const Interval(
       MiTopBarMetrics.searchCancelFadeBegin,
       MiTopBarMetrics.searchCancelFadeEnd,
     ).transform(progress).clamp(0.0, 1.0);
-    return SizedBox(
-      height: searchBarHeight,
-      child: Stack(
-        children: [
-          Positioned(
-            left: headerInset,
-            right: barRight,
-            top: 0,
-            bottom: 0,
-            child: bar,
-          ),
-          // t = 0 时干脆不建：闲置态不白挂一份 backdrop / 手势层。
-          if (t > 0)
+
+    // 搜索态取消钮（两种路径共用）：点按经 onSearchCancel 通知宿主退出。
+    // IgnorePointer 必须包在**外层**：淡出到 0 时若还留在命中测试里，
+    // 这块不可见区域会吞掉下方内容的点击。
+    Widget cancelButton = IgnorePointer(
+      ignoring: cancelFade <= 0,
+      child: Opacity(
+        opacity: cancelFade,
+        child: MiSearchCancelButton(
+          onTap: onSearchCancel,
+          themeMode: mode,
+          frosted: !showBlur,
+          overContent: overContent,
+        ),
+      ),
+    );
+
+    if (!wide) {
+      // ── 手机路径（逐像素保持度量几何） ──────────────────────────────────
+      // 让位量：0 → (间隙 + 直径)，再叠加右缘留白从 headerInset 收到目标值。
+      final barRight =
+          headerInset + (searchCancelInset + gap + diameter - headerInset) * t;
+      final cancelRight =
+          searchCancelInset + (headerInset - searchCancelInset) * (1 - t);
+      return SizedBox(
+        height: searchBarHeight,
+        child: Stack(
+          children: [
             Positioned(
-              right: cancelRight,
-              top: (searchBarHeight - diameter) / 2,
-              child: IgnorePointer(
-                ignoring: cancelFade <= 0,
+              left: headerInset,
+              right: barRight,
+              top: 0,
+              bottom: 0,
+              child: bar,
+            ),
+            // t = 0 时干脆不建：闲置态不白挂一份 backdrop / 手势层。
+            if (t > 0)
+              Positioned(
+                right: cancelRight,
+                top: (searchBarHeight - diameter) / 2,
+                child: cancelButton,
+              ),
+          ],
+        ),
+      );
+    }
+
+    // ── 宽屏路径 ──────────────────────────────────────────────────────────
+    // 限宽搜索栏靠左 + 动作区 / 取消钮靠右。取消钮右缘停在 [headerInset]
+    // （手机档的 `searchCancelInset = 0` 是「贴屏幕右缘」的**度量**，宽屏
+    // 的内容列有页边距，照搬会顶到窗口边上）。
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: headerInset),
+      child: SizedBox(
+        height: searchBarHeight,
+        child: Row(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: searchBarMaxWidth == null
+                    ? bar
+                    : ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: searchBarMaxWidth!),
+                        child: bar,
+                      ),
+              ),
+            ),
+            // 动作区：随搜索转场淡出，t = 1 退出排版（同胶囊行契约）。
+            // ⚠️ Opacity 只包**无磨砂**的动作件 —— 磨砂子树进这层会 saveLayer
+            // 把 backdrop 清空（见类文档）。
+            if (hasActions && t < 1)
+              IgnorePointer(
+                ignoring: progress > 0,
                 child: Opacity(
-                  opacity: cancelFade,
-                  child: MiSearchCancelButton(
-                    onTap: onSearchCancel,
-                    themeMode: mode,
-                    frosted: !showBlur,
-                    overContent: overContent,
+                  opacity: 1 - progress,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: actions!,
                   ),
                 ),
               ),
-            ),
-        ],
+            if (t > 0)
+              Padding(
+                padding: EdgeInsets.only(left: gap),
+                child: cancelButton,
+              ),
+          ],
+        ),
       ),
     );
   }

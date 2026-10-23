@@ -328,6 +328,105 @@ void main() {
     );
     expect(ch(pressedDark.r), inInclusiveRange(85, 94));
   });
+
+  group('宽屏档（桌面 ≥1024：居中窄卡，推导值）', () {
+    test('常量：440 上限 / 16 圆角 / 阈值与桌面断点同值', () {
+      expect(MiDialogMetrics.wideCardMaxWidth, 440);
+      expect(MiDialogMetrics.wideCardRadius, 16);
+      expect(MiDialogMetrics.isWide(1023), isFalse);
+      expect(MiDialogMetrics.isWide(1024), isTrue);
+      // 手机档度量不变
+      expect(MiDialogMetrics.cardWidth, 369.2);
+      expect(MiDialogMetrics.cardRadius, 49.3);
+    });
+
+    testWidgets('桌面窗口：卡片居中、限宽 440、圆角 16（position 被忽略）',
+        (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      // 故意传 bottom 位置 —— 桌面档强制居中
+      tester.view.physicalSize = const Size(1366, 768);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        _harness(position: MiDialogPosition.bottom, message: '单行正文'),
+      );
+      await tester.pumpAndSettle();
+
+      final card = tester.getRect(_card());
+      expect(card.width, moreOrLessEquals(440, epsilon: 0.5),
+          reason: '桌面档卡片限宽 440');
+      expect(card.center.dx, moreOrLessEquals(1366 / 2, epsilon: 0.5),
+          reason: '水平居中');
+      expect(card.center.dy, moreOrLessEquals(768 / 2, epsilon: 0.5),
+          reason: '垂直居中（position: bottom 被忽略）');
+
+      final clip = tester.widget<ClipRRect>(_card());
+      expect(clip.borderRadius, BorderRadius.circular(16));
+    });
+
+    testWidgets('受限容器（460 宽）：卡片收到容器可用宽内（不溢出）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1366, 768);
+      addTearDown(tester.view.reset);
+
+      // 弹框挂在 460 宽的容器里（窗口够宽但容器窄 —— 分屏 / 侧栏内嵌）：
+      // 判定走**容器宽**，460 < 1024 → 手机档；卡片 = 容器宽 − 2×边距，
+      // 不溢出容器。直接构建 MiDialog（不能套 _harness —— 它内含 MaterialApp，
+      // 嵌套后内层会撑满窗口）。
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: const Color(0xFF000000),
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 460,
+                height: 768,
+                child: MiDialog(
+                  themeMode: MiThemeMode.dark,
+                  message: '单行正文',
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = tester.getRect(_card());
+      expect(
+        card.width,
+        moreOrLessEquals(460 - 2 * MiDialogMetrics.sideMargin, epsilon: 0.5),
+        reason: '窄容器里卡片收到可用宽内（不溢出容器）',
+      );
+      expect(card.left, moreOrLessEquals(MiDialogMetrics.sideMargin, epsilon: 0.5));
+    });
+
+    testWidgets('平板窗口（768）：仍是手机档贴底卡（阈值以下不变）', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(768, 1280);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_harness(message: '单行正文'));
+      await tester.pumpAndSettle();
+
+      final card = tester.getRect(_card());
+      // 手机档：卡片撑满边距之间（768 − 2×11.9 = 744.2）—— 与既有行为一致，
+      // 不因桌面档改动而 clamp。
+      expect(
+        card.width,
+        moreOrLessEquals(768 - 2 * MiDialogMetrics.sideMargin, epsilon: 0.5),
+        reason: '平板仍走手机档（撑满边距之间）',
+      );
+      // bottom 位置：底缘距屏底 32.9
+      expect(
+        1280 - card.bottom,
+        moreOrLessEquals(MiDialogMetrics.edgeInset, epsilon: 0.5),
+      );
+      final clip = tester.widget<ClipRRect>(_card());
+      expect(clip.borderRadius, BorderRadius.circular(49.3));
+    });
+  });
 }
 
 void _noop() {}

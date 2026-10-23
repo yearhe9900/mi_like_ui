@@ -164,8 +164,16 @@ class MiTopBarMetrics {
   /// 插槽区起始位置：安全区高于 [headerTopInset] 时取安全区。
   ///
   /// 让刘海屏不压住头部内容；桌面窗口（padding = 0）仍是 56。
-  static double headerTopInsetFor(double safeAreaTop) =>
-      safeAreaTop > headerTopInset ? safeAreaTop : headerTopInset;
+  static double headerTopInsetFor(double safeAreaTop, {double topInset = headerTopInset}) =>
+      safeAreaTop > topInset ? safeAreaTop : topInset;
+
+  /// 桌面档插槽区起始位置 **24**（**推导值**）。
+  ///
+  /// 参考素材只有手机档（状态栏让位 56 是**度量**）；桌面窗口没有状态栏，
+  /// 继续留 56 会在窗口顶部悬出一条无意义的空带。取 24：与桌面应用栏
+  /// （macOS toolbars / Windows Settings header）16…32 的通行留白同档，
+  /// 且与宽屏页边距 32 在同一比例阶梯上。示例在 expanded 档传它。
+  static const double desktopHeaderTopInset = 24;
 
   /// 搜索栏底 → 胶囊标签行顶（度量 49px ≈ 15.8dp，取 16）。
   static const double searchBarGap = 16.0;

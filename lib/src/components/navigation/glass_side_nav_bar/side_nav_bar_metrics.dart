@@ -49,6 +49,42 @@ class MiGlassSideNavMetrics {
   /// 侧栏占用列的总宽 = 留白 + 栏宽；示例用它给内容让位。
   static const double gutterWidth = railMargin + railWidth;
 
+  // ── 展开态（带文字标签，桌面档）──────────────────────────────────────────
+  //
+  // 参考素材同样没有展开态样张，以下全部是**推导值**：只沿用已度量的
+  // 纵向节奏（条目高 / 内边距 / 间隙），横向按「图标 + 文字」的通行
+  // 桌面侧栏形态给值。
+
+  /// 展开态栏宽 **240**：图标 24 + 间距 12 + 标签区 ~150（4 个汉字 13.85dp
+  /// ≈ 55，留两倍余量给更长文案与尾部呼吸），再加两侧内边距 6.6×2 与
+  /// 条目内容内缩 18×2 —— 与 Material / Windows Settings 常驻侧栏
+  /// （200…320）同量级。
+  static const double expandedRailWidth = 240;
+
+  /// 展开态条目（选中胶囊）宽 = 栏宽 − 2×内边距 = 226.8。
+  static const double expandedItemWidth = expandedRailWidth - 2 * railInnerPad;
+
+  /// 展开态条目内容（图标左缘）到胶囊左缘的内缩。
+  static const double expandedItemInset = 18;
+
+  /// 展开态图标 → 标签间距（[MiDimens.spaceMd] 档）。
+  static const double expandedIconLabelGap = MiDimens.spaceMd;
+
+  /// 展开态侧栏占用列的总宽（= 留白 + 展开栏宽 = 265.5）。
+  static const double expandedGutterWidth = railMargin + expandedRailWidth;
+
+  /// 侧栏列宽（按形态取窄栏 / 展开栏），示例外壳给内容让位时用它。
+  static double gutterWidthFor({bool expanded = false}) =>
+      expanded ? expandedGutterWidth : gutterWidth;
+
+  /// 栏体宽（按形态取窄栏 / 展开栏）。
+  static double railWidthFor({bool expanded = false}) =>
+      expanded ? expandedRailWidth : railWidth;
+
+  /// 条目（选中胶囊）宽（按形态取）。
+  static double itemWidthFor({bool expanded = false}) =>
+      expanded ? expandedItemWidth : itemWidth;
+
   /// 条目纵向步进（胶囊高 + 间隙）。
   static const double pitch = itemHeight + itemGap;
 

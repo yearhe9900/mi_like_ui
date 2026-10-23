@@ -1342,6 +1342,225 @@ void main() {
     });
   });
 
+  group('宽屏收敛（headerTopInset / searchBarMaxWidth / actions）', () {
+    /// 宽屏 harness：搜索栏 + 动作区，窗口 1366×768。
+    Widget wide({
+      double? searchBarMaxWidth,
+      List<Widget>? actions,
+      double headerTopInset = MiTopBarMetrics.headerTopInset,
+    }) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: Color(0xFF000000))),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: MiTopBar(
+                  title: null,
+                  showSurface: false,
+                  themeMode: MiThemeMode.dark,
+                  searchHint: '搜索设置项',
+                  searchBarMaxWidth: searchBarMaxWidth,
+                  actions: actions,
+                  headerTopInset: headerTopInset,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    testWidgets('searchBarMaxWidth：搜索栏限宽、靠左停在 headerInset', (tester) async {
+      _size(tester, const Size(1366, 400));
+      await tester.pumpWidget(wide(searchBarMaxWidth: 520));
+      await tester.pumpAndSettle();
+
+      final bar = tester.getRect(find.byType(MiSearchBar));
+      expect(bar.width, closeTo(520, 0.01), reason: '搜索栏应限宽 520');
+      expect(
+        bar.left,
+        closeTo(MiTopBarMetrics.headerInset, 0.01),
+        reason: '靠左停在 headerInset',
+      );
+      // 不限宽时铺满（手机路径默认行为）
+      await tester.pumpWidget(wide());
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byType(MiSearchBar)).width,
+        greaterThan(520),
+        reason: '不传 searchBarMaxWidth 应铺满整行',
+      );
+    });
+
+    testWidgets('actions：右对齐到 headerInset、与搜索栏同一行', (tester) async {
+      _size(tester, const Size(1366, 400));
+      final actionKey = const ValueKey('wide-action');
+      await tester.pumpWidget(
+        wide(
+          searchBarMaxWidth: 520,
+          actions: [
+            SizedBox(key: actionKey, width: 32, height: 32, child: ColoredBox(color: Colors.white)),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final action = tester.getRect(find.byKey(actionKey));
+      expect(action.right, closeTo(1366 - MiTopBarMetrics.headerInset, 0.01),
+          reason: '动作区右缘 = 屏宽 − headerInset');
+      // 与搜索栏同一行（纵向中心对齐搜索栏）
+      final bar = tester.getRect(find.byType(MiSearchBar));
+      expect(action.center.dy, closeTo(bar.center.dy, 0.5));
+      // 不与搜索栏重叠
+      expect(action.left, greaterThanOrEqualTo(bar.right - 0.01));
+    });
+
+    testWidgets('headerTopInset：桌面传 24，头部区顶部让位跟着收', (tester) async {
+      _size(tester, const Size(1366, 400));
+      const key = ValueKey('bar');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: KeyedSubtree(
+                    key: key,
+                    child: MiTopBar(
+                      title: null,
+                      showSurface: false,
+                      themeMode: MiThemeMode.dark,
+                      searchHint: '搜索设置项',
+                      headerTopInset: MiTopBarMetrics.desktopHeaderTopInset,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 桌面档常量 = 24（推导值），手机档 56 是度量
+      expect(MiTopBarMetrics.desktopHeaderTopInset, 24);
+      expect(MiTopBarMetrics.headerTopInset, 56);
+      // 搜索栏顶缘 = headerTopInset（无标题、无状态栏的测试环境）
+      expect(
+        tester.getTopLeft(find.byType(MiSearchBar)).dy,
+        closeTo(MiTopBarMetrics.desktopHeaderTopInset, 0.01),
+      );
+
+      // 手机档（默认 56）：搜索栏顶缘仍是度量 56
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: MiTopBar(
+                    title: null,
+                    showSurface: false,
+                    themeMode: MiThemeMode.dark,
+                    searchHint: '搜索设置项',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byType(MiSearchBar)).dy,
+        closeTo(MiTopBarMetrics.headerTopInset, 0.01),
+      );
+    });
+
+    testWidgets('搜索态：动作区淡出并退出排版，取消钮出现在同一行', (tester) async {
+      _size(tester, const Size(1366, 400));
+      final actionKey = const ValueKey('wide-action');
+      await tester.pumpWidget(_SearchToggleBar(actionKey: actionKey));
+      await tester.pumpAndSettle();
+
+      // 常规态：动作区在、取消钮不在
+      expect(find.byKey(actionKey), findsOneWidget);
+      expect(find.byType(MiSearchCancelButton), findsNothing);
+
+      // 进搜索态
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // 动作区退出排版（同胶囊行契约）、取消钮出现且在同一行
+      expect(find.byKey(actionKey), findsNothing);
+      final cancel = find.byType(MiSearchCancelButton);
+      expect(cancel, findsOneWidget);
+      final bar = tester.getRect(find.byType(MiSearchBar));
+      expect(
+        tester.getRect(cancel).center.dy,
+        closeTo(bar.center.dy, 0.5),
+        reason: '取消钮应与搜索栏同一行',
+      );
+      expect(
+        tester.getRect(cancel).right,
+        closeTo(1366 - MiTopBarMetrics.headerInset, 0.01),
+        reason: '取消钮右缘 = 屏宽 − headerInset（宽屏不贴屏边）',
+      );
+
+      // 退出搜索态：动作区回来
+      await tester.tap(cancel);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(actionKey), findsOneWidget);
+    });
+
+    testWidgets('手机路径不受影响：没给宽屏参数时几何逐像素不变', (tester) async {
+      _size(tester, const Size(393, 400));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(
+              children: [
+                const Positioned.fill(child: ColoredBox(color: Color(0xFF000000))),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: MiTopBar(
+                    title: null,
+                    showSurface: false,
+                    themeMode: MiThemeMode.dark,
+                    searchHint: '搜索设置项',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 搜索栏铺满（左右各 11.9）、顶缘 56 —— 度量几何
+      final bar = tester.getRect(find.byType(MiSearchBar));
+      expect(bar.left, closeTo(MiTopBarMetrics.headerInset, 0.01));
+      expect(bar.right, closeTo(393 - MiTopBarMetrics.headerInset, 0.01));
+      expect(bar.top, closeTo(MiTopBarMetrics.headerTopInset, 0.01));
+      // 手机档没有动作区
+      expect(find.byType(MiSearchCancelButton), findsNothing);
+    });
+  });
+
   test('const 构造保持可用', () {
     const bar = MiTopBar(title: kTitle);
     expect(bar.title, kTitle);
@@ -1373,4 +1592,57 @@ class _FixedHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) => const ColoredBox(color: Color(0xFF123456));
+}
+
+/// 宽屏搜索态切换的测试宿主：点搜索栏进搜索态、点取消钮退出。
+///
+/// 动作区在搜索态应淡出并**退出排版**（同胶囊行契约），取消钮接管同一行。
+class _SearchToggleBar extends StatefulWidget {
+  const _SearchToggleBar({required this.actionKey});
+
+  /// 动作区的 key —— 测试用它断言「在 / 不在排版里」。
+  final Key actionKey;
+
+  @override
+  State<_SearchToggleBar> createState() => _SearchToggleBarState();
+}
+
+class _SearchToggleBarState extends State<_SearchToggleBar> {
+  bool _searching = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Stack(
+          children: [
+            const Positioned.fill(child: ColoredBox(color: Color(0xFF000000))),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: MiTopBar(
+                title: null,
+                showSurface: false,
+                themeMode: MiThemeMode.dark,
+                searchHint: '搜索设置项',
+                searchBarMaxWidth: 520,
+                actions: [
+                  SizedBox(
+                    key: widget.actionKey,
+                    width: 32,
+                    height: 32,
+                    child: const ColoredBox(color: Colors.white),
+                  ),
+                ],
+                searchActive: _searching,
+                onSearchTap: () => setState(() => _searching = true),
+                onSearchCancel: () => setState(() => _searching = false),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

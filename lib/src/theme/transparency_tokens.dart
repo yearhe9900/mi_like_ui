@@ -199,6 +199,15 @@ class MiTransparencyTokens {
   static Color hoverOverlayFor(MiThemeMode mode) =>
       mode == MiThemeMode.dark ? hoverOverlayDark : hoverOverlayLight;
 
+  // ══ 四·三、卡片悬停快捷操作条（桌面）═════════════════════════════════════
+
+  /// 悬停快捷操作条的底色（**推导值**，非度量）。
+  ///
+  /// 参考素材来自触屏手机，没有悬停样张。取黑 @45%：操作条要压在**任意**
+  /// 预览图上（照片 / 渐变 / 纯色都可能），黑色半透明是唯一在明暗两种
+  /// 预览图上都能让白色标签保持可读的方案（与视频播放器控制条同款做法）。
+  static const Color cardQuickActionsScrim = Color.fromRGBO(0, 0, 0, 0.45);
+
   // ══ 五、玻璃导航栏（栏体遮罩 / 透镜 / 外缘）════════════════════════════════
 
   /// 深色：栏体遮罩 20,20,20 @0.63（度量透射模型 out = 0.37·in + 12.6）。

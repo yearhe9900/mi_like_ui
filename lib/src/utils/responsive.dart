@@ -70,6 +70,21 @@ class MiBreakpoints {
   /// 它只是「expanded 档下界」，**不是**导航形态的判定口（那看 [navRail]）。
   static const double desktop = 1024;
 
+  /// **展开侧栏断点**：画面容器宽 ≥ 该值时，侧边导航栏换**带文字标签的
+  /// 展开态**（约 240dp），否则用窄栏（95.4dp，只有图标 + 小字）。
+  ///
+  /// 取 [desktop] 同值（**推导值**）：平板竖屏（768）让出 240dp 会吃掉
+  /// 三成画布宽，不划算；桌面（≥1024）让出 240dp 之后仍剩 ≥758dp，
+  /// 而常驻侧栏带文字是桌面应用的通行形态（Material / Windows Settings /
+  /// MReader 桌面档同款）。
+  static const double expandedRail = desktop;
+
+  /// 侧边导航栏是否用**展开态**（带文字标签）：容器宽 ≥ [expandedRail]。
+  ///
+  /// 与 [usesSideNav] 一样吃**外壳容器宽**而不是窗口宽（限宽画布里
+  /// 永远不展开）。
+  static bool usesExpandedRail(double width) => width >= expandedRail;
+
   /// medium 上界（不含）：`600 ≤ width < 1024` 即 medium。
   static const double medium = desktop;
 

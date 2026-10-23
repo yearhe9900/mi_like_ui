@@ -8,6 +8,45 @@
 
 ### Added
 
+- **宽屏第二批：展开侧栏 / 顶栏收敛 / 键盘 / 桌面弹窗与转场 / 悬停操作条**
+  （2026-10-23，反馈「全做」——补齐桌面档的形态、交互与动效）
+  - **展开态侧边导航栏**（`MiGlassSideNavBar.expanded` + `MiGlassSideNavMetrics`
+    展开档）：桌面档（容器宽 ≥ 1024，`MiBreakpoints.usesExpandedRail`）换 240dp
+    **带文字标签**的常驻侧栏 —— 图标在左、标签在右、整条目一个胶囊。240 是
+    **推导值**（图标 24 + 间距 12 + 标签区 ~150 + 两侧内缩，与 Material /
+    Windows Settings 的 200…320 同量级）；纵向节奏（条目高 / 间隙 / 飞行-沉降-
+    按压动效）与窄栏逐帧同源。平板竖屏仍走窄栏（让出 240dp 会吃掉三成画布）
+  - **顶栏收敛**（`MiTopBar` 三个宽屏参数，手机档传默认值逐像素不变）：
+    `headerTopInset`（桌面 24 —— 推导值，窗口没有状态栏，留 56 会悬出空带）、
+    `searchBarMaxWidth`（桌面 520 —— 1120 列上一条满宽搜索框难用且不像桌面应用）、
+    `actions`（右侧动作区，随搜索转场淡出并退出排版，同胶囊行契约）
+  - **键盘支持**：
+    - `MiSearchShortcuts`（示例层）—— ⌘/Ctrl + K 聚焦搜索、Esc 退出；包装层
+      **结构恒定**、只有 `autofocus` 随断点切（跨断点增删这层会让页面 Element
+      重建、滚动位置归零）
+    - `MiFocusRing` —— Tab 聚焦可点元素时在边界外画 2dp 强调描边、Enter/Space
+      激活。描边是**实色 `AnimatedContainer`**（未聚焦全透明 → 结构恒定、黄金图
+      零变化），不引 saveLayer；已接入 `MiButton`
+    - 示例在宽屏动作区放 `⌘K` / `Ctrl K` 提示徽标
+  - **桌面弹窗**（`MiDialogMetrics` 宽屏档）：容器宽 ≥ 1024 时卡片**居中限宽
+    440**、圆角 16、`position` 只在手机档生效。440 / 16 是**推导值**（正文行长
+    ~40 字上限 + 居中卡通行圆角）；正文行数按实际卡宽排版，窄容器不溢出
+  - **桌面页面转场**（`MiCardPageRouteMetrics` 宽屏档）：窗口 ≥ 1024 换
+    「4dp 抬起 + 同色幕布淡入」220ms、前缘圆角 ≤16。**幕布不用 `Opacity`** ——
+    新页含磨砂顶栏，套 saveLayer 会让 backdrop 变空；改在新页之上盖一层页底色
+    实色（`ColoredBox`，普通绘制）做 alpha 1→0。下层页不做视差、不压暗
+  - **卡片悬停快捷操作**（`MiThemeCard.quickActions` + `MiHoverFeedback.
+    onHoverChanged`）：悬停时预览图底部滑出操作条（黑 @45% 底，`cardQuickActionsScrim`
+    推导值）。滑入用 `AnimatedSlide`（Transform，**不引 saveLayer**）；静止态
+    结构恒定、零像素变化；手机档不传（触屏无悬停语义）
+  - **滚动降 σ**（`MiGradientBlur.sigmaScale` / `MiTopBar.sigmaScale`）：滚动中
+    磨砂 σ 等比压到 0.6、停下 120ms 恢复度量材质。σ 与高斯成本近似线性、运动
+    掩蔽下视觉几乎无差；曲线形状（段位/段高）不变，只改强度，低于阈值的尾段
+    照常剔除。两档 σ 各自走 `MiFilterCache` 缓存，来回切不新建 native filter
+  - **模糊预算重标**：桌面档展开栏比窄栏宽 144.6dp，1366 面积 191,615 →
+    214,182dp²（+22.5k，层数仍 2）——「常驻侧栏带文字」的固有代价，阈值按新
+    形态重标为 220,000
+
 - **宽屏布局基础件**（2026-10-23，反馈「移动端尚可，桌面端和平板表现一般」）
   - **`MiContentColumn` + `MiBreakpoints.contentMaxWidth`（1120dp）**：把内容限制在
     列宽内并水平居中、纵向撑满。所有度量都取自 393dp 手机宽，宽屏直接沿用会让卡片与

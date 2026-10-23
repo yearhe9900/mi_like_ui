@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
 /// 页面内容左右页边距。
@@ -10,6 +13,178 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 ///   32 —— 宽画布上继续贴 11.9 会让内容顶到边，24 在 1000dp 以上仍偏窄。
 double _pageInset(BuildContext context, double measured) =>
     MiViewport.of(context).isCompact ? measured : MiDimens.spaceXxxl;
+
+/// 宽屏顶栏：搜索栏限宽（**推导值** 520）；手机 / 平板 = null（不限宽）。
+///
+/// 1120dp 的内容列上一条 1000dp+ 的搜索框既难用也不像桌面应用 —— 桌面
+/// 搜索框通行宽度 400…600，取 520（= 内容列的一半不到，右侧留给动作区）。
+double? _wideSearchMaxWidth(BuildContext context) =>
+    MiViewport.of(context).isExpanded ? 520 : null;
+
+/// 宽屏顶栏动作区：手机 / 平板 = null（**不渲染**，保持度量几何逐像素不变）。
+///
+/// [builder] 只在宽屏档被求值（动作件本身也是宽屏专属）。
+List<Widget>? _wideActions(BuildContext context, List<Widget> Function() builder) =>
+    MiViewport.of(context).isExpanded ? builder() : null;
+
+/// 桌面键盘快捷键作用域（⌘K 聚焦搜索 / Esc 退出）。
+///
+/// **包装层结构恒定**（三档都挂 `MiSearchShortcuts`），只有 [MiSearchShortcuts.
+/// autofocus] 随断点切：手机档不抢焦点（触屏没有物理键盘，抢一次焦点还会把
+/// 搜索光标的闪烁相位推偏 —— 黄金图实测踩过）。
+///
+/// ⚠️ 不能写成「compact 档原样返回 child」：跨断点增删这一层会让下面的页面
+/// Element 重建、滚动位置归零（`Focus`/`CallbackShortcuts` 换类型即换元素，
+/// 同「内容列不能按断点增删」那条坑）。
+Widget _keyboardScope(
+  BuildContext context, {
+  required VoidCallback onFocusSearch,
+  required VoidCallback? onEscape,
+  required Widget child,
+}) =>
+    MiSearchShortcuts(
+      onFocusSearch: onFocusSearch,
+      onEscape: onEscape,
+      autofocus: !MiViewport.of(context).isCompact,
+      child: child,
+    );
+
+/// 宽屏顶栏头部顶部让位（**推导值** 24）；手机 / 平板 = 度量 56。
+///
+/// 桌面窗口没有状态栏，继续留 56 会在窗口顶部悬出一条空带。
+double _headerTopInset(BuildContext context) => MiViewport.of(context).isExpanded
+    ? MiTopBarMetrics.desktopHeaderTopInset
+    : MiTopBarMetrics.headerTopInset;
+
+/// 顶栏右侧动作按钮（示例层）：⌀32 圆形热区 + 图标 painter。
+///
+/// 悬停叠色走框架的 [MiHoverFeedback]（实色，不引 saveLayer）；点按弹提示。
+/// **不要给它套自带磨砂的子树** —— `MiTopBar.actions` 在搜索转场里会用
+/// `Opacity` 淡出，磨砂进那层会被 saveLayer 清空底图。
+class _TopBarAction extends StatelessWidget {
+  const _TopBarAction({
+    required this.themeMode,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final MiThemeMode themeMode;
+  final CustomPainter icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MiHoverFeedback(
+      mode: themeMode,
+      borderRadius: BorderRadius.circular(16),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Center(
+            child: CustomPaint(painter: icon, size: const Size.square(18)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 弹一条演示用提示（动作按钮 / 圆钮的统一反馈）。
+void _demoSnack(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      duration: const Duration(milliseconds: 800),
+    ),
+  );
+}
+
+/// 桌面键盘快捷键作用域（示例层）：**⌘/Ctrl + K 聚焦搜索**、**Esc 退出**。
+///
+/// 桌面应用的通行约定（VS Code / Slack / macOS 各设置页同款）。实现用
+/// `CallbackShortcuts`：快捷键沿焦点链冒泡，所以搜索框获得焦点后 ⌘K 仍被
+/// 这一层接住（输入框不会消费这个组合键），Esc 则先由输入框自己处理、
+/// 剩下的落到 [onEscape]。
+///
+/// 内部再挂一个 `Focus(autofocus)`：页面初建时没有任何节点持有焦点，
+/// 键盘事件没有冒泡路径 —— 自动聚焦一个空节点让事件能到达这里。
+class MiSearchShortcuts extends StatelessWidget {
+  const MiSearchShortcuts({
+    super.key,
+    required this.onFocusSearch,
+    required this.onEscape,
+    required this.child,
+    this.autofocus = true,
+  });
+
+  /// 聚焦搜索（⌘/Ctrl + K）。
+  final VoidCallback onFocusSearch;
+
+  /// 退出当前浮层 / 搜索态（Esc）；null = 不处理（继续冒泡到系统，如退出 App）。
+  final VoidCallback? onEscape;
+
+  final Widget child;
+
+  /// 是否自动聚焦内部空节点（默认 true）。
+  ///
+  /// **false 只在手机档用**：触屏没有物理键盘、快捷键无意义，抢一次焦点
+  /// 反而会把搜索光标的闪烁相位推偏（黄金图实测踩过）。宿主按断点切这个
+  /// 值即可 —— 但**包装层本身必须恒定**：跨断点增删 `CallbackShortcuts` /
+  /// `Focus` 会让下面的页面 Element 重建、滚动位置归零（本项目已踩过的坑）。
+  final bool autofocus;
+
+  @override
+  Widget build(BuildContext context) {
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true):
+            onFocusSearch,
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true):
+            onFocusSearch,
+        if (onEscape != null)
+          const SingleActivator(LogicalKeyboardKey.escape): onEscape!,
+      },
+      // autofocus：让页面一挂载就有焦点路径（否则键盘事件无处冒泡）。
+      child: Focus(autofocus: autofocus, child: child),
+    );
+  }
+}
+
+/// ⌘/Ctrl + K 的提示小徽标（宽屏动作区里展示快捷键）。
+///
+/// 文案随平台：macOS = ⌘K，其余 = Ctrl K。
+class _ShortcutChip extends StatelessWidget {
+  const _ShortcutChip({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final mac = defaultTargetPlatform == TargetPlatform.macOS;
+    final label = mac ? '⌘K' : 'Ctrl K';
+    final fg = MiColors.foregroundFor(themeMode);
+    return Center(
+      child: Container(
+        height: 22,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: themeMode == MiThemeMode.dark
+              ? const Color(0x1FFFFFFF)
+              : const Color(0x14000000),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: fg),
+        ),
+      ),
+    );
+  }
+}
 
 /// Simple mock pages (theme-store style) so the glass bar has
 /// colorful content behind it — the pages themselves are not the
@@ -378,8 +553,37 @@ class _HomePageState extends State<_HomePage> {
   /// 列表滚动控制器：宽屏给可见滚动条（见 build 里的 `Scrollbar`）。
   final ScrollController _scroll = ScrollController();
 
+  /// 是否正在滚动（驱动顶栏「滚动降 σ」）。
+  ///
+  /// 滚动中 backdrop 每帧重算 —— 把磨砂 σ 压到 0.6，停下 120ms 后恢复度量
+  /// 材质。σ 与高斯成本近似线性，运动掩蔽下视觉几乎无差，GPU 省近半。
+  bool _scrolling = false;
+  Timer? _scrollSettle;
+
+  /// 滚动中的 σ 缩放（**推导值**：0.6 —— 再低就能看出「糊变轻」了）。
+  static const double _scrollingSigmaScale = 0.6;
+
+  /// 停止滚动后多久恢复度量 σ（比一帧长、比「人眼觉得停了」短）。
+  static const Duration _settleDelay = Duration(milliseconds: 120);
+
+  void _onScroll() {
+    if (!_scrolling) setState(() => _scrolling = true);
+    _scrollSettle?.cancel();
+    _scrollSettle = Timer(_settleDelay, () {
+      if (mounted && _scrolling) setState(() => _scrolling = false);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
+    _scrollSettle?.cancel();
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
   }
@@ -410,56 +614,86 @@ class _HomePageState extends State<_HomePage> {
     final bar = MiTopBar(
       themeMode: widget.themeMode,
       headerInset: inset,
+      // 宽屏收敛（手机 / 平板传默认值 → 逐像素不变）：
+      //  * 头部顶部让位 56 → 24（桌面窗口没有状态栏）；
+      //  * 搜索栏限宽 520（1120 列上一条满宽搜索框既难用也不像桌面应用）；
+      //  * 右侧动作区（宽屏才出现），随搜索转场淡出。
+      headerTopInset: _headerTopInset(context),
+      searchBarMaxWidth: _wideSearchMaxWidth(context),
+      actions: _wideActions(context, () => [
+        // 快捷键提示徽标（宽屏才出现）：⌘K / Ctrl K —— 按下即聚焦搜索。
+        _ShortcutChip(themeMode: widget.themeMode),
+        const SizedBox(width: 8),
+        _TopBarAction(
+          themeMode: widget.themeMode,
+          icon: PlusIconPainter(MiColors.foregroundFor(widget.themeMode)),
+          onTap: () => _demoSnack(context, '动作按钮被点击'),
+        ),
+        _TopBarAction(
+          themeMode: widget.themeMode,
+          icon: GridDotsIconPainter(MiColors.foregroundFor(widget.themeMode)),
+          onTap: () => _demoSnack(context, '网格按钮被点击'),
+        ),
+      ]),
       searchHint: '搜索主题 / 壁纸 / 图标',
       onSearchTap: _openSearch,
+      // 滚动降 σ：滚动中磨砂压到 0.6，停下 120ms 恢复度量材质（见 _onScroll）。
+      sigmaScale: _scrolling ? _scrollingSigmaScale : 1.0,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
       showSurface: false,
       overContent: true,
     );
-    return ColoredBox(
-      // 页底度量：亮 #F3F3F3 / 暗 #000000。
-      color: MiColors.pageBackgroundFor(widget.themeMode),
-      child: Stack(
-        children: [
-          // 列表不留给头部让位：横幅从 y = 0 起铺（含状态栏后面），滚动时从
-          // 头部后方经过 —— 与参考素材一致，也是磨砂的可见性来源。
-          Positioned.fill(
-            key: const ValueKey('homeList'),
-            child: Scrollbar(
-              controller: _scroll,
-              thumbVisibility: !MiViewport.of(context).isCompact,
-              child: ListView(
+    return _keyboardScope(
+      context,
+      // 桌面：⌘/Ctrl + K 直达搜索（推入搜索页，与点按搜索栏同一路径）。
+      // Esc 不处理（本页没有浮层；搜索页是路由，有自己的作用域）。
+      onFocusSearch: _openSearch,
+      onEscape: null,
+      child: ColoredBox(
+        // 页底度量：亮 #F3F3F3 / 暗 #000000。
+        color: MiColors.pageBackgroundFor(widget.themeMode),
+        child: Stack(
+          children: [
+            // 列表不留给头部让位：横幅从 y = 0 起铺（含状态栏后面），滚动时从
+            // 头部后方经过 —— 与参考素材一致，也是磨砂的可见性来源。
+            Positioned.fill(
+              key: const ValueKey('homeList'),
+              child: Scrollbar(
                 controller: _scroll,
-                padding: EdgeInsets.zero,
-                children: [
-                  const _HeroBanner(key: ValueKey('homeHero')),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(inset, 0, inset, 20),
-                    // 区块内容随断点变排布（双卡宽幅 / 四卡网格），所以不再是
-                    // const 列表 —— 排布规则见 `_homeSections`。
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: _homeSections(context),
+                thumbVisibility: !MiViewport.of(context).isCompact,
+                child: ListView(
+                  controller: _scroll,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    const _HeroBanner(key: ValueKey('homeHero')),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(inset, 0, inset, 20),
+                      // 区块内容随断点变排布（双卡宽幅 / 四卡网格），所以不再是
+                      // const 列表 —— 排布规则见 `_homeSections`。
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _homeSections(context),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
-          //
-          // ⚠️ Stack 的子级一律带 key：增删兄弟节点时按下标配对，否则后面的
-          // 子树会被当成新子树重建（顶栏 State 重来 → 搜索态转场直接跳到终态）。
-          Positioned(
-            key: const ValueKey('homeTopBar'),
-            left: 0,
-            right: 0,
-            top: 0,
-            child: bar,
-          ),
-        ],
+            // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
+            //
+            // ⚠️ Stack 的子级一律带 key：增删兄弟节点时按下标配对，否则后面的
+            // 子树会被当成新子树重建（顶栏 State 重来 → 搜索态转场直接跳到终态）。
+            Positioned(
+              key: const ValueKey('homeTopBar'),
+              left: 0,
+              right: 0,
+              top: 0,
+              child: bar,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -808,6 +1042,30 @@ class _ThemeCardGrid extends StatelessWidget {
             previewAspectRatio: landscape
                 ? landscapeAspect
                 : MiThemeCardMetrics.imageAspectRatio,
+            // 悬停快捷操作（桌面）：预览图底部滑出「应用 / 收藏」。
+            // 手机档不传（触屏没有悬停语义，操作条永不出现）。
+            quickActions: landscape
+                ? [
+                    MiButton(
+                      label: '应用',
+                      themeMode: MiThemeMode.dark,
+                      onPressed: () => _demoSnack(
+                        context,
+                        '应用「${_titles[i]}」',
+                      ),
+                    ),
+                    MiButton(
+                      label: '收藏',
+                      variant: MiButtonVariant.tonal,
+                      themeMode: MiThemeMode.dark,
+                      onPressed: () => _demoSnack(
+                        context,
+                        '收藏「${_titles[i]}」',
+                      ),
+                    ),
+                  ]
+                : null,
+            onTap: () => _demoSnack(context, '打开「${_titles[i]}」'),
             preview: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -890,10 +1148,33 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   /// 网格滚动控制器：宽屏要给可见滚动条（见 build 里的 `Scrollbar`）。
   final ScrollController _scroll = ScrollController();
 
+  /// 是否正在滚动（驱动顶栏「滚动降 σ」，同首页 [_HomePageState._onScroll]）。
+  bool _scrolling = false;
+  Timer? _scrollSettle;
+
+  void _onScroll() {
+    if (!_scrolling) setState(() => _scrolling = true);
+    _scrollSettle?.cancel();
+    _scrollSettle = Timer(
+      const Duration(milliseconds: 120),
+      () {
+        if (mounted && _scrolling) setState(() => _scrolling = false);
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
   @override
   void dispose() {
     // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
     if (_searching) widget.onSearchActiveChanged?.call(false);
+    _scrollSettle?.cancel();
+    _scroll.removeListener(_onScroll);
     _searchController.dispose();
     _searchFocus.dispose();
     _scroll.dispose();
@@ -958,12 +1239,24 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     final bar = MiTopBar(
       themeMode: widget.themeMode,
       headerInset: inset,
+      // 宽屏收敛：同首页（顶部让位 24 / 搜索限宽 520 / 右侧动作区）。
+      headerTopInset: _headerTopInset(context),
+      searchBarMaxWidth: _wideSearchMaxWidth(context),
+      actions: _wideActions(context, () => [
+        _TopBarAction(
+          themeMode: widget.themeMode,
+          icon: CardsStarIconPainter(MiColors.foregroundFor(widget.themeMode)),
+          onTap: () => _demoSnack(context, '收藏按钮被点击'),
+        ),
+      ]),
       searchHint: '搜索主题 / 壁纸 / 图标',
       onSearchTap: _openSearch,
       searchActive: _searching,
       onSearchCancel: _closeSearch,
       searchController: _searchController,
       searchFocusNode: _searchFocus,
+      // 滚动降 σ：同首页（滚动中 0.6，停下 120ms 恢复度量材质）。
+      sigmaScale: _scrolling ? 0.6 : 1.0,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
@@ -976,9 +1269,15 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       // 边界只能靠文字认。膜垫在同色页底上等于没垫，静止态观感不变。
       overContent: true,
     );
-    return Container(
-      color: MiColors.pageBackgroundFor(widget.themeMode),
-      child: Stack(
+    return _keyboardScope(
+      context,
+      // 桌面：⌘/Ctrl + K 进入原地搜索态；Esc 退出（仅搜索态时接管，
+      // 平时交给系统 —— 如退出全屏 / 关窗口）。
+      onFocusSearch: _openSearch,
+      onEscape: _searching ? _closeSearch : null,
+      child: Container(
+        color: MiColors.pageBackgroundFor(widget.themeMode),
+        child: Stack(
         children: [
           // 滚动网格：初始让出顶栏高度 + 胶囊行底 → 内容的度量间距 12dp；
           // 上滚后内容从胶囊行后方经过，胶囊的半透明磨砂把透上来的网格
@@ -1049,6 +1348,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
             child: bar,
           ),
         ],
+        ),
       ),
     );
   }
@@ -1346,38 +1646,47 @@ class _DemoSearchPageState extends State<DemoSearchPage> {
 
     return Scaffold(
       backgroundColor: MiColors.pageBackgroundFor(mode),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(inset, headerTop, inset, 0),
-            child: SizedBox(
-              height: _controlHeight,
-              child: Row(
-                children: [
-                  _BackCircle(
-                    key: const ValueKey('searchBack'),
-                    ink: ink,
-                    palette: palette,
-                  ),
-                  const SizedBox(width: _controlGap),
-                  Expanded(child: _field(palette)),
-                  const SizedBox(width: _controlGap),
-                  _searchAction(ink: ink, palette: palette),
+      body: _keyboardScope(
+        context,
+        // 桌面：Esc = 返回（同头部返回圆钮）；⌘/Ctrl + K = 重新聚焦输入框
+        //（焦点在别处时的快捷回归）。
+        onFocusSearch: () => _focus.requestFocus(),
+        onEscape: () {
+          if (mounted) Navigator.of(context).maybePop();
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(inset, headerTop, inset, 0),
+              child: SizedBox(
+                height: _controlHeight,
+                child: Row(
+                  children: [
+                    _BackCircle(
+                      key: const ValueKey('searchBack'),
+                      ink: ink,
+                      palette: palette,
+                    ),
+                    const SizedBox(width: _controlGap),
+                    Expanded(child: _field(palette)),
+                    const SizedBox(width: _controlGap),
+                    _searchAction(ink: ink, palette: palette),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(inset, MiDimens.spaceXl, inset, 20),
+                children: const [
+                  _SectionTitle('精选主题', inset: 8.6),
+                  _ThemeCardGrid(),
                 ],
               ),
             ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(inset, MiDimens.spaceXl, inset, 20),
-              children: const [
-                _SectionTitle('精选主题', inset: 8.6),
-                _ThemeCardGrid(),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

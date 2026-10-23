@@ -12,9 +12,13 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
 
 /// 宽屏**内容列**在给定窗口下的几何（`MiContentColumn` 1120dp 上限 + 居中）：
-/// 返回两侧留白与列宽。侧栏列宽先被扣掉，剩下的区域再决定列宽。
+/// 返回两侧留白与列宽。侧栏列宽先被扣掉（桌面档是**展开态** 265.5），剩下
+/// 的区域再决定列宽。
 ({double gutter, double width}) contentColumn(Size window) {
-  final area = window.width - MiGlassSideNavMetrics.gutterWidth;
+  final gutter = MiGlassSideNavMetrics.gutterWidthFor(
+    expanded: MiBreakpoints.usesExpandedRail(window.width),
+  );
+  final area = window.width - gutter;
   final width = math.min(area, MiBreakpoints.contentMaxWidth);
   return (gutter: (area - width) / 2, width: width);
 }
@@ -145,8 +149,37 @@ void main() {
       );
     });
 
-    test('栏体圆角以内圈胶囊为准等距外扩（内外圈间距四周恒 6.6）', () {
-      // 端头圆弧与胶囊顶角圆弧**同心**：圆心 y 同为 内边距 + 胶囊半径，
+    test('展开态：240dp 带文字栏（推导值），条目宽 = 栏宽 − 2×内边距', () {
+      expect(MiGlassSideNavMetrics.expandedRailWidth, 240);
+      expect(
+        MiGlassSideNavMetrics.expandedItemWidth,
+        closeTo(240 - 2 * MiGlassSideNavMetrics.railInnerPad, 1e-9),
+      );
+      expect(
+        MiGlassSideNavMetrics.expandedGutterWidth,
+        closeTo(
+          MiGlassSideNavMetrics.railMargin +
+              MiGlassSideNavMetrics.expandedRailWidth,
+          1e-9,
+        ),
+      );
+      // 断点：容器宽 ≥ 1024 才展开（平板竖屏让出 240dp 不划算）
+      expect(MiBreakpoints.usesExpandedRail(1023), isFalse);
+      expect(MiBreakpoints.usesExpandedRail(1024), isTrue);
+      expect(MiBreakpoints.usesExpandedRail(768), isFalse);
+      // 形态取值helper
+      expect(MiGlassSideNavMetrics.railWidthFor(), MiGlassSideNavMetrics.railWidth);
+      expect(
+        MiGlassSideNavMetrics.railWidthFor(expanded: true),
+        MiGlassSideNavMetrics.expandedRailWidth,
+      );
+      expect(
+        MiGlassSideNavMetrics.gutterWidthFor(expanded: true),
+        MiGlassSideNavMetrics.expandedGutterWidth,
+      );
+    });
+
+    test('栏体圆角以内圈胶囊为准等距外扩（内外圈间距四周恒 6.6）', () {      // 端头圆弧与胶囊顶角圆弧**同心**：圆心 y 同为 内边距 + 胶囊半径，
       // 间距 = 半径差 = 内边距。旧值 railWidth/2 = 47.7 与内圈不同心，
       // 肩部间距会从 6.6 收缩到 0（两圆弧相交）—— 用户反馈平板模式
       // 内外圈间距应一致，以内圈为准。
@@ -280,6 +313,94 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(pillPainter(tester).palette.scrimGradient, isNotNull);
+    });
+
+    testWidgets('展开态：240dp 带文字栏，胶囊满宽、纵向节奏与窄栏同源', (tester) async {
+      setWindow(tester, const Size(400, 600));
+      addTearDown(tester.view.reset);
+
+      Widget wideHarness({int selected = 0}) => MaterialApp(
+            theme: ThemeData.dark(useMaterial3: true),
+            home: Scaffold(
+              backgroundColor: const Color(0xFF101014),
+              body: Center(
+                child: MiGlassSideNavBar(
+                  items: items(MiThemeMode.dark),
+                  selectedIndex: selected,
+                  onTap: (_) {},
+                  themeMode: MiThemeMode.dark,
+                  expanded: true,
+                ),
+              ),
+            ),
+          );
+
+      await tester.pumpWidget(wideHarness());
+      await tester.pumpAndSettle();
+
+      final size = tester.getSize(find.byType(MiGlassSideNavBar));
+      expect(
+        size.width,
+        closeTo(MiGlassSideNavMetrics.expandedRailWidth, 0.01),
+      );
+      // 纵向节奏与窄栏一致（同 itemHeight / itemGap / railInnerPad）
+      expect(
+        size.height,
+        closeTo(MiGlassSideNavMetrics.railHeightFor(3), 0.01),
+      );
+      // 胶囊：满条目宽、落 0 号槽位
+      expect(
+        pillPainter(tester).pillWidth,
+        closeTo(MiGlassSideNavMetrics.expandedItemWidth, 0.01),
+      );
+      expect(pillPainter(tester).pillCenterY, closeTo(slotCenter(0), 0.01));
+
+      // 标签在图标右侧（横排），三种点击语义不变
+      // （CustomPaint 里第一个是胶囊画笔，条目图标跟在其后）
+      final icon = tester.getTopLeft(
+        find
+            .descendant(
+              of: find.byType(MiGlassSideNavBar),
+              matching: find.byType(CustomPaint),
+            )
+            .at(1),
+      );
+      final label = tester.getTopLeft(find.text('首页'));
+      expect(label.dx, greaterThan(icon.dx));
+
+      final tapped = <int>[];
+      await tester.pumpWidget(wideHarness(selected: 1));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: Scaffold(
+            backgroundColor: const Color(0xFF101014),
+            body: Center(
+              child: MiGlassSideNavBar(
+                items: items(MiThemeMode.dark),
+                selectedIndex: 1,
+                onTap: tapped.add,
+                themeMode: MiThemeMode.dark,
+                expanded: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pillPainter(tester).pillCenterY, closeTo(slotCenter(1), 0.01));
+      await tester.tap(find.text('我的'));
+      await tester.pumpAndSettle();
+      expect(tapped, [2]);
+
+      // 只挂一个磨砂层（展开栏同样每帧只糊一次）
+      expect(
+        find.descendant(
+          of: find.byType(MiGlassSideNavBar),
+          matching: find.byType(BackdropFilter),
+        ),
+        findsOneWidget,
+      );
     });
   });
 
@@ -584,11 +705,11 @@ void main() {
       addTearDown(tester.view.reset);
 
       for (final window in const [
-        Size(601, 900), // 边界上沿：画面 601 → 侧栏
-        Size(650, 900), // 平板窄窗
-        Size(768, 1280), // 平板竖屏（实机尺寸）
-        Size(1023, 768), // 中等宽
-        Size(1366, 768), // 桌面
+        Size(601, 900), // 边界上沿：画面 601 → 侧栏（窄栏）
+        Size(650, 900), // 平板窄窗（窄栏）
+        Size(768, 1280), // 平板竖屏（实机尺寸，窄栏）
+        Size(1023, 768), // 中等宽（窄栏最后一档）
+        Size(1366, 768), // 桌面（展开栏）
       ]) {
         final width = await frameWidth(tester, window);
         expect(
@@ -602,10 +723,13 @@ void main() {
         final page = tester.getRect(find.byType(MockPage));
         final rail = tester.getRect(find.byType(MiGlassSideNavBar));
         final col = contentColumn(window);
+        final gutter = MiGlassSideNavMetrics.gutterWidthFor(
+          expanded: MiBreakpoints.usesExpandedRail(window.width),
+        );
         expect(page.width, closeTo(col.width, 0.01), reason: '$window');
         expect(
           page.left,
-          closeTo(MiGlassSideNavMetrics.gutterWidth + col.gutter, 0.01),
+          closeTo(gutter + col.gutter, 0.01),
           reason: '$window',
         );
         expect(page.left - rail.left, greaterThan(0), reason: '$window');
@@ -613,7 +737,7 @@ void main() {
       }
     });
 
-    testWidgets('桌面 1366×768：画面铺满窗口（无外围卡片）、侧栏贴顶留白',
+    testWidgets('桌面 1366×768：画面铺满窗口（无外围卡片）、展开侧栏贴顶留白',
         (tester) async {
       const window = Size(1366, 768);
       setWindow(tester, window);
@@ -631,17 +755,48 @@ void main() {
       // 铺满：画面 = 窗口，四周没有留白 / 圆角卡片（页面底色仍铺满窗口，
       // 只是内容列限宽 1120 并居中）
       expect(rail.left, closeTo(MiGlassSideNavMetrics.railMargin, 0.01));
-      expect(rail.width, closeTo(MiGlassSideNavMetrics.railWidth, 0.01));
+      // 桌面档（≥1024）换**展开栏**：240dp 带文字标签
+      expect(
+        rail.width,
+        closeTo(MiGlassSideNavMetrics.expandedRailWidth, 0.01),
+      );
       expect(
         rail.top,
         closeTo(MiGlassSideNavMetrics.railMargin, 0.01),
         reason: '侧栏应贴顶、距窗口顶缘一档留白（测试环境安全区为 0）',
       );
+      // 展开栏的条目 = 图标在左、标签在右（桌面常驻侧栏形态）
+      final firstItem = find.descendant(
+        of: find.byType(MiGlassSideNavBar),
+        matching: find.text('首页'),
+      );
+      // 条目图标（CustomPaint 里第一个是胶囊画笔，条目图标跟在其后）
+      final iconTopLeft = tester.getTopLeft(
+        find
+            .descendant(
+              of: find.byType(MiGlassSideNavBar),
+              matching: find.byType(CustomPaint),
+            )
+            .at(1),
+      );
+      final labelTopLeft = tester.getTopLeft(firstItem);
+      expect(
+        labelTopLeft.dx,
+        greaterThan(iconTopLeft.dx),
+        reason: '展开栏标签应在图标右侧',
+      );
+      expect(
+        labelTopLeft.dy,
+        closeTo(iconTopLeft.dy + (MiGlassSideNavMetrics.iconHeight - 10.5) / 2, 1.5),
+        reason: '展开栏图标与标签应垂直居中对齐',
+      );
       expect(page.left,
-          closeTo(MiGlassSideNavMetrics.gutterWidth + col.gutter, 0.01),
-          reason: '页面应落在侧栏右侧的内容列里（列宽上限 1120 + 居中）');
+          closeTo(
+            MiGlassSideNavMetrics.expandedGutterWidth + col.gutter, 0.01),
+          reason: '页面应落在展开侧栏右侧的内容列里（列宽上限 1120 + 居中）');
       expect(page.top, closeTo(0, 0.01));
-      expect(col.width, closeTo(MiBreakpoints.contentMaxWidth, 0.01));
+      // 展开栏让出 265.5 后剩 1100.5 < 1120 → 列宽取剩余宽（上限没到）
+      expect(col.width, closeTo(window.width - MiGlassSideNavMetrics.expandedGutterWidth, 0.01));
       expect(page.width, closeTo(col.width, 0.01));
       expect(page.height, closeTo(window.height, 0.01));
       // 内容完整落在窗口内

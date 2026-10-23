@@ -261,4 +261,127 @@ void main() {
       expect(field.left - back.right, moreOrLessEquals(11.0, epsilon: 0.2));
     });
   });
+
+  group('宽屏档（桌面 ≥1024：淡入 + 4dp 抬起，推导值）', () {
+    /// 宽屏宿主：同 pumpHost 但窗口 1366×768。
+    Future<void> pumpWideHost(WidgetTester tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1366, 768);
+      addTearDown(tester.view.reset);
+      final navigatorKey = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorKey: navigatorKey,
+          initialRoute: '/',
+          onGenerateRoute: (settings) => MiCardPageRoute<void>(
+            settings: settings,
+            builder: (_) => Scaffold(
+              key: hostKey,
+              body: Center(
+                child: TextButton(
+                  onPressed: () => navigatorKey.currentState!.push(
+                    MiCardPageRoute<void>(
+                      builder: (_) => const Scaffold(
+                        key: pageKey,
+                        body: SizedBox.expand(),
+                      ),
+                    ),
+                  ),
+                  child: const Text('push'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    test('时值 / 位移 / 圆角常量（推导值）', () {
+      expect(MiCardPageRouteMetrics.wideDurationMs, 220);
+      expect(
+        MiCardPageRouteMetrics.wideVisualFraction,
+        moreOrLessEquals(220 / 400),
+      );
+      expect(MiCardPageRouteMetrics.wideRiseDp, 4);
+      expect(MiCardPageRouteMetrics.wideCornerRadius, 16);
+      // 判定阈值与桌面断点同值
+      expect(MiCardPageRouteMetrics.isWide(1023), isFalse);
+      expect(MiCardPageRouteMetrics.isWide(1024), isTrue);
+    });
+
+    testWidgets('起手：4dp 抬起 + 同色幕布盖满；不横移、不压暗下层', (tester) async {
+      await pumpWideHost(tester);
+      await tester.tap(find.text('push'));
+      await tester.pump();
+      await tester.pump();
+
+      // 不横移：新页左缘仍在 0（手机档起手在右缘外 = 屏宽）
+      expect(leftOf(tester, pageKey), moreOrLessEquals(0, epsilon: 0.5),
+          reason: '桌面档不横移');
+      // 4dp 抬起：新页顶缘在 +4
+      expect(
+        tester.getTopLeft(find.byKey(pageKey)).dy,
+        moreOrLessEquals(MiCardPageRouteMetrics.wideRiseDp, epsilon: 0.5),
+      );
+      // 同色幕布（页底色实色，不是 Opacity/FadeTransition —— 磨砂子树的坑）
+      final veil = tester.widget<ColoredBox>(
+        find.byKey(MiCardPageRoute.wideVeilKey),
+      );
+      expect(veil.color.a, greaterThan(0.9), reason: '起手幕布应近乎不透明');
+      // 子树里不许出现 FadeTransition（saveLayer 会清空磨砂底图）
+      expect(
+        find.ancestor(
+          of: find.byKey(pageKey),
+          matching: find.byType(FadeTransition),
+        ),
+        findsNothing,
+      );
+
+      // 幕布不吃点击（IgnorePointer 包着）
+      expect(
+        find.ancestor(
+          of: find.byKey(MiCardPageRoute.wideVeilKey),
+          matching: find.byType(IgnorePointer),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('220ms 视觉落定：位移归零、幕布撤掉、无裁剪（零额外图层）',
+        (tester) async {
+      await pumpWideHost(tester);
+      await tester.tap(find.text('push'));
+      await tester.pump();
+      // 视觉曲线只走前 55%（220ms）；多泵几帧到绝对稳态
+      await tester.pump(const Duration(milliseconds: 230));
+
+      expect(
+        tester.getTopLeft(find.byKey(pageKey)).dy,
+        moreOrLessEquals(0, epsilon: 0.5),
+        reason: '4dp 位移应归零',
+      );
+      // 落定后 ClipRRect / 幕布都不在（静止页零额外绘制）
+      expect(
+        find.ancestor(
+          of: find.byKey(pageKey),
+          matching: find.byType(ClipRRect),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('桌面示例：点搜索栏推入搜索页仍正常（宽档转场接线）', (tester) async {
+      await pumpWideHost(tester);
+      // 换成完整示例（宽屏档会走 _MiPushWide）
+      tester.view.physicalSize = const Size(1366, 768);
+      await tester.pumpWidget(const DemoApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MiSearchBar));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(find.byType(DemoSearchPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

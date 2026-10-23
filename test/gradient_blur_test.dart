@@ -64,6 +64,91 @@ void main() {
     test('作用区为 0 时不产生任何段', () {
       expect(MiGradientBlur.bandsFor(extent: 0), isEmpty);
     });
+
+    group('sigmaScale（滚动降 σ）', () {
+      test('默认 1.0 逐段等于度量 σ（不缩放）', () {
+        final base = MiGradientBlur.bandsFor();
+        final scaled = MiGradientBlur.bandsFor(sigmaScale: 1.0);
+        expect(scaled.map((b) => b.sigma), base.map((b) => b.sigma));
+        expect(scaled.map((b) => b.top), base.map((b) => b.top));
+        expect(scaled.map((b) => b.height), base.map((b) => b.height));
+      });
+
+      test('0.6：各段 σ 等比压低，保留段的形状（段位 / 段高）不变', () {
+        final base = MiGradientBlur.bandsFor();
+        final scaled = MiGradientBlur.bandsFor(sigmaScale: 0.6);
+        // 尾段（σ 0.30 × 0.6 = 0.18 < 0.5）被剔除 → scaled 是 base 的前缀
+        expect(scaled.length, lessThan(base.length));
+        // 保留段的段位 / 段高逐段一致 —— 只改强度，不改曲线形状
+        for (var i = 0; i < scaled.length; i++) {
+          expect(scaled[i].top, base[i].top, reason: '第 $i 段段位应一致');
+          expect(scaled[i].height, base[i].height, reason: '第 $i 段段高应一致');
+          expect(
+            scaled[i].sigma,
+            moreOrLessEquals(base[i].sigma * 0.6, epsilon: 1e-9),
+            reason: '第 $i 段应等比缩放',
+          );
+        }
+        // 仍是单调递减（形状不变的直接推论）
+        for (var i = 1; i < scaled.length; i++) {
+          expect(scaled[i].sigma, lessThan(scaled[i - 1].sigma));
+        }
+      });
+
+      test('缩放后低于 minVisibleSigma 的段被剔除（省帧）', () {
+        // 度量尾段 σ = 0.30，× 0.6 = 0.18 < 0.5 → 剔除
+        final base = MiGradientBlur.bandsFor();
+        final scaled = MiGradientBlur.bandsFor(sigmaScale: 0.6);
+        expect(scaled.length, lessThan(base.length));
+        for (final b in scaled) {
+          expect(b.sigma, greaterThanOrEqualTo(MiGradientBlurProfile.minVisibleSigma));
+        }
+      });
+
+      test('σScale 必须为正（构造期断言）', () {
+        expect(
+          () => MiGradientBlur(sigmaScale: 0),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => MiGradientBlur(sigmaScale: -1),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+
+      test('MiTopBar.uniformBlurBands：σ 也等比缩放', () {
+        final base = MiTopBar.uniformBlurBands(
+          MiTopBarPalette.dark,
+          extent: 156,
+        );
+        final scaled = MiTopBar.uniformBlurBands(
+          MiTopBarPalette.dark,
+          extent: 156,
+          sigmaScale: 0.6,
+        );
+        expect(scaled, hasLength(1));
+        expect(base, hasLength(1));
+        expect(
+          scaled.single.sigma,
+          moreOrLessEquals(base.single.sigma * 0.6, epsilon: 1e-9),
+        );
+        // 段位 / 段高不变
+        expect(scaled.single.top, base.single.top);
+        expect(scaled.single.height, base.single.height);
+      });
+
+      test('σScale 太小时恒定段整段剔除（返回空）', () {
+        // 28 × 0.01 = 0.28 < 0.5 → 剔除
+        expect(
+          MiTopBar.uniformBlurBands(
+            MiTopBarPalette.dark,
+            extent: 156,
+            sigmaScale: 0.01,
+          ),
+          isEmpty,
+        );
+      });
+    });
   });
 
   group('渲染', () {
