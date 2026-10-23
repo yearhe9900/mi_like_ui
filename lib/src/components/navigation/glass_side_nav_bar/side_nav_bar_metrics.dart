@@ -55,13 +55,25 @@ class MiGlassSideNavMetrics {
   // 纵向节奏（条目高 / 内边距 / 间隙），横向按「图标 + 文字」的通行
   // 桌面侧栏形态给值。
 
-  /// 展开态栏宽 **240**：图标 24 + 间距 12 + 标签区 ~150（4 个汉字 13.85dp
-  /// ≈ 55，留两倍余量给更长文案与尾部呼吸），再加两侧内边距 6.6×2 与
-  /// 条目内容内缩 18×2 —— 与 Material / Windows Settings 常驻侧栏
-  /// （200…320）同量级。
-  static const double expandedRailWidth = 240;
+  /// 展开态栏宽 **176**：按展开态实际字号 `MiTypography.navLabel`（10.5dp，
+  /// 与底部栏同款）重推 ——
+  ///
+  /// `2×内缩 18 + 图标 24 + 间距 12 + 标签 + 2×栏内边距 6.6`：
+  ///  * 2 字（首页 / 分类 / 我的）→ 标签 21 → 栏 **106.2**；
+  ///  * 6 字 → 标签 63 → 栏 **148.2**；
+  ///  * 7 字 → 标签 73.5 → 栏 **158.7**；
+  ///  * 8 字 → 标签 84 → 栏 **169.2**。
+  ///
+  /// 取 176 = 8 字上限 169.2 再留一档余量（西文混排 / 字距）。首版取的 240
+  /// 是**错的**：推导时把标签当成 13.85dp（那是 `pillLabel` 胶囊标签的字号）
+  /// 又翻倍留量，实际展开态用 10.5dp —— 结果「首页」的选中胶囊 70% 是空白。
+  ///
+  /// 与 Material / Windows Settings 常驻侧栏（200…320）比偏窄，但那两家的
+  /// 标签普遍 6…8 字且字号 13…14；本库标签 10.5dp、常见 2…4 字，宽度该跟着
+  /// 内容走而不是跟着别人的栏走。
+  static const double expandedRailWidth = 176;
 
-  /// 展开态条目（选中胶囊）宽 = 栏宽 − 2×内边距 = 226.8。
+  /// 展开态条目（选中胶囊）宽 = 栏宽 − 2×内边距 = 162.8。
   static const double expandedItemWidth = expandedRailWidth - 2 * railInnerPad;
 
   /// 展开态条目内容（图标左缘）到胶囊左缘的内缩。
@@ -70,7 +82,7 @@ class MiGlassSideNavMetrics {
   /// 展开态图标 → 标签间距（[MiDimens.spaceMd] 档）。
   static const double expandedIconLabelGap = MiDimens.spaceMd;
 
-  /// 展开态侧栏占用列的总宽（= 留白 + 展开栏宽 = 265.5）。
+  /// 展开态侧栏占用列的总宽（= 留白 + 展开栏宽 = 201.5）。
   static const double expandedGutterWidth = railMargin + expandedRailWidth;
 
   /// 侧栏列宽（按形态取窄栏 / 展开栏），示例外壳给内容让位时用它。

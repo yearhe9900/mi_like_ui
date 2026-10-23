@@ -104,13 +104,17 @@
 - 截含光标的页面**不能 pumpAndSettle** → 固定 pump 到确定时长。
 
 ## 宽屏第二批配方（2026-10-23，全部推导 —— 素材只有手机档）
-- **展开侧栏** `MiGlassSideNavBar.expanded`：容器 ≥1024（`usesExpandedRail`）换 **240dp**（`expandedItemWidth` 226.8、内缩 18、图文距 12），条目横排 icon+label；平板仍窄栏 95.4。⚠️ 横排 Row **必须钉 `expandedItemWidth` 定宽**（外层 Column 是居中对齐，不定宽会按自然宽居中、内缩不从胶囊左缘量起）。
+- **展开侧栏** `MiGlassSideNavBar.expanded`：容器 ≥1024（`usesExpandedRail`）换 **176dp**（`expandedItemWidth` 162.8、内缩 18、图文距 12），条目横排 icon+label；平板仍窄栏 95.4（展开栏+留白 201.5 = 768 的 26%）。
+  - ⚠️ **首版 240 是错的**（用户反馈「太宽了」）：推导时把标签当成 13.85dp（那是 `pillLabel` 胶囊标签的字号），展开态实际用 `navLabel` = **10.5dp** → 2 字标签的胶囊 70% 是空白。正确反推：`2×内缩18 + 图标24 + 间距12 + 标签 + 2×6.6` = 2 字 106 / 6 字 148 / 8 字 169 → 取 176。**宽度跟着内容走，先确认字号再算**。
+  - ⚠️ 横排 Row **必须钉 `expandedItemWidth` 定宽**（外层 Column 是居中对齐，不定宽会按自然宽居中、内缩不从胶囊左缘量起）。
 - **顶栏三参数**（手机传默认值逐像素不变）：`headerTopInset` 桌面 **24**、`searchBarMaxWidth` 桌面 **520**、`actions` 右侧动作区（搜索转场淡出退排版）。`_searchRow` 分手机 Stack / 宽屏 Row 两条路径，**手机路径一字不动**。
 - **桌面弹窗** `MiDialogMetrics.isWide(容器 ≥1024)`：居中限宽 **440**、圆角 **16**、`position` 失效；手机档用 `left/right=sideMargin` **自适应**（写死 width 369.2 会让窄容器溢出、平板原行为是撑满边距之间）。正文行数按**实际卡宽**排版。
 - **桌面路由** `MiCardPageRouteMetrics.isWide(窗口 ≥1024)`：**4dp 抬起 + 同色幕布**（`ColoredBox` 页底色 alpha 1→0）**220ms**（`Interval(0,0.55)` 落在原 400ms 里 —— `transitionDuration` 构造期定死、拿不到窗口宽）、圆角 ≤16；下层无视差不压暗。⚠️ **淡入禁用 `Opacity`/`FadeTransition`**（新页含磨砂顶栏，saveLayer 清空自己的 backdrop）→ 用同色幕布。测试读 alpha 用 `MiCardPageRoute.wideVeilKey`。
 - **悬停快捷操作** `MiThemeCard.quickActions`：黑@45%（token `cardQuickActionsScrim`）+ `AnimatedSlide` 滑入（Transform 无 saveLayer）、`IgnorePointer.ignoring` 联动；`quickActions==null` 不挂（手机档）。悬停态由 `MiHoverFeedback.onHoverChanged` 单点维护。
 - **滚动降 σ** `MiGradientBlur.sigmaScale` / `MiTopBar.sigmaScale`（默认 1.0）：demo 滚动中 0.6、停 120ms 恢复。形状（段位/段高）不变只改强度，低于 `minVisibleSigma` 的尾段照常剔除；两档 σ 各自进 `MiFilterCache`。
-- **桌面模糊预算**：1366 面积 191,615 → **214,182 dp²**（展开栏宽 +144.6，**层数仍 2**），阈值 196,000 → **220,000**（README 表已同步）。
+- **桌面模糊预算**：1366 实测 **170,050 dp²**（2 层 = 顶栏 1120×**124** + 展开栏 176×177.1），比窄栏时代的 191,615 低 ~21k；阈值 **175,000**（按实测 +3%，与手机 78k / 平板 122k 同幅度）。README 表的手机 75,701 / 35,799、平板 117,843 / 52,142 是对的。
+  - ⚠️ **性能/几何数字必须实测，别按推算写进注释**：上一批把桌面顶栏高度按手机的 **156** 算（实际 `headerTopInset` 桌面 24 → 高 **124**），得出 214,182 并写进了 README/CHANGELOG/阈值 —— 实测是 178,966，错 35k。查法：scratch 测试遍历 `BackdropFilter` 打 `size + localToGlobal`（`.workbuddy/scratch_*_test.dart`，跑完删）。
+  - 桌面「我的」页 = 5 段渐进曲线（1120 宽，压色实心段下先剔 3 段）+ 展开栏 = 6 层 / 92,174（旧 README 的 77,900 是窄栏 95.4 时代的实测，也过期了）。
 
 ## 工具
 - 像素脚本 `.workbuddy/measure_*.py / extract_*.py / fit_*.py`（PIL，非交付物，不入库）；venv `C:\Users\zmt\.workbuddy\binaries\python\envs\default\Scripts\python.exe`（`imageio` 可抽帧，ffmpeg 不在 PATH）。

@@ -88,23 +88,31 @@ void main() {
 
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
-    // 桌面档：铺满窗口（1366）+ **展开侧栏**（240dp 带文字，≥1024 换形态）→
-    // 内容列 = 1366 − 265.5 = 1100.5（还没到 1120 上限），头部区那一段
-    // 1100.5 × 156 = 171,678 + 展开栏 240 × 177.1 = 42,504 → 214,182dp²，
-    // 仍只有 2 层。
+    // 桌面档（实测分层，`scratch_perf_print_test` 量的每层几何）：
+    //  * 顶栏磨砂 1120 × **124** = 138,880 —— 列宽 1366 − 201.5 = 1164.5 已触
+    //    内容列上限 1120；高 124 = 桌面 `headerTopInset` **24** + 搜索栏 44.1
+    //    + 间隙 16 + 胶囊行 39.9（⚠️ 不是手机的 156：上一批按 156 估算出
+    //    214,182 是**错的**，那会高估 35k）；
+    //  * 展开侧栏 176 × 177.1 = 31,170（栏宽从 240 收到 176）。
+    //  合计 **170,050dp² / 2 层**。
     //
-    // 面积比窄栏时代（191,615）多 ~22,500：展开栏比窄栏宽 144.6dp，这是
-    // 「常驻侧栏带文字」的固有代价 —— 换来的是桌面档不再让图标悬在空白里、
-    // 条目可读性与 Material / Windows Settings 同档。层数没变（一次大 filter
-    // 比多次小 filter 便宜），阈值按新形态重标。
+    // 对照：窄栏时代（95.4 栏、顶栏 156 高）= 191,615；本档降了 ~21k ——
+    // 收窄栏宽 + 桌面顶栏顶部让位 24 两处一起省的。层数没变（一次大 filter
+    // 比多次小 filter 便宜），阈值按实测值 +3% 重标（与手机 / 平板档同一幅度）。
     final desktop = await measure(tester, const Size(1366, 768));
     expect(desktop.count, lessThanOrEqualTo(3), reason: '桌面 $desktop');
-    expect(desktop.area, lessThanOrEqualTo(220000), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(175000), reason: '桌面 $desktop');
 
     // 分类页同一形态 → 同预算
     final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
     expect(showcase.count, lessThanOrEqualTo(3), reason: '桌面分类 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(220000), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(175000), reason: '桌面分类 $showcase');
+
+    // 「我的」= 大标题形态的**渐进曲线**（5 段 × 1120 宽，σ 阶梯在压色实心
+    // 段之下先剔掉 3 段）+ 展开栏 → 实测 6 层 / 92,174。
+    final mine = await measure(tester, const Size(1366, 768), tab: '我的');
+    expect(mine.count, lessThanOrEqualTo(6), reason: '桌面我的 $mine');
+    expect(mine.area, lessThanOrEqualTo(95000), reason: '桌面我的 $mine');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

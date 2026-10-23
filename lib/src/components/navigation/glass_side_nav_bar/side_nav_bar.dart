@@ -86,7 +86,7 @@ class MiGlassSideNavBar extends StatefulWidget {
   ///
   ///  * `false`（默认）：窄栏 95.4dp —— 图标在上、小字标签在下（与底部栏
   ///    同一套度量纵向换轴），平板 / 窄窗用；
-  ///  * `true`：展开栏 [MiGlassSideNavMetrics.expandedRailWidth]（240dp）——
+  ///  * `true`：展开栏 [MiGlassSideNavMetrics.expandedRailWidth] ——
   ///    图标在左、标签在右、整条目是一个胶囊，桌面用。全部几何取
   ///    [MiGlassSideNavMetrics] 的展开态推导值；纵向节奏（条目高 / 间隙 /
   ///    内边距 / 飞行-沉降-按压动效）与窄栏逐帧同源。

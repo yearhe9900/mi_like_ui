@@ -12,7 +12,7 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
 
 /// 宽屏**内容列**在给定窗口下的几何（`MiContentColumn` 1120dp 上限 + 居中）：
-/// 返回两侧留白与列宽。侧栏列宽先被扣掉（桌面档是**展开态** 265.5），剩下
+/// 返回两侧留白与列宽。侧栏列宽先被扣掉（桌面档是**展开态** 201.5），剩下
 /// 的区域再决定列宽。
 ({double gutter, double width}) contentColumn(Size window) {
   final gutter = MiGlassSideNavMetrics.gutterWidthFor(
@@ -149,12 +149,30 @@ void main() {
       );
     });
 
-    test('展开态：240dp 带文字栏（推导值），条目宽 = 栏宽 − 2×内边距', () {
-      expect(MiGlassSideNavMetrics.expandedRailWidth, 240);
+    test('展开态：176dp 带文字栏（推导值），条目宽 = 栏宽 − 2×内边距', () {
+      expect(MiGlassSideNavMetrics.expandedRailWidth, 176);
       expect(
         MiGlassSideNavMetrics.expandedItemWidth,
-        closeTo(240 - 2 * MiGlassSideNavMetrics.railInnerPad, 1e-9),
+        closeTo(176 - 2 * MiGlassSideNavMetrics.railInnerPad, 1e-9),
       );
+      // 装得下 8 个汉字标签：2×内缩 + 图标 + 间距 + 8×标签字号 ≤ 条目宽
+      const labelChars = 8;
+      final contentNeeded = 2 * MiGlassSideNavMetrics.expandedItemInset +
+          MiGlassSideNavMetrics.iconSize +
+          MiGlassSideNavMetrics.expandedIconLabelGap +
+          labelChars * MiTypography.navLabel.fontSize!;
+      expect(
+        contentNeeded,
+        lessThanOrEqualTo(MiGlassSideNavMetrics.expandedItemWidth),
+        reason: '8 字标签应装得下（留一档余量）',
+      );
+      // 「首页」这类 2 字标签：尾部空白应显著小于首版 240 的 133.8dp
+      final shortLabelContent = 2 * MiGlassSideNavMetrics.expandedItemInset +
+          MiGlassSideNavMetrics.iconSize +
+          MiGlassSideNavMetrics.expandedIconLabelGap +
+          2 * MiTypography.navLabel.fontSize!;
+      final trailing = MiGlassSideNavMetrics.expandedItemWidth - shortLabelContent;
+      expect(trailing, lessThan(80), reason: '2 字标签尾部空白应 < 80dp');
       expect(
         MiGlassSideNavMetrics.expandedGutterWidth,
         closeTo(
@@ -163,7 +181,7 @@ void main() {
           1e-9,
         ),
       );
-      // 断点：容器宽 ≥ 1024 才展开（平板竖屏让出 240dp 不划算）
+      // 断点：容器宽 ≥ 1024 才展开（平板竖屏让出栏宽不划算）
       expect(MiBreakpoints.usesExpandedRail(1023), isFalse);
       expect(MiBreakpoints.usesExpandedRail(1024), isTrue);
       expect(MiBreakpoints.usesExpandedRail(768), isFalse);
@@ -315,7 +333,7 @@ void main() {
       expect(pillPainter(tester).palette.scrimGradient, isNotNull);
     });
 
-    testWidgets('展开态：240dp 带文字栏，胶囊满宽、纵向节奏与窄栏同源', (tester) async {
+    testWidgets('展开态：176dp 带文字栏，胶囊满宽、纵向节奏与窄栏同源', (tester) async {
       setWindow(tester, const Size(400, 600));
       addTearDown(tester.view.reset);
 
@@ -755,7 +773,7 @@ void main() {
       // 铺满：画面 = 窗口，四周没有留白 / 圆角卡片（页面底色仍铺满窗口，
       // 只是内容列限宽 1120 并居中）
       expect(rail.left, closeTo(MiGlassSideNavMetrics.railMargin, 0.01));
-      // 桌面档（≥1024）换**展开栏**：240dp 带文字标签
+      // 桌面档（≥1024）换**展开栏**：176dp 带文字标签
       expect(
         rail.width,
         closeTo(MiGlassSideNavMetrics.expandedRailWidth, 0.01),
@@ -795,8 +813,13 @@ void main() {
             MiGlassSideNavMetrics.expandedGutterWidth + col.gutter, 0.01),
           reason: '页面应落在展开侧栏右侧的内容列里（列宽上限 1120 + 居中）');
       expect(page.top, closeTo(0, 0.01));
-      // 展开栏让出 265.5 后剩 1100.5 < 1120 → 列宽取剩余宽（上限没到）
-      expect(col.width, closeTo(window.width - MiGlassSideNavMetrics.expandedGutterWidth, 0.01));
+      // 展开栏让出 201.5 后剩 1366 − 201.5 = 1164.5 > 1120 → 列宽取**上限**
+      // 1120（栏收窄后腾出的空间反而先触到列宽封顶）
+      expect(
+        col.width,
+        closeTo(MiBreakpoints.contentMaxWidth, 0.01),
+        reason: '剩余宽超过内容列上限，应封顶在 1120',
+      );
       expect(page.width, closeTo(col.width, 0.01));
       expect(page.height, closeTo(window.height, 0.01));
       // 内容完整落在窗口内

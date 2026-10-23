@@ -242,7 +242,7 @@ class _DemoHomeState extends State<DemoHome> {
             builder: (context, constraints) {
               final sideNav = MiBreakpoints.usesSideNav(constraints.maxWidth);
               // 展开侧栏（带文字标签）：容器宽 ≥ 1024 才换 —— 平板竖屏让出
-              // 240dp 会吃掉三成画布，桌面让出后仍剩 ≥758dp。
+              // 展开栏 + 留白（201.5）会吃掉 26% 画布，桌面让出后仍剩 ≥822dp。
               final expandedRail =
                   sideNav && MiBreakpoints.usesExpandedRail(constraints.maxWidth);
               return Container(
