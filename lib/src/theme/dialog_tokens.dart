@@ -20,6 +20,7 @@ class MiDialogPalette {
     required this.filledActionFill,
     required this.filledActionLabel,
     required this.destructiveActionLabel,
+    required this.divider,
     required this.scrim,
   });
 
@@ -44,8 +45,13 @@ class MiDialogPalette {
   final Color filledActionLabel;
 
   /// 破坏性按钮标签（度量红：两图 mode #DC5448 / #D85040，差 4…8 级在
-  /// 细笔画 JPEG 噪声内，取均值 #DA5244 明暗同值）。
+  /// 细笔画 JPEG 噪声内，取均值 #DA5244 明暗同值）。操作列表的危险项
+  /// （整行红字）也用它。
   final Color destructiveActionLabel;
+
+  /// 操作列表分隔线（onSurface @0.08，**推导值** —— 参考素材没有列表
+  /// 形态样张，见 [MiTransparencyTokens.dialogDividerAlpha]）。
+  final Color divider;
 
   /// 背景遮罩（黑 @0.20/0.60，见 [MiTransparencyTokens.dialogScrimFor]）。
   final Color scrim;
@@ -59,6 +65,7 @@ class MiDialogPalette {
     filledActionFill: Color(0xFF478AFF),
     filledActionLabel: Color(0xFFFFFFFF),
     destructiveActionLabel: Color(0xFFDA5244),
+    divider: MiTransparencyTokens.dialogDividerDark,
     scrim: MiTransparencyTokens.dialogScrimDark,
   );
 
@@ -71,6 +78,7 @@ class MiDialogPalette {
     filledActionFill: Color(0xFF3383FF),
     filledActionLabel: Color(0xFFFFFFFF),
     destructiveActionLabel: Color(0xFFDA5244),
+    divider: MiTransparencyTokens.dialogDividerLight,
     scrim: MiTransparencyTokens.dialogScrimLight,
   );
 

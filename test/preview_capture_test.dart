@@ -25,6 +25,22 @@ Future<void> _loadCjkFont(WidgetTester tester) async {
   await tester.runAsync(loader.load);
 }
 
+/// 加载 Windows 中文字体（标签用），另补加载 Material 图标字体（测试环境
+/// 默认不带，缺了 `Icon` 会渲染成豆腐块）。两者任一缺失都跳过（同
+/// [_loadCjkFont] 口径：无字体环境退化为方块标签）。
+Future<void> _loadPreviewFonts(WidgetTester tester) async {
+  await _loadCjkFont(tester);
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'] ?? r'C:\src\flutter';
+  final file = File(
+    '$flutterRoot/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
+  );
+  if (!file.existsSync()) return;
+  final bytes = file.readAsBytesSync();
+  final loader = FontLoader('MaterialIcons')
+    ..addFont(Future<ByteData>.value(bytes.buffer.asByteData()));
+  await tester.runAsync(loader.load);
+}
+
 /// 导航栏特写帧：渐变/卡片背景 + 3 tab + 预留空位圆钮（首页选中）。
 Widget _barFrame(MiThemeMode mode) {
   final light = mode == MiThemeMode.light;
@@ -830,6 +846,106 @@ void main() {
       filled: true,
       pressed: true,
       file: '../doc/preview/dialog_pressed_dark.png',
+    );
+  });
+
+  testWidgets('README preview: dialog action list (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadPreviewFonts(tester);
+
+    // 纵向操作列表形态（issue #1，几何全为推导值）：两行左对齐标题 + 三项
+    // （图标 + 主文案 + 副标题，末项危险红字）+「取消」按钮行。
+    Widget frame(MiThemeMode mode) {
+      final light = mode == MiThemeMode.light;
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor:
+              light ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+          body: KeyedSubtree(
+            key: const ValueKey('dialogListPreview'),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(11.9, 60, 11.9, 60),
+                    child: Column(
+                      children: [
+                        for (final color in const [
+                          Color(0xFF3B6BF5),
+                          Color(0xFF808080),
+                          Color(0xFF3B6BF5),
+                          Color(0xFF808080),
+                        ])
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: MiDialog(
+                    layout: MiDialogLayout.list,
+                    themeMode: mode,
+                    title: '图书操作：《置身事内：中国政府与经济发展》',
+                    items: const [
+                      MiDialogItem(
+                        label: '收藏到书架',
+                        icon: Icon(Icons.star_outline, size: 22),
+                        onPressed: _noop,
+                      ),
+                      MiDialogItem(
+                        label: '下载到本地',
+                        subtitle: '离线阅读，Wi-Fi 下自动更新',
+                        icon: Icon(Icons.download_outlined, size: 22),
+                        onPressed: _noop,
+                      ),
+                      MiDialogItem(
+                        label: '删除',
+                        subtitle: '从书架移除并删除本地文件',
+                        destructive: true,
+                        icon: Icon(Icons.delete_outline, size: 22),
+                        onPressed: _noop,
+                      ),
+                    ],
+                    actions: const [
+                      MiDialogAction(label: '取消', onPressed: _noop),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(MiThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byKey(const ValueKey('dialogListPreview')),
+      matchesGoldenFile('../doc/preview/dialog_list_dark.png'),
+    );
+
+    await tester.pumpWidget(frame(MiThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 300));
+    await expectLater(
+      find.byKey(const ValueKey('dialogListPreview')),
+      matchesGoldenFile('../doc/preview/dialog_list_light.png'),
     );
   });
 }

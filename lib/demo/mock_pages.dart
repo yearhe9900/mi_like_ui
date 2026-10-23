@@ -199,6 +199,7 @@ class MockPage extends StatelessWidget {
     this.onThemeModeChanged,
     this.onSearchActiveChanged,
     this.onShowDialog,
+    this.onShowListDialog,
   });
 
   final int index;
@@ -211,6 +212,10 @@ class MockPage extends StatelessWidget {
 
   /// 弹框演示入口（demo 功能）：按位置弹出 [MiDialog]，由外壳挂浮层。
   final ValueChanged<MiDialogPosition>? onShowDialog;
+
+  /// 弹框演示入口（demo 功能）：弹出纵向操作列表形态
+  /// （[MiDialogLayout.list]），由外壳挂浮层。
+  final VoidCallback? onShowListDialog;
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +268,14 @@ class MockPage extends StatelessWidget {
                 onTap: () => onShowDialog!(MiDialogPosition.center),
               ),
               const SizedBox(height: 12),
+              // 纵向操作列表形态（issue #1）：两行左对齐标题 + 图标 /
+              // 副标题 / 危险项红字（几何全为推导值）。
+              if (onShowListDialog != null)
+                _DialogDemoRow(
+                  caption: '操作列表弹框（纵向）',
+                  onTap: onShowListDialog!,
+                ),
+              if (onShowListDialog != null) const SizedBox(height: 12),
             ],
             ..._mineItems,
           ],

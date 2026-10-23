@@ -8,6 +8,30 @@
 
 ### Added
 
+- **弹框纵向操作列表形态**（`MiDialogLayout.list` + `MiDialogItem`，2026-10-23，
+  issue #1「MiDialog 缺纵向操作列表形态」）
+  - 下游 MReader「长按图书 → 操作面板」换用 `MiDialog` 后只能压成 3 枚横排
+    等宽按钮，图标与副标题全部丢失。现新增第二种形态
+    `layout: MiDialogLayout.list`：
+    - 每项 = 可选前导图标（22dp，颜色走 `IconTheme` 随行墨色 / 危险色）+
+      主文案 + 可选副标题；项间 1dp 分隔线（左右内缩 20）、危险项**整行**
+      红字（复用度量红 `destructiveActionLabel`）；标题左对齐最多两行（首行
+      墨心仍是度量 36.4，行距 23.0 推导）；可与 `actions` 同用（按钮行恒钉
+      卡底），`onPressed` null 不可点且无按压反馈（同按钮契约）
+    - 几何**全部为推导值**（`MiDialogListMetrics`，类注释有取值口径）：行高
+      47.2（无副标题）/ 68.2（有副标题）= 2×12 + 主行距 23.2（+ 间隙 3 +
+      副行距 18）；墨心/基线换算沿用弹框口径（0.355em）；列表顶 = 上一块
+      末行墨心 + 18（合成墨心间距 41.6，与「标题 36.4 → 正文 75.55」的 39.2
+      同节奏）；分隔线 onSurface @0.08（`dialogDividerAlpha`）
+  - **卡片高度上限**（两种形态通用）：卡高**先算后摆**，超出屏内可用高
+    （屏高 − 上下让位，下限 `MiDialogMetrics.minCardHeight` 120 推导值）时
+    clamp 到可用高 —— 此前 `cardHeightFor(lines)` 随行数线性增长、位置不
+    clamp，超长正文会顶出屏幕；现在正文区 / 列表区转内部滚动，标题与按钮
+    行保持可见。**静止态既有度量（369.2 / 49.3 / 49.9 / 133.0 …）逐像素
+    不变**：`dialog_test` 15 项原样通过，新增 `dialog_list_test` 10 项
+  - demo「我的」页新增「操作列表弹框（纵向）」入口（两行标题 + 三项 + 取消）；
+    README 弹框节补用法与预览图 `dialog_list_dark/light.png`
+
 - **宽屏第二批：展开侧栏 / 顶栏收敛 / 键盘 / 桌面弹窗与转场 / 悬停操作条**
   （2026-10-23，反馈「全做」——补齐桌面档的形态、交互与动效）
   - **展开态侧边导航栏**（`MiGlassSideNavBar.expanded` + `MiGlassSideNavMetrics`

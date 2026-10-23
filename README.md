@@ -63,7 +63,7 @@ MiGlassNavBar(
 | `MiTopBar` | 大标题折叠顶部导航栏（渐进磨砂材质、可内嵌搜索栏 / 标签行、搜索态） |
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
 | `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
-| `MiDialog` | 弹框（遮罩 + 卡片、三档位置、三种按钮形态、按压动效） |
+| `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
@@ -244,8 +244,9 @@ Stack(children: [
 
 ### 弹框（MiDialog）
 
-遮罩 + 卡片一体的模态弹框，明暗双模式；支持三档位置、三种按钮形态、
-按压动效，卡片高度随正文行数自适应。
+遮罩 + 卡片一体的模态弹框，明暗双模式；支持三档位置、两种形态（横排按钮 /
+纵向操作列表）、三种按钮形态、按压动效，卡片高度随正文行数自适应并**受屏内
+高度上限约束**（超出可用高时 clamp，正文 / 列表区转内部滚动，不再顶出屏幕）。
 
 **规格**（详见 `MiDialogMetrics`）：卡片宽 369.2dp、圆角 49.3dp、底缘距屏
 32.9dp；标题 18.0dp、正文 15.9dp（行距 23.2dp、内容内缩 28dp）；按钮高
@@ -292,6 +293,43 @@ MiDialog(
 三档位置：
 
 <img src="doc/preview/dialog_top_dark.png" width="200" alt="深色顶部弹框" /> <img src="doc/preview/dialog_top_light.png" width="200" alt="浅色顶部弹框" /> <img src="doc/preview/dialog_center_dark.png" width="200" alt="深色居中弹框" /> <img src="doc/preview/dialog_center_light.png" width="200" alt="浅色居中弹框" />
+
+**纵向操作列表形态**（`MiDialogLayout.list`，下游「长按图书 → 操作面板」
+场景）：每项 = 可选前导图标（22dp）+ 主文案 + 可选副标题，项间 1dp 分隔线、
+危险项整行红字；标题左对齐最多两行；可与 `actions`（如「取消」）同用，按钮行
+恒钉卡底。列表几何**无参考素材、全部为推导值**（取值口径见 `MiDialogListMetrics`
+类注释），配色沿用 `MiDialogPalette`（分隔线为 onSurface @0.08 推导值）。
+
+```dart
+MiDialog(
+  layout: MiDialogLayout.list,
+  title: '图书操作：《置身事内：中国政府与经济发展》',  // 左对齐，最多两行
+  items: [
+    MiDialogItem(
+      label: '收藏到书架',
+      icon: Icon(Icons.star_outline, size: 22),          // 可选；随行墨色 / 危险色
+      onPressed: close,
+    ),
+    MiDialogItem(
+      label: '下载到本地',
+      subtitle: '离线阅读，Wi-Fi 下自动更新',            // 可选
+      icon: Icon(Icons.download_outlined, size: 22),
+      onPressed: close,
+    ),
+    MiDialogItem(
+      label: '删除',
+      subtitle: '从书架移除并删除本地文件',
+      destructive: true,                                // 整行（含图标）红字
+      icon: Icon(Icons.delete_outline, size: 22),
+      onPressed: close,
+    ),
+  ],
+  actions: [MiDialogAction(label: '取消', onPressed: close)],
+  onScrimTap: close,
+);
+```
+
+<img src="doc/preview/dialog_list_dark.png" width="200" alt="深色操作列表弹框" /> <img src="doc/preview/dialog_list_light.png" width="200" alt="浅色操作列表弹框" />
 
 ### 页面推入转场（MiCardPageRoute）
 
@@ -567,7 +605,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiTopBar` — 大标题折叠顶部导航栏（材质 / 头部区 / 搜索态）
 - [x] `MiGradientBlur` — 顶部渐进模糊
 - [x] `MiThemeCard` — 主题卡片
-- [x] `MiDialog` — 弹框
+- [x] `MiDialog` — 弹框（含纵向操作列表形态）
 - [x] `MiCardPageRoute` — 页面推入转场
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`
 - [ ] `MiForm` — 表单

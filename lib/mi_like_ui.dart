@@ -47,6 +47,7 @@ export 'src/components/cards/theme_card/theme_card.dart';
 export 'src/components/cards/theme_card/theme_card_metrics.dart';
 export 'src/components/feedback/dialog/dialog.dart';
 export 'src/components/feedback/dialog/dialog_metrics.dart';
+export 'src/components/feedback/dialog/dialog_list_metrics.dart';
 
 // ── 效果层（不依赖具体页面形态） ──────────────────────────────────────────
 export 'src/components/effects/gradient_blur/gradient_blur.dart';

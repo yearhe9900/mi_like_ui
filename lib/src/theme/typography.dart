@@ -115,10 +115,20 @@ class MiTypography {
 
   /// 弹框按钮标签：纯 CJK「取消/删除」墨宽模板匹配 em 15.8…16.0dp，与
   /// 正文同值 15.9dp；字重目测 Medium（**推导值**，与
-  /// [buttonLabel] 同档）。
+  /// [buttonLabel] 同档）。操作列表的项主文案也用它。
   static const TextStyle dialogAction = TextStyle(
     fontSize: 15.9,
     height: 1.0,
     fontWeight: FontWeight.w500,
+  );
+
+  /// 弹框操作列表**副标题**：13.0dp（**推导值**，非度量 —— 参考素材没有
+  /// 列表形态）。取项主文案 15.9 的 ~0.82：副标题要明显低一档、又不低于
+  /// 导航栏标签 10.5（那是一屏 3 项的密度，这里一行只有 1…2 项）；字重
+  /// Regular（次级信息不抢主文案）。
+  static const TextStyle dialogItemSubtitle = TextStyle(
+    fontSize: 13.0,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
   );
 }

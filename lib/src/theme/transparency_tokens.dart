@@ -280,6 +280,22 @@ class MiTransparencyTokens {
   static const Color dialogTextSecondaryLight =
       Color.fromRGBO(0, 0, 0, dialogTextSecondaryAlpha);
 
+  /// 弹框操作列表**分隔线** alpha（**推导值**，非度量：参考素材只有按钮式
+  /// 弹框，没有「纵向操作列表」形态的样张）。取 onSurface @0.08：分隔线要
+  /// 能读出「两项之间有界」，又不能重到在卡片填充（#FFFFFF / #242424）上
+  /// 形成第二根横线去抢文字 —— 行菜单的通行区间是 6%…10%，取中值。
+  static const double dialogDividerAlpha = 0.08;
+
+  /// 弹框分隔线色（黑 @0.08 亮 / 白 @0.08 暗，压在卡片填充上合成）。
+  static const Color dialogDividerLight =
+      Color.fromRGBO(0, 0, 0, dialogDividerAlpha);
+  static const Color dialogDividerDark =
+      Color.fromRGBO(255, 255, 255, dialogDividerAlpha);
+
+  /// 按明暗模式取弹框分隔线色。
+  static Color dialogDividerFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? dialogDividerDark : dialogDividerLight;
+
   // ══ 七、弹框按钮按压（state layer）════════════════════════════════════════
 
   /// 按钮按压态叠色 alpha（Material state layer 语言：亮 = 黑压、暗 = 白提，

@@ -171,6 +171,9 @@ class _DemoHomeState extends State<DemoHome> {
   /// 遮罩点按 / 按钮点按都收起。
   MiDialogPosition? _dialogPosition;
 
+  /// 弹框演示（列表形态）：是否弹出纵向操作列表（issue #1）。
+  bool _listDialog = false;
+
   @override
   Widget build(BuildContext context) {
     final light = widget.themeMode == MiThemeMode.light;
@@ -303,6 +306,8 @@ class _DemoHomeState extends State<DemoHome> {
                           onSearchActiveChanged: _setSearchActive,
                           onShowDialog: (position) =>
                               setState(() => _dialogPosition = position),
+                          onShowListDialog: () =>
+                              setState(() => _listDialog = true),
                         ),
                       ),
                     ),
@@ -392,6 +397,53 @@ class _DemoHomeState extends State<DemoHome> {
                               style: MiDialogActionStyle.destructive,
                               onPressed: () =>
                                   setState(() => _dialogPosition = null),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // 操作列表弹框演示（issue #1）：长按操作单的典型内容 ——
+                    // 两行左对齐标题 + 三项（图标 + 主文案 + 副标题、末项
+                    // 危险红字）+ 「取消」按钮行。几何全为推导值。
+                    if (_listDialog)
+                      Positioned.fill(
+                        key: const ValueKey('listDialogOverlay'),
+                        child: MiDialog(
+                          layout: MiDialogLayout.list,
+                          themeMode: widget.themeMode,
+                          onScrimTap: () =>
+                              setState(() => _listDialog = false),
+                          title: '图书操作：《置身事内：中国政府与经济发展》',
+                          items: [
+                            MiDialogItem(
+                              label: '收藏到书架',
+                              icon: const Icon(Icons.star_outline, size: 22),
+                              onPressed: () =>
+                                  setState(() => _listDialog = false),
+                            ),
+                            MiDialogItem(
+                              label: '下载到本地',
+                              subtitle: '离线阅读，Wi-Fi 下自动更新',
+                              icon: const Icon(
+                                Icons.download_outlined,
+                                size: 22,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _listDialog = false),
+                            ),
+                            MiDialogItem(
+                              label: '删除',
+                              subtitle: '从书架移除并删除本地文件',
+                              destructive: true,
+                              icon: const Icon(Icons.delete_outline, size: 22),
+                              onPressed: () =>
+                                  setState(() => _listDialog = false),
+                            ),
+                          ],
+                          actions: [
+                            MiDialogAction(
+                              label: '取消',
+                              onPressed: () =>
+                                  setState(() => _listDialog = false),
                             ),
                           ],
                         ),

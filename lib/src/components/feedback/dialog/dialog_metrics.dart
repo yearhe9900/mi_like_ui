@@ -31,6 +31,12 @@ class MiDialogMetrics {
   /// 高约 21dp，21 + 12 = 33 ≈ 度量 32.9，两解在参考机上不可分辨。
   static const double edgeInset = 32.9;
 
+  /// 卡片高下限（**推导值**，非度量 —— issue #1 的「高度上限」只约束上限，
+  /// 这里同时给 clamp 一个下限）：卡片可用高（屏高 − 上下让位）低于此值时
+  /// （极端横屏 / 小窗）宁可让卡贴住安全区，也保住一块可读高度，避免卡被
+  /// 压成一条。120 = 标题一行 + 一行内容 + 上下留白的最小可读组合。
+  static const double minCardHeight = 120.0;
+
   /// 按钮盒下缘到卡片底（度量 24.1dp）。
   static const double bottomPad = 24.1;
 
@@ -82,6 +88,14 @@ class MiDialogMetrics {
   /// 正文首行基线目标值（行 2 起由行距 `messageLinePitch` 顺推）。
   static double get messageBaseline =>
       baselineFor(messageInkCenterY, MiTypography.dialogMessage.fontSize!);
+
+  /// 正文**滚动区**（仅卡片高被 clamp 的路径）内首行基线。
+  ///
+  /// 滚动区顶端取「首行墨心 − 行距/2」（行盒上缘的推算位），因此区内基线
+  /// 恒等于 `messageBaseline −（messageInkCenterY − 行距/2）` ≡ 17.24 ——
+  /// 与标题行数无关（多行标题把区顶与基线一起下移，差值不变）。
+  static double get messageScrollBaseline =>
+      messageBaseline - (messageInkCenterY - messageLinePitch / 2);
 
   // ── 按钮行 ──────────────────────────────────────────────────────────────
 
