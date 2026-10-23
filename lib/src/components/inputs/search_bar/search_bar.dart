@@ -8,6 +8,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/hover_feedback.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
 
@@ -132,10 +133,16 @@ class MiSearchBar extends StatelessWidget {
           : _content(palette, fill),
     );
     if (onTap != null) {
-      bar = GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: bar,
+      // 悬停叠色铺在**整条**之上（圆角与栏体同档，避免出现方角）：
+      // 只对「点一下就进搜索」的形态有意义，可编辑形态由输入框自己给光标。
+      bar = MiHoverFeedback(
+        mode: mode,
+        borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: bar,
+        ),
       );
     }
     return bar;

@@ -180,6 +180,25 @@ class MiTransparencyTokens {
   static const Color pressHighlightLight =
       Color.fromRGBO(0, 0, 0, pressHighlightAlpha);
 
+  // ══ 四·二、指针悬停（桌面 / 平板接鼠标时）════════════════════════════════
+
+  /// 悬停叠色 alpha（**推导值**，非度量）。
+  ///
+  /// 参考素材来自触屏手机，没有悬停样张。取值依据：桌面惯例取按压高光的
+  /// 40~60%，这里取 60%（`0.094 × 0.6 ≈ 0.056`）—— 要能读出「这里可点」，
+  /// 又不能接近选中态的实心填充（玻璃胶囊近不透明）而与之混淆。
+  static const double hoverOverlayAlpha = 0.056;
+
+  /// 悬停叠色：暗 = 白、亮 = 黑（同按压的方向约定）。
+  static const Color hoverOverlayDark =
+      Color.fromRGBO(255, 255, 255, hoverOverlayAlpha);
+  static const Color hoverOverlayLight =
+      Color.fromRGBO(0, 0, 0, hoverOverlayAlpha);
+
+  /// 按明暗取悬停叠色。
+  static Color hoverOverlayFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? hoverOverlayDark : hoverOverlayLight;
+
   // ══ 五、玻璃导航栏（栏体遮罩 / 透镜 / 外缘）════════════════════════════════
 
   /// 深色：栏体遮罩 20,20,20 @0.63（度量透射模型 out = 0.37·in + 12.6）。

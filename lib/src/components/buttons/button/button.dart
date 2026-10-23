@@ -4,6 +4,7 @@ import '../../../theme/button_tokens.dart';
 import '../../../theme/dimens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/hover_feedback.dart';
 import 'button_metrics.dart';
 
 /// 按钮形态。
@@ -60,26 +61,32 @@ class MiButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          height: MiButtonMetrics.height,
-          padding: const EdgeInsets.symmetric(
-            horizontal: MiButtonMetrics.horizontalPadding,
-          ),
-          decoration: BoxDecoration(
-            color: fill,
-            borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-          ),
-          // 宽度随内容收缩：Center 带 widthFactor 才不会在有界父级
-          //（Center/Column）里被拉满宽 —— 度量按钮是内容自适应的胶囊。
-          child: Center(
-            widthFactor: 1.0,
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: MiTypography.buttonLabel.copyWith(color: labelColor),
+        // 悬停只给可点态（禁用态不该有「可点」暗示）。
+        child: MiHoverFeedback(
+          mode: themeMode,
+          enabled: enabled,
+          borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            height: MiButtonMetrics.height,
+            padding: const EdgeInsets.symmetric(
+              horizontal: MiButtonMetrics.horizontalPadding,
+            ),
+            decoration: BoxDecoration(
+              color: fill,
+              borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+            ),
+            // 宽度随内容收缩：Center 带 widthFactor 才不会在有界父级
+            //（Center/Column）里被拉满宽 —— 度量按钮是内容自适应的胶囊。
+            child: Center(
+              widthFactor: 1.0,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MiTypography.buttonLabel.copyWith(color: labelColor),
+              ),
             ),
           ),
         ),

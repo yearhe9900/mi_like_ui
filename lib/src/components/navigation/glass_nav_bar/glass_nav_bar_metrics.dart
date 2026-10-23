@@ -66,6 +66,13 @@ class MiGlassNavMetrics {
   static const double jellyStretch = 0.35;
   static const double jellySquash = 0.075;
 
+  /// 指针悬停时条目后面那块圆角高亮的半径（**推导值**，无桌面样张）。
+  ///
+  /// 条目区 ≈ [cellWidth] × [barHeight]，取 16 —— 明显小于半高（27.7，那是
+  /// 胶囊形），与胶囊里的选中态形成区分：悬停是「一小块圆角」、选中是
+  /// 「整格胶囊」。
+  static const double itemHoverRadius = 16;
+
   // --- press feedback (measured on the grab frames of the video) -----------
   // While a finger is down, the pill squashes ("缩圈": width -2~3%, height
   // -7.5%) and the pressed tab's icon+label dims to ~55% opacity. The dim is

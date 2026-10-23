@@ -59,10 +59,11 @@ MiGlassNavBar(
 | `MiSearchCancelButton` | 搜索取消按钮（搜索态配套） |
 | `MiTopBar` | 大标题折叠顶部导航栏（渐进磨砂材质、可内嵌搜索栏 / 标签行、搜索态） |
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
-| `MiThemeCard` | 竖向预览卡片（主题卡） |
+| `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、三种按钮形态、按压动效） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
-| `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格 |
+| `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
+| `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
 
 ## 组件
 
@@ -301,20 +302,53 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 框架层 `src/utils/responsive.dart` 提供断点判定与等比缩放画布，
 示例层 `DemoStage` 据此把内容摆进任意窗口。三类断点各司其职：
 
-| 档位 | 窗口逻辑宽 | 网格列数（主题卡 / 展示位） | 导航形态 |
-|---|---|---|---|
-| compact | < 600dp | 3 / 4 | 底部栏 |
-| medium | 600…1023dp | 4 / 6 | 侧栏 |
-| expanded | ≥ 1024dp | 6 / 8 | 侧栏 |
+| 档位 | 窗口逻辑宽 | 内容列宽 | 网格列数（主题卡 / 展示位） | 导航形态 |
+|---|---|---|---|---|
+| compact | < 600dp | ≤ 画布宽（393 设计宽） | 3 竖版 / 4 | 底部栏 |
+| medium | 600…1023dp | 铺满（页边距 32） | 3 竖版 / 6 | 侧栏 |
+| expanded | ≥ 1024dp | **≤ 1120 居中** | 6 横版 / 8 | 侧栏 |
 
 - **窗口断点**（`MiViewport` / `MiBreakpoints.ofWidth`）：决定外壳是否加宽内容；
 - **容器断点**（`MiBreakpoints.usesSideNav`，严格 > 600）：决定导航形态；
   判据跟随容器宽度而非窗口宽度，手机画布嵌入宽窗口也不会切换形态；
-- **内容断点**（`MiResponsiveGrid`，按容器宽切列）：决定网格列数。
+- **内容断点**（`MiResponsiveGrid`，按容器宽切列）：决定网格列数；
+  给了 `maxCellWidth` 时列数还会随宽度**连续增长**，只加列、不把卡片拉宽。
 
 三者判据不同源，请按上表分别取用。等比缩放画布 `MiScaledCanvas` 只缩不放
 （`scale = min(1, 可用宽/设计宽, 可用高/设计高)`）：不溢出、不变形，1:1 时
 不引入任何变换层。
+
+### 宽屏配方（`MiContentColumn`）
+
+所有度量都在 393dp 手机宽上取得，宽屏若直接沿用，卡片与列表行会被等比拉伸
+（1366dp 时单张卡 500dp 宽、设置行 1200dp 长，开关孤零零贴在屏边）。宽屏
+需要的是**几条形态规则**，而不是更大的像素：
+
+| 规则 | 取值 | 依据 |
+|---|---|---|
+| 内容列上限 | 1120dp（`MiBreakpoints.contentMaxWidth`） | 推导：桌面阅读列常见 1000…1200；1120 放得下 5 张 200dp 卡，与手机 3 列同密度 |
+| 宽屏页边距 | 32dp（`MiDimens.spaceXxxl`） | 推导：24 在 1000dp 以上偏窄、40 吃掉列宽 |
+| 卡片比例 | 手机竖版 259:472（度量）→ 桌面 16:10 横版 | 推导：1366×768 竖版卡一屏只 1.4 行，横版 2 行以上 |
+| 单元宽上限 | 主题卡 240dp（`MiResponsiveGrid.maxCellWidth`） | 推导：平板竖屏 736 宽 → 3 列，桌面 → 6 列 |
+| 表单内容列 | 720dp（示例「我的」页） | 推导：再宽「标签在左、开关在右」要来回扫视 |
+
+`MiContentColumn` 只限制**内容**：页面底色仍铺满窗口，纵向撑满，不加任何
+视觉包装（不做圆角卡片、不加投影）。手机 / 平板画面本来 ≤ 1120dp，套上
+也等于未启用，所以这一层可以恒定保留、不按断点增删（增删会重建页面、
+跨断点时滚动位置归零）。
+
+### 指针悬停（`MiHoverFeedback`）
+
+参考素材来自触屏手机，悬停语义是**推导**的：叠色 = 按压高光的 60%
+（白/黑 @5.6%，`MiTransparencyTokens.hoverOverlayFor`）+ 手型光标，150ms
+淡入淡出。已覆盖主题卡、胶囊标签、按钮、搜索栏（可点形态）、底部 / 侧边
+导航条目；禁用态不给悬停暗示。
+
+实现上刻意用**实色 `AnimatedContainer`**：`Opacity` / `FadeTransition` 会
+引入 `saveLayer`，本库磨砂子树里一旦出现 saveLayer，下层 `BackdropFilter`
+的 backdrop 变空（磨砂消失）。未悬停时叠色全透明、结构恒定 → 黄金图与
+触屏行为零差异。宽屏另有可见滚动条（`Scrollbar(thumbVisibility: true)`，
+手机档不显示）。
 
 <img src="doc/preview/adaptive_phone.png" width="120" alt="手机 393×856" /> <img src="doc/preview/adaptive_small_window.png" width="120" alt="小窗 260×470" /> <img src="doc/preview/adaptive_tablet.png" width="200" alt="平板 768×1280" /> <img src="doc/preview/adaptive_desktop.png" width="420" alt="桌面 1366×768" />
 
@@ -330,9 +364,14 @@ QUAD 高斯，滚动时随 backdrop 变化。为此将「单次构建的模糊�
 
 | 形态（深色） | 层数 / 覆盖面积 |
 |---|---|
-| 手机 393×856 | 7 层 / 52,081 dp² |
-| 平板 768×1280 | 首页 7 / 78,562 · 我的 6 / 52,142 · 分类 8 / 109,360 |
-| 桌面 1366×768 | 首页 7 / 137,506 · 分类 8 / 194,809 |
+| 手机 393×856 | 首页 / 分类 2 层 / 75,701 dp² · 我的 6 层 / 35,799 dp² |
+| 平板 768×1280 | 首页 / 分类 2 层 / 117,843 dp² · 我的 6 层 / 52,142 dp² |
+| 桌面 1366×768 | 首页 / 分类 2 层 / 191,615 dp² · 我的 6 层 / 77,900 dp² |
+
+桌面那一档被**内容列 1120dp 上限**封顶：不加限宽时是 1245 × 156 ≈ 194,236
+dp² 且随窗口继续线性增长，加了之后 1366 宽落在 191,615 dp²、更宽的窗口也
+不再涨（首页 / 分类是「一整段恒定 σ 铺满一条栏」，我的页是大标题形态的 6
+段渐进曲线 + 底栏）。
 
 已内置的等效优化（视觉零差异）：
 
@@ -369,7 +408,7 @@ lib/
     │   ├── feedback/        #   dialog
     │   └── effects/         #   gradient_blur
     ├── icons/               # 图标 painter 合集
-    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 滤镜缓存）
+    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 滤镜缓存）
 
 test/                        # 单元 / 交互 / 视觉回归测试
 ```

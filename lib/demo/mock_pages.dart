@@ -6,10 +6,10 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 /// 页面内容左右页边距。
 ///
 /// * compact（手机）：沿用 像素级度量值（首页 11.9 / 「我的」20）；
-/// * medium / expanded（外壳已把画面铺成内容舞台）：收到 [MiDimens.spaceXxl]
-///   24 —— 宽画布上继续贴 11.9 会让内容顶到边。
+/// * medium / expanded（外壳已把画面铺成内容舞台）：收到 [MiDimens.spaceXxxl]
+///   32 —— 宽画布上继续贴 11.9 会让内容顶到边，24 在 1000dp 以上仍偏窄。
 double _pageInset(BuildContext context, double measured) =>
-    MiViewport.of(context).isCompact ? measured : MiDimens.spaceXxl;
+    MiViewport.of(context).isCompact ? measured : MiDimens.spaceXxxl;
 
 /// Simple mock pages (theme-store style) so the glass bar has
 /// colorful content behind it — the pages themselves are not the
@@ -191,6 +191,11 @@ class _MockPageShell extends StatefulWidget {
 }
 
 class _MockPageShellState extends State<_MockPageShell> {
+  /// 「我的」这类设置页的内容列上限（**推导值**）：表单/列表行超过 ~720dp
+  /// 之后「标签在左、开关在右」的两端距离太远，读起来要来回扫视。手机档
+  /// （353dp）根本碰不到这个上限，所以手机观感不变。
+  static const double _contentMaxWidth = 720;
+
   final ScrollController _controller = ScrollController();
   final ValueNotifier<double> _offset = ValueNotifier<double>(0);
 
@@ -213,6 +218,9 @@ class _MockPageShellState extends State<_MockPageShell> {
   @override
   Widget build(BuildContext context) {
     final light = Theme.of(context).brightness == Brightness.light;
+    // 宽屏显式给滚动条：滚轮是隐式的，没有可见刻度就丢掉了「还有多少」。
+    // 手机档（触屏）不显示，避免压住内容边缘。
+    final showScrollbar = !MiViewport.of(context).isCompact;
     return ColoredBox(
       color: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
       child: Stack(
@@ -221,10 +229,27 @@ class _MockPageShellState extends State<_MockPageShell> {
           // BEHIND the glass bar (y ≈ 776..832 of the 856-tall frame) or the
           // frosted transmission has nothing to show.
           Positioned.fill(
-            child: ListView(
+            child: Scrollbar(
               controller: _controller,
-              padding: widget.padding,
-              children: widget.children,
+              thumbVisibility: showScrollbar,
+              child: ListView(
+                controller: _controller,
+                padding: widget.padding,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: _contentMaxWidth),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: widget.children,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           // 顶栏必须用 Positioned 钉在顶部：本 Stack 若留下**非定位子级**，
@@ -281,17 +306,30 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+/// 渐变占位卡（示例层，不是框架组件）。
+///
+/// 高度两种口径，二者取其一：
+///  * [height] —— 固定高（手机素材的量法；列表行、账号条这类"行"用它）；
+///  * [aspect] —— **宽高比**（宽 / 高），高度跟着列宽算。宽屏必须用这个：
+///    手机档两张卡各 172dp 宽、150 高（1.15:1），同一张卡铺到桌面 516dp
+///    宽还固定 150 高就成了 3.4:1 的横条。
 class _GradientCard extends StatelessWidget {
-  const _GradientCard({required this.colors, required this.caption, this.height = 118});
+  const _GradientCard({
+    required this.colors,
+    required this.caption,
+    this.height,
+    this.aspect,
+  }) : assert(height != null || aspect != null,
+            'height 与 aspect 至少给一个');
 
   final List<Color> colors;
   final String caption;
-  final double height;
+  final double? height;
+  final double? aspect;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: height,
+    final card = Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(14),
@@ -303,6 +341,8 @@ class _GradientCard extends StatelessWidget {
         style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w500),
       ),
     );
+    if (aspect != null) return AspectRatio(aspectRatio: aspect!, child: card);
+    return SizedBox(height: height, child: card);
   }
 }
 
@@ -335,6 +375,15 @@ class _HomePageState extends State<_HomePage> {
 
   int _tab = 0;
 
+  /// 列表滚动控制器：宽屏给可见滚动条（见 build 里的 `Scrollbar`）。
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   /// 点搜索栏 = **推入搜索页**（参考素材的交互），转场见 [MiCardPageRoute]。
   ///
   /// 与「分类」页的**原地搜索态**（`MiTopBar.searchActive`）是两条并行路径：
@@ -352,7 +401,7 @@ class _HomePageState extends State<_HomePage> {
   @override
   Widget build(BuildContext context) {
     // 首页页边距度量 25~28px ≈ 11.9dp（搜索框 28 / 横幅 25 / 卡片 25~26
-    // 同量级，与分类页一致）；宽屏舞台下收到 24。
+    // 同量级，与分类页一致）；宽屏舞台下收到 32。
     final inset = _pageInset(context, 11.9);
     // 头部区形态：搜索栏 + 胶囊行由顶栏内部产出（自带状态栏让位、间距、
     // 页边距），磨砂是**恒定 σ 的整条栏**（参考素材度量，见 MiTopBar 文档）。
@@ -378,19 +427,25 @@ class _HomePageState extends State<_HomePage> {
           // 头部后方经过 —— 与参考素材一致，也是磨砂的可见性来源。
           Positioned.fill(
             key: const ValueKey('homeList'),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                const _HeroBanner(key: ValueKey('homeHero')),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(inset, 0, inset, 20),
-                  // 区块内容恒定，只有页边距随断点变 → 内部 Column 仍可 const
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: _homeSections,
+            child: Scrollbar(
+              controller: _scroll,
+              thumbVisibility: !MiViewport.of(context).isCompact,
+              child: ListView(
+                controller: _scroll,
+                padding: EdgeInsets.zero,
+                children: [
+                  const _HeroBanner(key: ValueKey('homeHero')),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(inset, 0, inset, 20),
+                    // 区块内容随断点变排布（双卡宽幅 / 四卡网格），所以不再是
+                    // const 列表 —— 排布规则见 `_homeSections`。
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _homeSections(context),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           // 悬浮头部：必须用 Positioned 钉顶（非定位子级会让外层 Stack 收缩）。
@@ -579,84 +634,138 @@ class _HeroPainter extends CustomPainter {
 /// 首页区块（横幅下方的滚动内容）。
 ///
 /// 分节照亮/暗参考截图：横幅下方依次是「背屏创意设计大赛」（两张大卡）→
-/// 「精选主题」（[MiThemeCard] 网格）→「热门 IP」→「经典表盘」→「更多」，
-/// 每节两行、行距 12，与参考素材的节奏一致。区块标题行经 [_SectionTitle.inset]
-/// 收进 ≈20.5dp 文本列（度量 x46），卡标题再由卡片自身 8.8dp 内缩与之同列起排。
+/// 「精选主题」（[MiThemeCard] 网格）→「热门 IP」→「经典表盘」→「更多」。
+/// 区块标题行经 [_SectionTitle.inset] 收进 ≈20.5dp 文本列（度量 x46），
+/// 卡标题再由卡片自身 8.8dp 内缩与之同列起排。
+///
+/// **排布按断点推导**（参考素材只有手机档，宽屏无样张）：
+///  * 双卡宽幅（创意大赛 / 更多）：恒 2 列，卡面比例 1.15 → 1.9 → 2.45。
+///    手机档 172×150 与素材一致；若宽屏仍固定 150 高，同一张卡铺到 516dp
+///    宽就是 3.4:1 的横条 —— 这就是"拉伸的手机"观感的来源；
+///  * 四卡小方（热门 IP / 经典表盘）：手机 2 列 ×2 行，平板/桌面 **4 列 1 行**
+///    （[MiResponsiveGrid] 换成网格，密度随宽度增长）；
+///  * 通栏卡：手机 4.1:1，宽屏 8:1（高度按比例长，不按像素钉死）。
 ///
 /// 内容量不只是"好看"：磨砂效果需要内容**不断从头部后方经过**才有东西可糊，
 /// 页面太短（比如只有一两节）在平板 / 桌面上会直接不可滚。
-const List<Widget> _homeSections = [
-  _SectionTitle('背屏创意设计大赛', inset: 8.6),
-  Row(children: [
-    Expanded(
-      child: _GradientCard(
-        height: 150,
-        colors: [Color(0xFF2E3A8C), Color(0xFF7B4DBE), Color(0xFFD06A8A)],
+List<Widget> _homeSections(BuildContext context) {
+  final size = MiViewport.of(context).windowSize;
+  final promo = switch (size) {
+    MiWindowSize.compact => 1.15,
+    MiWindowSize.medium => 1.9,
+    MiWindowSize.expanded => 2.45,
+  };
+  // 四卡网格的单元比例：手机两列时维持素材的方卡观感，宽屏一行四张略扁一点。
+  final tile = size == MiWindowSize.compact ? 1.15 : 1.45;
+  final banner = switch (size) {
+    MiWindowSize.compact => 4.1,
+    MiWindowSize.medium => 6.0,
+    MiWindowSize.expanded => 8.0,
+  };
+  return [
+    const _SectionTitle('背屏创意设计大赛', inset: 8.6),
+    _cardRow([
+      _GradientCard(
+        aspect: promo,
+        colors: const [Color(0xFF2E3A8C), Color(0xFF7B4DBE), Color(0xFFD06A8A)],
         caption: '湾区升明月  肆好时光',
       ),
-    ),
-    SizedBox(width: 12),
-    Expanded(
-      child: _GradientCard(
-        height: 150,
-        colors: [Color(0xFF4A2C6E), Color(0xFFB24592)],
+      _GradientCard(
+        aspect: promo,
+        colors: const [Color(0xFF4A2C6E), Color(0xFFB24592)],
         caption: '分秒皆经典  奢韵不喧哗',
       ),
+    ]),
+    const _SectionTitle('精选主题', inset: 8.6),
+    const _ThemeCardGrid(),
+    const _SectionTitle('热门 IP', inset: 8.6),
+    _tileGrid(tile, const [
+      ([Color(0xFF00B4DB), Color(0xFF0083B0)], '热门IP'),
+      ([Color(0xFFFF8177), Color(0xFFB24592)], '插画合集'),
+      ([Color(0xFF4568DC), Color(0xFFB06AB3)], '设计师专区'),
+      ([Color(0xFF11998E), Color(0xFF38EF7D)], '清新绿意'),
+    ]),
+    const _SectionTitle('经典表盘', inset: 8.6),
+    _tileGrid(tile, const [
+      ([Color(0xFF232526), Color(0xFF414345)], '光轴指针'),
+      ([Color(0xFF8E7B5A), Color(0xFF3B342A)], '金属律动'),
+      ([Color(0xFFFF512F), Color(0xFF242424)], '暖橙日落'),
+      ([Color(0xFF2193B0), Color(0xFF6DD5ED)], '海盐汽水'),
+    ]),
+    const _SectionTitle('更多', inset: 8.6),
+    _cardRow([
+      _GradientCard(
+        aspect: promo,
+        colors: const [Color(0xFF396AFC), Color(0xFF2948FF)],
+        caption: '极简蓝调',
+      ),
+      _GradientCard(
+        aspect: promo,
+        colors: const [Color(0xFFB993D6), Color(0xFF8CA6DB)],
+        caption: '莫兰迪',
+      ),
+    ]),
+    const SizedBox(height: 12),
+    _GradientCard(
+      aspect: banner,
+      colors: const [Color(0xFF3E1E68), Color(0xFF8E54E9)],
+      caption: '查看全部主题  ›',
     ),
-  ]),
-  _SectionTitle('精选主题', inset: 8.6),
-  _ThemeCardGrid(),
-  _SectionTitle('热门 IP', inset: 8.6),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF00B4DB), Color(0xFF0083B0)], caption: '热门IP')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFFFF8177), Color(0xFFB24592)], caption: '插画合集')),
-  ]),
-  SizedBox(height: 12),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF4568DC), Color(0xFFB06AB3)], caption: '设计师专区')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF11998E), Color(0xFF38EF7D)], caption: '清新绿意')),
-  ]),
-  _SectionTitle('经典表盘', inset: 8.6),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF232526), Color(0xFF414345)], caption: '光轴指针')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF8E7B5A), Color(0xFF3B342A)], caption: '金属律动')),
-  ]),
-  SizedBox(height: 12),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFFFF512F), Color(0xFF242424)], caption: '暖橙日落')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '海盐汽水')),
-  ]),
-  _SectionTitle('更多', inset: 8.6),
-  Row(children: [
-    Expanded(child: _GradientCard(colors: [Color(0xFF396AFC), Color(0xFF2948FF)], caption: '极简蓝调')),
-    SizedBox(width: 12),
-    Expanded(child: _GradientCard(colors: [Color(0xFFB993D6), Color(0xFF8CA6DB)], caption: '莫兰迪')),
-  ]),
-  SizedBox(height: 12),
-  _GradientCard(height: 90, colors: [Color(0xFF3E1E68), Color(0xFF8E54E9)], caption: '查看全部主题  ›'),
-];
+  ];
+}
 
-/// 「精选主题」卡片网格（示例层）：竖向预览卡 [MiThemeCard]。
+/// 双卡（或多卡）等分一行，间距 12（与卡片网格列距同一档）。
+Widget _cardRow(List<Widget> cards) {
+  final cells = <Widget>[];
+  for (var i = 0; i < cards.length; i++) {
+    if (i > 0) cells.add(const SizedBox(width: 12));
+    cells.add(Expanded(child: cards[i]));
+  }
+  return Row(crossAxisAlignment: CrossAxisAlignment.start, children: cells);
+}
+
+/// 四卡小网格：手机 2 列、平板 / 桌面 4 列；行距 12。
+Widget _tileGrid(double aspect, List<(List<Color>, String)> tiles) {
+  return MiResponsiveGrid(
+    compactColumns: 2,
+    mediumColumns: 4,
+    expandedColumns: 4,
+    compactMax: 520,
+    mediumMax: 800,
+    itemSpacing: 12,
+    runSpacing: 12,
+    children: [
+      for (final (colors, caption) in tiles)
+        _GradientCard(aspect: aspect, colors: colors, caption: caption),
+    ],
+  );
+}
+
+/// 「精选主题」卡片网格（示例层）：预览卡 [MiThemeCard]。
 ///
 /// 列数按**容器可用宽**断点切换（[MiResponsiveGrid]，局部断点 —— 外壳把
 /// 画面加宽后才生效；393 设计宽下恒为 3 列，与参考截图一致）：
 ///  * compact（< 600）→ 3 列；
-///  * medium（600…1023）→ 4 列；
-///  * expanded（≥ 1024）→ 6 列。
+///  * medium（600…1023）→ 3 列（6 张卡刚好 3+3，不出现 4+2 的缺角）；
+///  * expanded（≥ 1024）→ 6 列，且**单元宽上限 210dp**：再宽的画布加列不加宽
+///    （[MiResponsiveGrid.maxCellWidth]），避免卡片被拉成 500dp 的巨型海报。
+///
+/// **卡面比例按断点切换**（`previewAspectRatio`）：
+///  * 手机 / 平板竖屏 → 度量值 259:472（竖版海报，与素材一致）；
+///  * 桌面（≥ 1024，视口矮、宽） → **16:10 横版**。竖版卡在 1366×768 里
+///    一屏只放得下 1.4 行，横版能放 2 行以上，是桌面档信息密度的主要来源。
 ///
 /// 几何对齐参考素材度量：列距取 [MiThemeCardMetrics.columnGap]（11.9，
 /// 页边距同值）、行距取 [MiThemeCardMetrics.rowGap]（15）；标题经卡片
 /// 自身 8.8dp 内缩与区块标题「精选主题」（11.9 + 8.6 ≈ 20.5）同列起排。
-/// 卡片宽度由网格等分，预览图按 259:472 定比 → 列数变化时卡片整体缩放，
-/// 不会被横向拉伸。
 /// 预览图为度量 6 张卡壁纸主色上→下渐变占位（截图采样均值，顺序左→右、
 /// 上→下）；标题为示例命名（参考素材卡名字迹不作字面复刻）。
 class _ThemeCardGrid extends StatelessWidget {
   const _ThemeCardGrid();
+
+  /// 横版预览的宽高比（**推导值**）：16:10 是桌面卡片缩略图的常见比例，
+  /// 与竖版 259:472 的"手机"语义区分开，也不至于扁到看不清渐变。
+  static const double landscapeAspect = 16 / 10;
 
   static const List<List<Color>> _wallpapers = [
     [Color(0xFF6A7A61), Color(0xFF587132)], // 绿林
@@ -678,20 +787,27 @@ class _ThemeCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final landscape = MiViewport.of(context).isExpanded;
     return MiResponsiveGrid(
       compactColumns: 3,
-      mediumColumns: 4,
+      mediumColumns: 3,
       expandedColumns: 6,
       // 内容宽断点（不是窗口断点）：393 设计宽下内容宽 369 → 3 列；
-      // 舞台加宽到 1000 后内容宽 952 → 6 列。
+      // 宽舞台加宽后 → 6 列。
       compactMax: 520,
       mediumMax: 800,
+      // 单元宽上限：宽屏只加列、不把卡片拉宽。
+      // 240 让平板竖屏停在 3 列（736 宽 → 3×237），桌面才跳到 6 列。
+      maxCellWidth: 240,
       itemSpacing: MiThemeCardMetrics.columnGap,
       runSpacing: MiThemeCardMetrics.rowGap,
       children: [
         for (var i = 0; i < _titles.length; i++)
           MiThemeCard(
             title: _titles[i],
+            previewAspectRatio: landscape
+                ? landscapeAspect
+                : MiThemeCardMetrics.imageAspectRatio,
             preview: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -771,12 +887,16 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
 
+  /// 网格滚动控制器：宽屏要给可见滚动条（见 build 里的 `Scrollbar`）。
+  final ScrollController _scroll = ScrollController();
+
   @override
   void dispose() {
     // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
     if (_searching) widget.onSearchActiveChanged?.call(false);
     _searchController.dispose();
     _searchFocus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -823,7 +943,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     final count = _counts[_tab];
     // 页底色与内容边距按完整素材度量：亮 #F3F3F3 / 暗 #000000，
     // 内容左右 37px≈11.9dp（搜索框、标签行、下方内容同边距）；
-    // 外壳加宽成内容舞台（expanded）时页边距收到 24。
+    // 外壳加宽成内容舞台（wide 档）时页边距收到 32。
     final inset = _pageInset(context, 11.9);
     // 顶部吸顶头部（搜索栏 + 胶囊分类标签）**由 MiTopBar 自己产出**：本页
     // 只给数据（占位文案 / 标签文案 / 选中下标 / 回调），搜索栏与胶囊行都是
@@ -865,13 +985,17 @@ class _ShowcasePageState extends State<_ShowcasePage> {
           // 磨出毛玻璃感。
           Positioned.fill(
             key: const ValueKey('showcaseList'),
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                inset,
-                bar.occupiedHeight(context) + MiTopBarMetrics.headerContentGap,
-                inset,
-                0,
-              ),
+            child: Scrollbar(
+              controller: _scroll,
+              thumbVisibility: !MiViewport.of(context).isCompact,
+              child: ListView(
+                controller: _scroll,
+                padding: EdgeInsets.fromLTRB(
+                  inset,
+                  bar.occupiedHeight(context) + MiTopBarMetrics.headerContentGap,
+                  inset,
+                  0,
+                ),
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -904,6 +1028,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                   ],
                 ),
               ],
+              ),
             ),
           ),
           // 搜索态：内容让位给输入（与首页同款；Stack 子级必须带 key，见首页注释）。

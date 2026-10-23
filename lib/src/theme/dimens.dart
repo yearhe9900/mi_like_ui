@@ -11,6 +11,11 @@ class MiDimens {
   static const double spaceXl = 20;
   static const double spaceXxl = 24;
 
+  /// 宽屏页边距（**推导值**）：手机档按素材度量 11.9 / 20，平板与桌面没有
+  /// 样张，取 32 —— 24 在 1000dp 以上的画布里会让内容顶到边缘，40 又吃掉了
+  /// 卡片列宽；32 与主题卡列距（11.9）在同一比例阶梯上。
+  static const double spaceXxxl = 32;
+
   static const double radiusSm = 8;
   static const double radiusMd = 14;
   static const double radiusLg = 20;

@@ -73,6 +73,21 @@ class MiBreakpoints {
   /// medium 上界（不含）：`600 ≤ width < 1024` 即 medium。
   static const double medium = desktop;
 
+  /// 宽屏**内容列**的最大宽度（dp，**推导值**）。
+  ///
+  /// 参考素材只有 393dp 手机宽，宽屏没有样张可量，因此这是布局常量而非
+  /// 度量值。取 1120 的依据：
+  ///  * 常见桌面阅读列上限 1000…1200（Material 3 建议 1200）—— 再宽单行
+  ///    卡片会被拉到 500dp 以上，一张「手机竖版海报」就变成横条；
+  ///  * 1120 正好放得下主题卡 5 列 × 约 200dp（[columnsForMaxCell]），
+  ///    与手机 3 列的卡面密度同量级；
+  ///  * 小于 1280（常见 13" 笔记本逻辑宽），铺满窗口与「限宽居中」在
+  ///    1280 以下差别很小，不会一进桌面就出现突兀的两侧留白。
+  ///
+  /// 只作用于**内容列**：页面底色仍然铺满窗口（顶栏磨砂也仍按内容列宽
+  /// 计算，宽屏下模糊面积随之收敛）。
+  static const double contentMaxWidth = 1120;
+
   /// 按宽度判档。
   static MiWindowSize ofWidth(double width) {
     if (width < compact) return MiWindowSize.compact;
@@ -113,6 +128,35 @@ class MiBreakpoints {
         ? medium
         : expanded;
     return n.clamp(1, math.max(1, maxColumns));
+  }
+
+  /// 按**最大单元宽**取列数（纯函数）—— 与 [columnsFor] 互补：
+  ///
+  /// [columnsFor] 回答「这个断点该排几列」（固定台阶）；本函数回答
+  /// 「在这个可用宽里，单元**最多允许多宽**」，列数随宽度连续增长：
+  /// `n = ceil((width + gap) / (maxCellWidth + gap))`，使单元宽
+  /// `(width − (n−1)·gap) / n ≤ maxCellWidth` 恒成立。
+  ///
+  /// 用途：卡片网格在超宽屏上不该把卡片拉成 500dp 的横条，也不该只排
+  /// 固定 6 列留着大片空白 —— 让「单元宽上限」说话，列数自己长。
+  ///
+  /// [minColumns] 是断点算出来的台阶下限（列数不会比它更少）；
+  /// [maxColumns] 防止超大屏无限扩列。宽度非有限时退回 [minColumns]。
+  static int columnsForMaxCell(
+    double width, {
+    required double maxCellWidth,
+    double itemSpacing = 0,
+    int minColumns = 1,
+    int maxColumns = 12,
+  }) {
+    assert(maxCellWidth > 0);
+    assert(itemSpacing >= 0);
+    assert(minColumns >= 1);
+    assert(maxColumns >= minColumns);
+    if (!width.isFinite || width <= 0) return minColumns;
+    final pitch = maxCellWidth + itemSpacing;
+    final n = ((width + itemSpacing) / pitch).ceil();
+    return n.clamp(minColumns, maxColumns);
   }
 }
 
@@ -252,6 +296,52 @@ class MiScaledCanvas extends StatelessWidget {
   }
 }
 
+/// 宽屏**内容列**：把子级限制在 [maxWidth] 内并水平居中，纵向撑满。
+///
+/// 手机档没有「太宽」问题，宽屏才有：13" 笔记本铺满后单张卡片会被拉到
+/// 500dp 以上，一张手机竖版海报直接变横条。限制成 ~1120（见
+/// [MiBreakpoints.contentMaxWidth]）并居中，是桌面阅读列的标准做法。
+///
+/// 两个约束刻意保留：
+///  * **纵向撑满**（`SizedBox.expand`）：`Center` 给的是松约束，若不撑满，
+///    整页会收缩到内容高、在铺满的窗口里垂直居中；
+///  * **不做任何视觉处理**：底色仍由页面自己铺（外壳与页面同色），所以
+///    窗口两侧留白不是「灰色边框」，而是页面背景继续延伸。
+///
+/// ```dart
+/// Positioned.fill(
+///   child: MiContentColumn(child: page),
+/// )
+/// ```
+class MiContentColumn extends StatelessWidget {
+  const MiContentColumn({
+    super.key,
+    required this.child,
+    this.maxWidth = MiBreakpoints.contentMaxWidth,
+    this.alignment = Alignment.topCenter,
+  }) : assert(maxWidth > 0);
+
+  /// 内容列，纵向撑满可用高。
+  final Widget child;
+
+  /// 列宽上限（dp）。
+  final double maxWidth;
+
+  /// 列在可用宽内的水平对位；纵向恒为撑满，不受它影响。
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: SizedBox.expand(child: child),
+      ),
+    );
+  }
+}
+
 /// 响应式网格：按自身可用宽切换列数，行内等分、行间留白。
 ///
 /// 与 `Wrap` 的区别：行内等宽、末行不足的格子留空不拉伸（`Wrap` 末项
@@ -280,12 +370,16 @@ class MiResponsiveGrid extends StatelessWidget {
     this.itemSpacing = MiDimens.spaceMd,
     this.runSpacing = MiDimens.spaceMd,
     this.rowAlignment = CrossAxisAlignment.start,
+    this.maxCellWidth,
+    this.maxColumns = 12,
   }) : assert(compactColumns >= 1),
        assert(mediumColumns >= 1),
        assert(expandedColumns >= 1),
        assert(itemSpacing >= 0),
        assert(runSpacing >= 0),
-       assert(compactMax > 0 && mediumMax > compactMax);
+       assert(compactMax > 0 && mediumMax > compactMax),
+       assert(maxCellWidth == null || maxCellWidth > 0),
+       assert(maxColumns >= 1);
 
   /// 网格项（按行优先顺序排列）。
   final List<Widget> children;
@@ -317,6 +411,15 @@ class MiResponsiveGrid extends StatelessWidget {
   /// 行内纵向对齐（默认顶端对齐，卡片高度不同时不拉伸）。
   final CrossAxisAlignment rowAlignment;
 
+  /// 单元**最大宽度**（dp）；null = 只按三档断点的固定列数排。
+  ///
+  /// 给了它以后列数取「断点台阶」与 [MiBreakpoints.columnsForMaxCell] 的
+  /// **较大者**：宽屏上卡片不会被拉宽，列数自己长；窄屏仍守断点下限。
+  final double? maxCellWidth;
+
+  /// 列数上限（默认 12），只在给了 [maxCellWidth] 时起作用。
+  final int maxColumns;
+
   @override
   Widget build(BuildContext context) {
     if (children.isEmpty) return const SizedBox.shrink();
@@ -325,7 +428,8 @@ class MiResponsiveGrid extends StatelessWidget {
         final width = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MiBreakpoints.compact;
-        final columns = MiBreakpoints.columnsFor(
+        // 断点台阶（固定列数）是**下限**：宽屏只允许加列、不允许少于台阶。
+        final stepColumns = MiBreakpoints.columnsFor(
           width,
           compact: compactColumns,
           medium: mediumColumns,
@@ -333,6 +437,15 @@ class MiResponsiveGrid extends StatelessWidget {
           compactMax: compactMax,
           mediumMax: mediumMax,
         );
+        final columns = maxCellWidth == null
+            ? stepColumns
+            : MiBreakpoints.columnsForMaxCell(
+                width,
+                maxCellWidth: maxCellWidth!,
+                itemSpacing: itemSpacing,
+                minColumns: stepColumns,
+                maxColumns: math.max(maxColumns, stepColumns),
+              );
         final rows = <Widget>[];
         for (var start = 0; start < children.length; start += columns) {
           if (start > 0) rows.add(SizedBox(height: runSpacing));

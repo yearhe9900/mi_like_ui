@@ -11,6 +11,7 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/hover_feedback.dart';
 import 'glass_nav_bar_metrics.dart';
 import 'glass_nav_bar_painter.dart';
 
@@ -414,21 +415,40 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () => widget.onTap(i),
-                                  child: Opacity(
-                                    // pressed tab content dims (measured ~55%)
-                                    opacity: _pressedIndex == i
-                                        ? MiGlassNavMetrics.pressDimOpacity
-                                        : 1.0,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CustomPaint(
-                                          painter: widget.items[i].painter,
-                                          size: const Size(24, MiGlassNavMetrics.iconHeight),
-                                        ),
-                                        const SizedBox(height: MiGlassNavMetrics.iconLabelGap),
-                                        Text(widget.items[i].label, style: labelStyle),
-                                      ],
+                                  // 悬停：桌面上「能点」必须有暗示 —— 条目本身
+                                  // 没有底色，叠一层 5.6% 实色的圆角块即可
+                                  //（实色叠色，不是 Opacity，磨砂不受影响）。
+                                  child: MiHoverFeedback(
+                                    mode: widget.themeMode,
+                                    borderRadius: BorderRadius.circular(
+                                      MiGlassNavMetrics.itemHoverRadius,
+                                    ),
+                                    child: Opacity(
+                                      // pressed tab content dims (measured ~55%)
+                                      opacity: _pressedIndex == i
+                                          ? MiGlassNavMetrics.pressDimOpacity
+                                          : 1.0,
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          CustomPaint(
+                                            painter: widget.items[i].painter,
+                                            size: const Size(
+                                              24,
+                                              MiGlassNavMetrics.iconHeight,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            height:
+                                                MiGlassNavMetrics.iconLabelGap,
+                                          ),
+                                          Text(
+                                            widget.items[i].label,
+                                            style: labelStyle,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),

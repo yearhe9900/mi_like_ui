@@ -8,6 +8,24 @@
 
 ### Added
 
+- **宽屏布局基础件**（2026-10-23，反馈「移动端尚可，桌面端和平板表现一般」）
+  - **`MiContentColumn` + `MiBreakpoints.contentMaxWidth`（1120dp）**：把内容限制在
+    列宽内并水平居中、纵向撑满。所有度量都取自 393dp 手机宽，宽屏直接沿用会让卡片与
+    列表行等比拉伸（1366dp 时单张卡 500dp 宽、设置行 1200dp 长）。1120 是**推导值**：
+    桌面阅读列常见上限 1000…1200、能放下 5 张 200dp 卡（与手机 3 列同密度）、小于
+    常见 13" 笔记本逻辑宽
+  - **`MiResponsiveGrid.maxCellWidth` / `maxColumns` + `MiBreakpoints.columnsForMaxCell`**：
+    列数取「断点台阶」与「单元宽上限算出的列数」较大者 —— 宽屏只加列、不把卡片拉宽
+    （`ceil((w+gap)/(maxCell+gap))`，单元宽恒 ≤ 上限）
+  - **`MiThemeCard.previewAspectRatio`**：预览区比例可覆盖（默认仍是度量 259:472），
+    宽屏换横版（示例 16:10）
+  - **`MiHoverFeedback` + `MiTransparencyTokens.hoverOverlayFor`**：指针悬停叠色与手型
+    光标。叠色 = 按压高光的 60%（白/黑 @5.6%，**推导值**，触屏素材里没有悬停样张）；
+    已接入主题卡 / 胶囊标签 / 按钮 / 搜索栏（可点形态）/ 底部与侧边导航条目，禁用态
+    不给悬停暗示。实现上用**实色 `AnimatedContainer`**：`Opacity` / `FadeTransition`
+    会引入 saveLayer、让下层磨砂的 backdrop 变空；未悬停时全透明 → 结构恒定、零像素变化
+  - **`MiDimens.spaceXxxl`（32dp）**：宽屏页边距（推导值）
+
 - **`MiCardPageRoute` 页面推入转场**：新页自右缘滑入（400ms `easeOutCubic`）、前缘
   61.2dp 圆角，下层页左移 0.25 × 页宽并随进度压暗至黑 @0.55；归位后不保留变换层
   与遮罩。压暗以纯色填充实现，避免 `Opacity` 的 saveLayer 破坏下层 backdrop
@@ -28,6 +46,21 @@
 - **颜色令牌**：`MiColors.accent`、`MiColors.pageBackground{Light,Dark}`
 
 ### Changed
+
+- **示例的宽屏配方：页边距 32、区块响应式、横版主题卡、内容列上限、可见滚动条**（2026-10-23）
+  - 页边距：非 compact 档 24 → **32**
+  - 首页区块：`_homeSections` 从 const 两列 `Row` 改成按断点排布 —— 双卡宽幅（创意大赛 /
+    更多）恒 2 列、卡面比例 1.15 → 1.9 → 2.45；四卡区（热门 IP / 经典表盘）换成 2/4/4 列
+    网格；通栏卡 4.1:1 → 8:1。**手机档数值不变**（172×150、两列，与素材一致）
+  - `_GradientCard` 从固定高改成 `aspect`（宽高比）：宽屏钉死 150 高时，516dp 宽的卡
+    就是 3.4:1 的横条
+  - 主题卡网格：单元宽上限 240（平板竖屏停在 3 列 = 3+3，不出现 4+2 缺角）、桌面 6 列
+    横版 16:10 —— 1366×768 一屏从 1.4 行提到 2 行以上
+  - 「我的」页内容列上限 720（表单行再宽就是「标签在左、开关贴屏边」）
+  - 三页滚动条：非 compact 档 `Scrollbar(thumbVisibility: true)`
+  - 外壳：页面恒套 `MiContentColumn`（不按断点增删，避免重建丢滚动位置）
+  - 性能：内容列上限截断了「磨砂面积随窗口线性增长」，桌面 1366 每帧模糊面积
+    211,132 → **191,615 dp²**（`perf_budget_test` 预算收紧到 196,000）
 
 - 透明 / 磨砂参数统一至 `MiTransparencyTokens` 单一来源，各组件令牌仅引用常量；
   渲染结果逐字节不变
@@ -67,8 +100,7 @@
 
 - **`MiGlassNavBar`** 玻璃悬浮底部导航栏
   - 果冻胶囊切换动效（按压挤压、拖拽跟随、弹簧沉降）
-  - 高亮胶囊与栏体外缘等距（端部圆头同心）
-- **`MiGlassSideNavBar`** 侧边导航栏（宽屏 / 桌面形态，与底部栏同语义同配方）
+  - 高亮胶囊与栏体外缘等距（端部圆头同心）- **`MiGlassSideNavBar`** 侧边导航栏（宽屏 / 桌面形态，与底部栏同语义同配方）
 - **`MiPillTabBar`** 胶囊分类标签行
 - **`MiGlassNavFab`** 浮动圆钮（可挂载于底部 / 侧边导航栏）
 - **`MiThemeMode`** 明暗双模式与 `MiGlassPalette` 玻璃配方

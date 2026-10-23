@@ -88,17 +88,18 @@ void main() {
 
   testWidgets('深色·桌面 1366×768：侧栏只多一层模糊', (tester) async {
     addTearDown(tester.view.reset);
-    // 桌面档：铺满窗口（1366 宽）+ 侧栏 → 页面列 1245.1，头部区那一段
-    // 面积 1245.1 × 156 = 194,236 + 侧栏 16,896 = 211,132dp²，仍只有 2 层
-    //（面积随宽度线性增长是 edge-to-edge 的必然代价，层数不增）。
+    // 桌面档：铺满窗口（1366）+ 侧栏 → 内容列**限宽 1120**（`MiContentColumn`），
+    // 头部区那一段 1120 × 156 = 174,720 + 侧栏 16,896 = 191,616dp²，仍只有 2 层。
+    // 限宽把"面积随窗口线性增长"截断了：1366 宽时比不加限宽（1245.1 × 156）
+    // 少 ~19,500dp²，再宽的窗口也不会继续涨。
     final desktop = await measure(tester, const Size(1366, 768));
     expect(desktop.count, lessThanOrEqualTo(3), reason: '桌面 $desktop');
-    expect(desktop.area, lessThanOrEqualTo(215000), reason: '桌面 $desktop');
+    expect(desktop.area, lessThanOrEqualTo(196000), reason: '桌面 $desktop');
 
     // 分类页同一形态 → 同预算
     final showcase = await measure(tester, const Size(1366, 768), tab: '分类');
     expect(showcase.count, lessThanOrEqualTo(3), reason: '桌面分类 $showcase');
-    expect(showcase.area, lessThanOrEqualTo(215000), reason: '桌面分类 $showcase');
+    expect(showcase.area, lessThanOrEqualTo(196000), reason: '桌面分类 $showcase');
   });
 
   testWidgets('深色顶栏：不透明叠色段内不绘制模糊', (tester) async {

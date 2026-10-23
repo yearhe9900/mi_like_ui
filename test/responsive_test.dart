@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -45,6 +47,96 @@ void main() {
         1,
       );
       expect(cols(4000, maxColumns: 5), 5);
+    });
+
+    test('单元宽上限：列数向上取整，单元宽恒 ≤ 上限', () {
+      // 1056 内容宽、单元上限 210、列距 11.9 → 5 列（每列 201.4）
+      expect(
+        MiBreakpoints.columnsForMaxCell(
+          1056,
+          maxCellWidth: 210,
+          itemSpacing: 11.9,
+          minColumns: 1,
+        ),
+        5,
+      );
+      // 单元宽验证：任意宽下 (w − (n−1)g)/n ≤ maxCellWidth
+      for (final w in <double>[393, 704, 1056, 1600, 2200]) {
+        final n = MiBreakpoints.columnsForMaxCell(
+          w,
+          maxCellWidth: 210,
+          itemSpacing: 11.9,
+          minColumns: 2,
+        );
+        final cell = (w - (n - 1) * 11.9) / n;
+        expect(cell, lessThanOrEqualTo(210 + 1e-9), reason: 'w=$w n=$n');
+        expect(n, greaterThanOrEqualTo(2), reason: '断点台阶是下限');
+      }
+      // 断点台阶比上限算出来的更大时，守台阶（不因为上限砍列）
+      expect(
+        MiBreakpoints.columnsForMaxCell(
+          393,
+          maxCellWidth: 60,
+          itemSpacing: 11.9,
+          minColumns: 3,
+          maxColumns: 6,
+        ),
+        6,
+      );
+      // 上限拦得住：超宽屏不无限扩列
+      expect(
+        MiBreakpoints.columnsForMaxCell(
+          6000,
+          maxCellWidth: 100,
+          itemSpacing: 0,
+          minColumns: 1,
+          maxColumns: 8,
+        ),
+        8,
+      );
+      // 非有限宽度退回下限
+      expect(
+        MiBreakpoints.columnsForMaxCell(
+          double.infinity,
+          maxCellWidth: 210,
+          minColumns: 4,
+        ),
+        4,
+      );
+    });
+  });
+
+  group('MiContentColumn', () {
+    testWidgets('限宽 1120 + 水平居中 + 纵向撑满', (tester) async {
+      Future<Rect> render(Size window) async {
+        tester.view.devicePixelRatio = 1.0;
+        tester.view.physicalSize = window;
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: MiContentColumn(
+                child: ColoredBox(
+                  key: ValueKey('column'),
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+        );
+        return tester.getRect(find.byKey(const ValueKey('column')));
+      }
+
+      addTearDown(tester.view.reset);
+      // 宽窗口：限到 1120 并居中（两侧各 (1366−1120)/2 = 123）
+      var rect = await render(const Size(1366, 768));
+      expect(rect.width, closeTo(MiBreakpoints.contentMaxWidth, 0.01));
+      expect(rect.left, closeTo(123, 0.01));
+      expect(rect.height, closeTo(768, 0.01), reason: '纵向撑满，不垂直居中');
+
+      // 窄窗口：不生效（手机 / 平板画面不会变小）
+      rect = await render(const Size(393, 856));
+      expect(rect.width, closeTo(393, 0.01));
+      expect(rect.left, closeTo(0, 0.01));
     });
   });
 
@@ -235,17 +327,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
-      // 手机 → 桌面：画面铺满窗口，且底部栏换成侧栏 —— 页面只占
-      //「窗口宽 − 侧栏列宽」，内容仍在该列里按容器宽重排。
+      // 手机 → 桌面：画面铺满窗口、底部栏换成侧栏；**内容列**限宽 1120 居中
+      //（列宽 = min(窗口 − 侧栏列, 1120)，两侧留白相等）。
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final wide = tester.getRect(find.byType(MockPage));
+      final area = 1366 - MiGlassSideNavMetrics.gutterWidth;
+      final column = math.min(area, MiBreakpoints.contentMaxWidth);
+      expect(wide.width, closeTo(column, 0.01));
       expect(
-        wide.width,
-        closeTo(1366 - MiGlassSideNavMetrics.gutterWidth, 0.01),
+        wide.left,
+        closeTo(MiGlassSideNavMetrics.gutterWidth + (area - column) / 2, 0.01),
       );
-      expect(wide.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01));
 
       // 桌面 → 小窗：又缩回等比 contain
       setWindow(tester, const Size(240, 400));
@@ -283,11 +377,11 @@ void main() {
       return n;
     }
 
-    testWidgets('主题卡网格 3 / 4 / 6 列', (tester) async {
+    testWidgets('主题卡网格 3 / 3 / 6 列（6 张卡按断点 3+3 或整排）', (tester) async {
       addTearDown(tester.view.reset);
-      expect(await firstRowCards(tester, 393), 3); // compact
-      expect(await firstRowCards(tester, 800), 4); // medium
-      expect(await firstRowCards(tester, 1200), 6); // expanded
+      expect(await firstRowCards(tester, 393), 3); // compact：与参考截图同款
+      expect(await firstRowCards(tester, 800), 3); // medium：6 张卡 3+3，不出现 4+2 缺角
+      expect(await firstRowCards(tester, 1200), 6); // expanded：横版整排 6 张
     });
 
     testWidgets('展示页网格 4 / 6 / 8 列且不溢出', (tester) async {

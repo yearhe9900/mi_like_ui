@@ -10,6 +10,7 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/hover_feedback.dart';
 import '../glass_nav_bar/glass_nav_bar.dart' show MiGlassNavFab, MiGlassNavItem;
 import '../glass_nav_bar/glass_nav_bar_metrics.dart';
 import 'side_nav_bar_metrics.dart';
@@ -385,26 +386,34 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => widget.onTap(i),
-                        child: Opacity(
-                          // 按下条目内容变暗（度量 ~55%）
-                          opacity: _pressedIndex == i
-                              ? MiGlassNavMetrics.pressDimOpacity
-                              : 1.0,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CustomPaint(
-                                painter: widget.items[i].painter,
-                                size: const Size(
-                                  MiGlassSideNavMetrics.iconSize,
-                                  MiGlassSideNavMetrics.iconHeight,
+                        // 悬停：与底栏同款小块圆角高亮（实色叠色，不用
+                        // Opacity —— 磨砂子树上不许出现 saveLayer）。
+                        child: MiHoverFeedback(
+                          mode: widget.themeMode,
+                          borderRadius: BorderRadius.circular(
+                            MiGlassNavMetrics.itemHoverRadius,
+                          ),
+                          child: Opacity(
+                            // 按下条目内容变暗（度量 ~55%）
+                            opacity: _pressedIndex == i
+                                ? MiGlassNavMetrics.pressDimOpacity
+                                : 1.0,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CustomPaint(
+                                  painter: widget.items[i].painter,
+                                  size: const Size(
+                                    MiGlassSideNavMetrics.iconSize,
+                                    MiGlassSideNavMetrics.iconHeight,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(
-                                height: MiGlassSideNavMetrics.iconLabelGap,
-                              ),
-                              Text(widget.items[i].label, style: labelStyle),
-                            ],
+                                const SizedBox(
+                                  height: MiGlassSideNavMetrics.iconLabelGap,
+                                ),
+                                Text(widget.items[i].label, style: labelStyle),
+                              ],
+                            ),
                           ),
                         ),
                       ),

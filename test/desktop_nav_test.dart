@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,14 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 // 内部画笔：只用来把「选中胶囊落在哪个槽位」读成数值（不属公开 API）。
 import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
 
+/// 宽屏**内容列**在给定窗口下的几何（`MiContentColumn` 1120dp 上限 + 居中）：
+/// 返回两侧留白与列宽。侧栏列宽先被扣掉，剩下的区域再决定列宽。
+({double gutter, double width}) contentColumn(Size window) {
+  final area = window.width - MiGlassSideNavMetrics.gutterWidth;
+  final width = math.min(area, MiBreakpoints.contentMaxWidth);
+  return (gutter: (area - width) / 2, width: width);
+}
+
 /// 宽屏导航回归：侧边导航栏的几何 / 选中态 / 回调，以及示例应用在
 /// **导航断点两侧**的形态切换（底部栏 ⇄ 侧栏）。
 ///
@@ -19,8 +29,8 @@ import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav
 /// 判据约定：
 ///  * **形态唯一** = 任何容器宽下底部栏与侧栏**恰好出现一个**；
 ///  * **边界严格大于** = 画面容器宽 600 → 底栏，602 → 侧栏；
-///  * **布局不错位** = 页面左缘恰为侧栏列宽（`gutterWidth`）、侧栏左缘留白
-///    25.5、贴顶，且不溢出（`takeException() == null`）；
+///  * **布局不错位** = 页面在侧栏右侧的内容列里（列宽 ≤ 1120、居中、两侧
+///    留白相等）、侧栏左缘留白 25.5、贴顶，且不溢出（`takeException() == null`）；
 ///  * **行为一致** = 点条目回调的下标与页面切换结果和底部栏相同；
 ///  * **切形态不丢状态** = 跨断点来回改变窗口尺寸后，页面滚动位置保持不变。
 void main() {
@@ -588,14 +598,17 @@ void main() {
         );
         expect(find.byType(MiGlassNavBar), findsNothing, reason: '$window');
         expect(find.byType(MiGlassSideNavBar), findsOneWidget, reason: '$window');
-        // 页面让位、侧栏与页面都在画面内
+        // 页面在侧栏右侧的内容列里：列宽 ≤ 1120、两侧留白相等
         final page = tester.getRect(find.byType(MockPage));
         final rail = tester.getRect(find.byType(MiGlassSideNavBar));
+        final col = contentColumn(window);
+        expect(page.width, closeTo(col.width, 0.01), reason: '$window');
         expect(
-          page.left - rail.left,
-          closeTo(MiGlassSideNavMetrics.gutterWidth - MiGlassSideNavMetrics.railMargin, 0.01),
+          page.left,
+          closeTo(MiGlassSideNavMetrics.gutterWidth + col.gutter, 0.01),
           reason: '$window',
         );
+        expect(page.left - rail.left, greaterThan(0), reason: '$window');
         expect(page.right, lessThanOrEqualTo(window.width + 0.01), reason: '$window');
       }
     });
@@ -613,8 +626,10 @@ void main() {
 
       final rail = tester.getRect(find.byType(MiGlassSideNavBar));
       final page = tester.getRect(find.byType(MockPage));
+      final col = contentColumn(window);
 
-      // 铺满：画面 = 窗口，四周没有留白 / 圆角卡片
+      // 铺满：画面 = 窗口，四周没有留白 / 圆角卡片（页面底色仍铺满窗口，
+      // 只是内容列限宽 1120 并居中）
       expect(rail.left, closeTo(MiGlassSideNavMetrics.railMargin, 0.01));
       expect(rail.width, closeTo(MiGlassSideNavMetrics.railWidth, 0.01));
       expect(
@@ -622,11 +637,12 @@ void main() {
         closeTo(MiGlassSideNavMetrics.railMargin, 0.01),
         reason: '侧栏应贴顶、距窗口顶缘一档留白（测试环境安全区为 0）',
       );
-      expect(page.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01),
-          reason: '页面左缘应为侧栏列宽');
+      expect(page.left,
+          closeTo(MiGlassSideNavMetrics.gutterWidth + col.gutter, 0.01),
+          reason: '页面应落在侧栏右侧的内容列里（列宽上限 1120 + 居中）');
       expect(page.top, closeTo(0, 0.01));
-      expect(page.width,
-          closeTo(window.width - MiGlassSideNavMetrics.gutterWidth, 0.01));
+      expect(col.width, closeTo(MiBreakpoints.contentMaxWidth, 0.01));
+      expect(page.width, closeTo(col.width, 0.01));
       expect(page.height, closeTo(window.height, 0.01));
       // 内容完整落在窗口内
       expect(rail.right, lessThanOrEqualTo(window.width + 0.01));

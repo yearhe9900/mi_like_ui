@@ -8,6 +8,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/hover_feedback.dart';
 import 'pill_tab_bar_metrics.dart';
 
 /// 胶囊分类标签行（明暗双模式）。
@@ -97,23 +98,31 @@ class MiPillTabBar extends StatelessWidget {
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => onTap(i),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            width: itemWidth,
-            height: MiPillTabMetrics.pillHeight,
-            decoration: BoxDecoration(
-              color: selected ? palette.selectedFill : unselectedFill,
-              borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              labels[i],
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: MiTypography.pillLabel.copyWith(
-                color:
-                    selected ? palette.selectedLabel : palette.unselectedLabel,
+          // 悬停只给**未选中**胶囊：选中项已是近不透明实心，再叠一层读不出
+          // 变化，反而糊住选中态（叠色是 5.6% 的实色，不是 Opacity —— 不给
+          // 磨砂子树引入 saveLayer）。
+          child: MiHoverFeedback(
+            mode: themeMode,
+            enabled: !selected,
+            borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              width: itemWidth,
+              height: MiPillTabMetrics.pillHeight,
+              decoration: BoxDecoration(
+                color: selected ? palette.selectedFill : unselectedFill,
+                borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                labels[i],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MiTypography.pillLabel.copyWith(
+                  color:
+                      selected ? palette.selectedLabel : palette.unselectedLabel,
+                ),
               ),
             ),
           ),

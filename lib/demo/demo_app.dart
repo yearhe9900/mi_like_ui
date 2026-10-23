@@ -282,14 +282,20 @@ class _DemoHomeState extends State<DemoHome> {
                       //  磨砂直接消失、还多算一份 5 段全宽高斯（度量模糊层
                       //  7 → 9、另有 6 层 opacity）。底部 tab 惯例也是瞬时切换，
                       //  参考 App 同款。
-                      child: MockPage(
-                        _index,
-                        key: ValueKey(_index),
-                        themeMode: widget.themeMode,
-                        onThemeModeChanged: widget.onThemeModeChanged,
-                        onSearchActiveChanged: _setSearchActive,
-                        onShowDialog: (position) =>
-                            setState(() => _dialogPosition = position),
+                      //
+                      // 内容列上限（[MiContentColumn] 1120dp）**恒定套着**，
+                      // 不按断点增删这一层：增删会重建页面 Element、跨断点时
+                      // 滚动位置归零。手机 / 平板画面本来 ≤ 1120，套上也一样宽。
+                      child: MiContentColumn(
+                        child: MockPage(
+                          _index,
+                          key: ValueKey(_index),
+                          themeMode: widget.themeMode,
+                          onThemeModeChanged: widget.onThemeModeChanged,
+                          onSearchActiveChanged: _setSearchActive,
+                          onShowDialog: (position) =>
+                              setState(() => _dialogPosition = position),
+                        ),
                       ),
                     ),
                     if (sideNav)
