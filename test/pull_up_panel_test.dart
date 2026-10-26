@@ -19,7 +19,8 @@ Widget _harness({
   double? height = 240,
   double? maxHeight,
   Offset? anchorPoint,
-  VoidCallback? onScrimTap,
+  MiPullUpPanelController? controller,
+  VoidCallback? onDismissed,
   Widget? child,
 }) {
   return MaterialApp(
@@ -33,7 +34,8 @@ Widget _harness({
         maxHeight: maxHeight,
         anchorPoint: anchorPoint,
         themeMode: mode,
-        onScrimTap: onScrimTap,
+        controller: controller,
+        onDismissed: onDismissed,
         child: child ??
             const SizedBox(
               width: double.infinity,
@@ -168,13 +170,47 @@ void main() {
     expect(tester.getRect(_panel()).left, closeTo(24, 0.5));
   });
 
-  testWidgets('行为：面板外点按触发 onScrimTap、面板内点按命中内容（变换命中）',
+  testWidgets('行为：面板外点按播收回动画（反向弹簧 + 淡出）后回调 onDismissed',
       (tester) async {
     _useCanvas(tester);
-    var scrimTapped = 0;
+    var dismissed = 0;
+    await tester.pumpWidget(_harness(
+      onDismissed: () => dismissed++,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => fail('内容不该被点到'),
+        child: const SizedBox(width: double.infinity, height: 240),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_panel()).width, closeTo(345, 0.5));
+
+    // 面板外点按 → 立即开始收回，**不**立刻回调（要等动画收口）
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pump();
+    expect(dismissed, 0);
+
+    // 中途：宽度在缩、淡出进度 <1（反向弹簧 + 线性淡出）
+    await tester.pump(const Duration(milliseconds: 40));
+    final midW = tester.getRect(_panel()).width;
+    expect(midW, lessThan(320), reason: '收回中（~0.19s 临界阻尼）');
+    final fade = tester.widget<Opacity>(
+      find
+          .descendant(of: find.byType(MiPullUpPanel), matching: find.byType(Opacity))
+          .first,
+    );
+    expect(fade.opacity, lessThan(1.0), reason: '随进度线性淡出');
+
+    // 收口 → 回调；面板缩回起点尺寸（按钮直径 54.1）
+    await tester.pumpAndSettle();
+    expect(dismissed, 1);
+    expect(tester.getRect(_panel()).width, closeTo(54.1, 1.0));
+  });
+
+  testWidgets('行为：面板内点按命中内容（缩放后的命中变换）', (tester) async {
+    _useCanvas(tester);
     var contentTapped = 0;
     await tester.pumpWidget(_harness(
-      onScrimTap: () => scrimTapped++,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => contentTapped++,
@@ -183,14 +219,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // 面板中心 = 内容命中（等比缩放后的命中变换）
     await tester.tapAt(tester.getCenter(_panel()));
-    expect(contentTapped, 1);
-    expect(scrimTapped, 0);
-
-    // 面板外左上角 = 遮罩（透明命中层）
-    await tester.tapAt(const Offset(8, 8));
-    expect(scrimTapped, 1);
     expect(contentTapped, 1);
 
     // 遮罩是**透明**的（无压暗 —— 度量）：页底仍是纯黑
@@ -201,6 +230,26 @@ void main() {
       ),
     );
     expect(scrim.color, MiTransparencyTokens.panelScrim);
+  });
+
+  testWidgets('控制器：controller.dismiss() 播收回动画并在收口回调', (tester) async {
+    _useCanvas(tester);
+    final controller = MiPullUpPanelController();
+    var dismissed = 0;
+    await tester.pumpWidget(_harness(
+      controller: controller,
+      onDismissed: () => dismissed++,
+    ));
+    await tester.pumpAndSettle();
+    expect(controller.isVisible, isTrue);
+
+    controller.dismiss();
+    await tester.pump();
+    expect(dismissed, 0);
+    await tester.pumpAndSettle();
+    expect(dismissed, 1);
+    // 收口后组件仍在（由宿主决定何时卸载），控制器仍在挂载期间可用
+    expect(controller.isVisible, isTrue);
   });
 
   testWidgets('明暗：表面随 palette（暗 #2C2C2C / 亮 #FFFFFF）', (tester) async {

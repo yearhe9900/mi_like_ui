@@ -1001,7 +1001,7 @@ void main() {
                   child: MiPullUpPanel(
                     height: 240,
                     themeMode: mode,
-                    onScrimTap: _noop,
+                    onDismissed: _noop,
                     child: _panelContent(mode),
                   ),
                 ),

@@ -175,7 +175,13 @@ class _DemoHomeState extends State<DemoHome> {
   bool _listDialog = false;
 
   /// 弹出面板演示：首页右下「更多」圆钮唤起（从按钮弹起、可自定义长高）。
+  /// `_pullPanel` = 面板挂载（含收回动画进行中）；`_panelExpanded` = 圆钮
+  /// 展开态（变深，点按收回时先回绿、收回结束后卸面板）。
   bool _pullPanel = false;
+  bool _panelExpanded = false;
+
+  /// 面板控制器：圆钮点按触发**收回动画**（反向弹簧 + 淡出，收口卸载）。
+  final _panelController = MiPullUpPanelController();
 
   /// 圆钮图标 Paint 的 key：唤起面板时取它的圆心做缩放锚点。
   final GlobalKey _fabKey = GlobalKey();
@@ -215,12 +221,26 @@ class _DemoHomeState extends State<DemoHome> {
       tabIndex: 0,
       // 面板展开时圆钮同步变深（度量：暗 #131313；亮色无素材，推导取同系
       // 浅灰）—— 与素材里「绿钮变深钮」一致。
-      color: _pullPanel
+      color: _panelExpanded
           ? (widget.themeMode == MiThemeMode.light
                 ? const Color(0xFFE8E8E8)
                 : const Color(0xFF131313))
           : null,
-      onTap: () => setState(() => _pullPanel = !_pullPanel),
+      onTap: () {
+        // 震动反馈（素材按键有触感；推导：小圆钮点按取 lightImpact 档）。
+        HapticFeedback.lightImpact();
+        if (_panelExpanded) {
+          // 展开态点按 → 播收回动画（反向弹簧 + 淡出），收口后 onDismissed
+          // 卸载；圆钮先回绿（与素材收回时序一致）。
+          setState(() => _panelExpanded = false);
+          _panelController.dismiss();
+        } else {
+          setState(() {
+            _pullPanel = true;
+            _panelExpanded = true;
+          });
+        }
+      },
       child: CustomPaint(
         key: _fabKey,
         painter: GridDotsIconPainter(Colors.white),
@@ -339,8 +359,11 @@ class _DemoHomeState extends State<DemoHome> {
                           height: 240,
                           anchorPoint: _fabAnchor,
                           themeMode: widget.themeMode,
-                          onScrimTap: () =>
-                              setState(() => _pullPanel = false),
+                          controller: _panelController,
+                          onDismissed: () => setState(() {
+                            _pullPanel = false;
+                            _panelExpanded = false;
+                          }),
                           child: _QuickActionsPanel(
                             themeMode: widget.themeMode,
                           ),
@@ -370,6 +393,7 @@ class _DemoHomeState extends State<DemoHome> {
                             onTap: (i) => setState(() {
                               _index = i;
                               _pullPanel = false;
+                              _panelExpanded = false;
                             }),
                             themeMode: widget.themeMode,
                             expanded: expandedRail,
@@ -406,6 +430,7 @@ class _DemoHomeState extends State<DemoHome> {
                           onTap: (i) => setState(() {
                             _index = i;
                             _pullPanel = false;
+                            _panelExpanded = false;
                           }),
                           themeMode: widget.themeMode,
                           // 预留空位圆钮：仅选中「首页」时显示（切走收起）；

@@ -335,10 +335,14 @@ MiDialog(
 ### 弹出面板（MiPullUpPanel）
 
 从触发按钮**弹起并长高**的模态面板（参考 HyperOS 拨号键盘唤起录屏，逐帧
-度量）：点按右下圆钮后，面板从按钮圆心**等比放大**到终态（弹簧 ~0.53s、
-~1.3% 过冲，拟合 stiffness 260 / damping 26），贴在底部导航栏之上；面板外
-**不压暗**（度量：面板外页底像素不变），面板外点按交给宿主收起。**高度与
-内容完全自定义**：内容在终态尺寸下排版、随面板一起缩放（过程中不重排版）。
+度量）：点按右下圆钮后，面板从按钮**等比放大**到终态（弹簧 ~0.53s、
+~1.3% 过冲，拟合 stiffness 260 / damping 26），贴在底部导航栏之上；收起时
+沿同一路径**反向缩回按钮**（临界阻尼弹簧 ~0.19s + 随进度线性淡出，均为
+拟合），收口后回调 `onDismissed` 由宿主移除。缩放原点逐帧拟合素材（横向
+恒定于终态右缘 −20.9dp、纵向从按钮圆心扫到屏底 −2×90dp —— 后者正是面板
+「向上长」的观感来源，残差 ≤11dp）。面板外**不压暗**（度量：面板外页底
+像素不变），面板外点按触发收回。**高度与内容完全自定义**：内容在终态
+尺寸下排版、随面板一起缩放（过程中不重排版）。触发按钮的**震动反馈**属按钮自身（demo 圆钮已接 `HapticFeedback.lightImpact()`），面板不代发。
 
 **规格**（详见 `MiPullUpPanelMetrics`）：宽 = 屏宽 − 2×24dp、圆角 33dp、
 底距屏底 90dp（均为度量）；表面暗 #2C2C2C（度量）/ 亮 #FFFFFF（推导）；
@@ -347,13 +351,17 @@ MiDialog(
 弹框宽屏口径）。
 
 ```dart
+final panelController = MiPullUpPanelController();
+
 MiPullUpPanel(
   height: 240,                       // 自定义长高（null = 内容自适应）
   anchorPoint: fabCenter,            // 触发按钮圆心（全局坐标）
   themeMode: mode,
-  onScrimTap: close,                 // 面板外点按，是否移除由宿主决定
+  controller: panelController,       // 可编程收起（可选）
+  onDismissed: close,                // 收回动画收口后移除
   child: MyPanelContent(),           // 任意内容（终态尺寸下排版）
 );
+// 面板外点按 / panelController.dismiss() 都会播收回动画后回调 onDismissed
 ```
 
 <img src="doc/preview/panel_dark.png" width="200" alt="深色弹出面板" /> <img src="doc/preview/panel_light.png" width="200" alt="浅色弹出面板" />

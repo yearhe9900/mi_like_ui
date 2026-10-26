@@ -8,16 +8,38 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import 'pull_up_panel_metrics.dart';
 
-/// 弹出面板（从触发按钮弹起、长高到定形面板的模态层）。
+/// [MiPullUpPanel] 的显隐控制器（宿主可编程收起）。
 ///
-/// 参考 HyperOS 拨号键盘的唤起形态：点按右下角圆钮后，一块圆角面板从按钮
-/// 位置**等比放大**长到终态（弹簧，带轻微过冲），贴在底部导航栏之上；
-/// 面板外**不压暗**（度量：面板外页底像素不变），面板外点按交给宿主收起。
+/// ```dart
+/// final panelController = MiPullUpPanelController();
+/// // 打开：
+/// setState(() => show = true);
+/// // 收起（播反向弹簧 + 淡出，收口后回调 `onDismissed`）：
+/// panelController.dismiss();
+/// ```
+class MiPullUpPanelController {
+  _MiPullUpPanelState? _state;
+
+  /// 面板当前是否挂载（打开或收起动画中）。
+  bool get isVisible => _state != null;
+
+  /// 收起面板（播收回动画；收口后触发面板的 `onDismissed`）。
+  /// 未挂载时为空操作。
+  void dismiss() => _state?._dismiss();
+}
+
+/// 弹出面板（从触发按钮弹起、长高到定形面板的模态层；收起时缩回按钮）。
+///
+/// 参考 HyperOS 拨号键盘的唤起形态（录屏逐帧度量）：点按右下圆钮后，一块
+/// 圆角面板从按钮位置**等比放大**长到终态（弹簧，带轻微过冲），贴在底部
+/// 导航栏之上；收起时沿同一路径**反向缩回按钮**并随进度淡出。面板外**不
+/// 压暗**（度量：面板外页底像素不变），面板外点按触发收起。
 /// 几何与动效规格见 [MiPullUpPanelMetrics]，表面配色见
 /// `theme/pull_up_panel_tokens.dart`。
 ///
 /// **高度与内容完全由调用方定义**：内容在**终态尺寸**下排版、随面板一起
-/// 缩放（唤起过程中不重排版 —— 与素材一致），因此传入的内容应是终态布局。
+/// 缩放（唤起/收起过程中不重排版 —— 与素材一致），因此传入的内容应是
+/// 终态布局。
 ///
 /// ```dart
 /// _showPanel
@@ -25,8 +47,9 @@ import 'pull_up_panel_metrics.dart';
 ///       child: MiPullUpPanel(
 ///         height: 320,                       // 自定义长高（null = 内容自适应）
 ///         anchorPoint: fabCenter,            // 触发按钮圆心（全局坐标）
+///         controller: panelController,       // 可编程收起（可选）
 ///         themeMode: mode,
-///         onScrimTap: close,
+///         onDismissed: close,                // 收回动画收口后移除
 ///         child: MyPanelContent(),
 ///       ),
 ///     )
@@ -36,16 +59,20 @@ import 'pull_up_panel_metrics.dart';
 /// ## 行为
 ///
 ///  * **唤起**：挂载即从 [anchorPoint]（触发按钮圆心，全局坐标；缺省取
-///    素材按钮位 —— 距右缘 66 / 距屏底 52.3）以起点尺寸 [collapsedSize]
-///    （缺省 = 按钮直径 54.1）**等比放大**到终态；弹簧
-///    （stiffness 260 / damping 26）~0.53s 收口、~1.3% 过冲（拟合）；
-///  * **收起**：与 [MiDialog] 同契约 —— 组件不接管自身移除、无退场动画，
-///    何时移除由宿主在 [onScrimTap] 等回调里决定；
+///    素材按钮位）以起点尺寸 [collapsedSize]（缺省 = 按钮直径 54.1）**等比
+///    放大**到终态；缩放原点为**移动原点**（横向恒定于终态右缘 − 20.9、
+///    纵向由按钮圆心 lerp 到屏底 − 2×90，逐帧拟合素材，见
+///    [MiPullUpPanelMetrics] 类注释）；弹簧 ~0.53s 收口、~1.3% 过冲；
+///  * **收起**：点按面板外（透明命中层）或 [MiPullUpPanelController.dismiss]
+///    触发**反向弹簧**（临界阻尼 ~0.19s 缩回按钮）+ **随进度线性淡出**，
+///    收口后回调 [onDismissed] —— 由宿主移除组件（组件不提前自毁）；
 ///  * **高度**：[height] 给定终态高（超可用高时钳到 [maxHeight]）；为
 ///    `null` 时由内容自适应（同样受上限约束）。面板高上限 =
 ///    屏高 − 顶让位（安全区兜底）− 底距 90；
-///  * **宽度**：屏宽 − 2×24（度量）；宽屏档（≥1024）再限宽 440（推导，
-///    沿用弹框宽屏口径）。
+///  * **宽度**：屏宽 − 2×24（度量）；宽屏档（≥1024）再限宽 440（推导）。
+///
+/// 触发按钮的**震动反馈**属于按钮自身（素材按键有触感），由调用方在触发
+/// 回调里发 `HapticFeedback` —— 面板不越权代发。
 class MiPullUpPanel extends StatefulWidget {
   const MiPullUpPanel({
     super.key,
@@ -55,7 +82,8 @@ class MiPullUpPanel extends StatefulWidget {
     this.anchorPoint,
     this.collapsedSize = MiPullUpPanelMetrics.triggerDiameter,
     this.themeMode,
-    this.onScrimTap,
+    this.controller,
+    this.onDismissed,
   });
 
   /// 面板内容（在终态尺寸下排版，随面板一起等比缩放）。
@@ -76,8 +104,11 @@ class MiPullUpPanel extends StatefulWidget {
   /// 明暗模式；为空时跟随环境 `Theme.of(context).brightness`。
   final MiThemeMode? themeMode;
 
-  /// 面板外点按回调（null = 不响应）；是否移除由宿主决定。
-  final VoidCallback? onScrimTap;
+  /// 可选控制器：宿主用 [MiPullUpPanelController.dismiss] 编程收起。
+  final MiPullUpPanelController? controller;
+
+  /// 收回动画收口后的回调（宿主在此移除组件）。
+  final VoidCallback? onDismissed;
 
   @override
   State<MiPullUpPanel> createState() => _MiPullUpPanelState();
@@ -88,16 +119,20 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     // 名义兜底时长；实际由 SpringSimulation 驱动到收敛。上界放开到 1.2：
-    // 默认上界 1 会把弹簧的 ~1.4% 过冲钳平（见 springUpperBound）。
+    // 默认上界 1 会把唤起弹簧的 ~1.4% 过冲钳平（见 springUpperBound）。
     duration: const Duration(
       milliseconds: MiPullUpPanelMetrics.springSettleMs,
     ),
     upperBound: MiPullUpPanelMetrics.springUpperBound,
   );
 
+  /// 是否处于收回过程（驱动淡出 + 反向弹簧的语义）。
+  bool _dismissing = false;
+
   @override
   void initState() {
     super.initState();
+    widget.controller?._state = this;
     _controller.animateWith(
       SpringSimulation(
         const SpringDescription(
@@ -113,9 +148,44 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
   }
 
   @override
+  void didUpdateWidget(covariant MiPullUpPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      if (oldWidget.controller?._state == this) {
+        oldWidget.controller?._state = null;
+      }
+      widget.controller?._state = this;
+    }
+  }
+
+  @override
   void dispose() {
+    if (widget.controller?._state == this) widget.controller?._state = null;
     _controller.dispose();
     super.dispose();
+  }
+
+  /// 收起：同一原点路径的反向弹簧（临界阻尼）+ 淡出；收口后回调
+  /// [MiPullUpPanel.onDismissed]（组件由宿主移除，不提前自毁）。
+  void _dismiss() {
+    if (_dismissing) return;
+    setState(() => _dismissing = true);
+    _controller
+        .animateWith(
+          SpringSimulation(
+            const SpringDescription(
+              mass: MiPullUpPanelMetrics.springMass,
+              stiffness: MiPullUpPanelMetrics.closeStiffness,
+              damping: MiPullUpPanelMetrics.closeDamping,
+            ),
+            _controller.value, // 从当前进度收回
+            0,
+            0,
+          ),
+        )
+        .whenComplete(() {
+      if (mounted && _dismissing) widget.onDismissed?.call();
+    });
   }
 
   MiThemeMode _modeOf(BuildContext context) =>
@@ -131,11 +201,11 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
 
     return Stack(
       children: [
-        // 透明命中层（**无压暗** —— 度量）：面板外点按交给宿主收起。
+        // 透明命中层（**无压暗** —— 度量）：点按触发收回动画。
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: widget.onScrimTap,
+            onTap: _dismiss,
             child: const ColoredBox(color: MiTransparencyTokens.panelScrim),
           ),
         ),
@@ -156,46 +226,73 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
               return AnimatedBuilder(
                 animation: _controller,
                 builder: (context, _) {
-                  // 弹簧进度（可过冲 >1）→ 等比缩放。内容先按终态排好版，
-                  // 再整层以按钮圆心为原点缩放 —— 过程中不重排版。
+                  // 进度 t（唤起可过冲 >1；收回 1 → 0）。内容先按终态排好版，
+                  // 再整层等比缩放 —— 过程中不重排版。
                   final t = _controller.value;
                   final scale = startScale + (1 - startScale) * t;
+                  // 缩放原点（逐帧拟合素材，见 metrics 类注释）：
+                  //  * 横向恒定：终态右缘 − 20.9；
+                  //  * 纵向：按钮圆心 → 终态底缘 − 90，随 t lerp（面板向上长
+                  //    的观感来源；收回时原点随 t 回到按钮，面板缩回按钮）。
+                  final originXFixed =
+                      (screenW + panelW) / 2 -
+                      MiPullUpPanelMetrics.originOffsetX;
+                  final origin = Offset(
+                    // 横向：t∈[0,0.2] 从按钮圆心靠到终值（首个可见帧起恒定，
+                    // 与素材 ±1dp 拟合）。
+                    anchor.dx +
+                        (originXFixed - anchor.dx) *
+                            (t / MiPullUpPanelMetrics.originXArrivalT)
+                                .clamp(0.0, 1.0),
+                    // 纵向：按钮圆心 → 屏底 − 2×90 随 t lerp（面板向上长的
+                    // 观感来源；收回时原点回到按钮，面板缩回按钮）。
+                    anchor.dy +
+                        t *
+                            ((screenH -
+                                    2 * MiPullUpPanelMetrics.bottomGap) -
+                                anchor.dy),
+                  );
                   return Stack(
                     children: [
                       Transform(
                         transform: Matrix4.diagonal3Values(scale, scale, 1),
-                        // 原点 = 锚点（子层铺满屏幕，全局坐标 == 层内坐标）。
-                        origin: anchor,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: (screenW - panelW) / 2,
-                              bottom: MiPullUpPanelMetrics.bottomGap,
-                              width: panelW,
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(maxHeight: maxH),
-                                child: SizedBox(
-                                  height: widget.height == null
-                                      ? null
-                                      : math.min(widget.height!, maxH),
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: palette.surface,
-                                      borderRadius: BorderRadius.circular(
-                                        MiPullUpPanelMetrics.panelRadius,
+                        origin: origin,
+                        child: Opacity(
+                          // 收回时随进度线性淡出（素材实测）；唤起不淡入。
+                          opacity: _dismissing
+                              ? t.clamp(0.0, 1.0)
+                              : 1.0,
+                          child: Stack(
+                            children: [
+                              Positioned(
+                                left: (screenW - panelW) / 2,
+                                bottom: MiPullUpPanelMetrics.bottomGap,
+                                width: panelW,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(maxHeight: maxH),
+                                  child: SizedBox(
+                                    height: widget.height == null
+                                        ? null
+                                        : math.min(widget.height!, maxH),
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: palette.surface,
+                                        borderRadius: BorderRadius.circular(
+                                          MiPullUpPanelMetrics.panelRadius,
+                                        ),
                                       ),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(
-                                        MiPullUpPanelMetrics.panelRadius,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          MiPullUpPanelMetrics.panelRadius,
+                                        ),
+                                        child: widget.child,
                                       ),
-                                      child: widget.child,
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
