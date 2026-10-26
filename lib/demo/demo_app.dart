@@ -155,7 +155,7 @@ class DemoHome extends StatefulWidget {
   State<DemoHome> createState() => _DemoHomeState();
 }
 
-class _DemoHomeState extends State<DemoHome> {
+class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin {
   int _index = 0;
 
   /// 当前页是否处于搜索态 —— 搜索是**聚焦态**（参考素材里那屏没有 App 级
@@ -182,6 +182,41 @@ class _DemoHomeState extends State<DemoHome> {
 
   /// 面板控制器：圆钮点按触发**收回动画**（反向弹簧 + 淡出，收口卸载）。
   final _panelController = MiPullUpPanelController();
+
+  /// 圆钮形态交叉淡变（绿⇄展开色）：慢速素材 313 帧中间态实测 —— 填充
+  /// 白→绿与点阵黑→白**同时**渐变，~200ms（拟合，收回全程同步）。
+  late final AnimationController _fabColorCtrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  );
+
+  /// 展开态切换（驱动圆钮淡变；v=恢复绿钮）。
+  void _setFabExpanded(bool v) {
+    setState(() => _panelExpanded = v);
+    if (v) {
+      _fabColorCtrl.forward();
+    } else {
+      _fabColorCtrl.reverse();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // 圆钮淡变时刷新 fab 声明（fab 是配置对象、非 widget，靠重建下发新色）。
+    _fabColorCtrl.addListener(_onFabColorTick);
+  }
+
+  void _onFabColorTick() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _fabColorCtrl.removeListener(_onFabColorTick);
+    _fabColorCtrl.dispose();
+    super.dispose();
+  }
 
   /// 圆钮图标 Paint 的 key：唤起面板时取它的圆心做缩放锚点。
   final GlobalKey _fabKey = GlobalKey();
@@ -217,33 +252,44 @@ class _DemoHomeState extends State<DemoHome> {
     // 点按弹提示）—— 手机 / 窄窗挂在底部栏右侧（栏体左移让位），平板 /
     // 桌面挂在侧栏栏尾下方（栏体不动、槽位恒定预留）。显隐契约、弹出曲线
     // 与直径/间距 token 两种形态逐帧同源。
+    // 展开态圆钮：填充与点阵随 _fabColorCtrl 交叉淡变（度量：暗 #131313 /
+    // 浅 #FBFBFB 填充，浅色点阵黑、暗色点阵白；静止 t=0 时传 null 走导航栏
+    // 自带绿钮 token，与既有像素一致）。
+    final fabT = Curves.easeInOut.transform(_fabColorCtrl.value);
+    final fabLight = widget.themeMode == MiThemeMode.light;
     final fab = MiGlassNavFab(
       tabIndex: 0,
-      // 面板展开时圆钮同步变深（度量：暗 #131313；亮色无素材，推导取同系
-      // 浅灰）—— 与素材里「绿钮变深钮」一致。
-      color: _panelExpanded
-          ? (widget.themeMode == MiThemeMode.light
-                ? const Color(0xFFE8E8E8)
-                : const Color(0xFF131313))
-          : null,
+      color: fabT == 0
+          ? null
+          : Color.lerp(
+              MiColors.fabGreenFor(widget.themeMode),
+              fabLight ? const Color(0xFFFBFBFB) : const Color(0xFF131313),
+              fabT,
+            ),
       onTap: () {
         // 震动反馈（素材按键有触感；推导：小圆钮点按取 lightImpact 档）。
         HapticFeedback.lightImpact();
         if (_panelExpanded) {
-          // 展开态点按 → 播收回动画（反向弹簧 + 淡出），收口后 onDismissed
-          // 卸载；圆钮先回绿（与素材收回时序一致）。
-          setState(() => _panelExpanded = false);
+          // 展开态点按 → 播收回动画（反向弹簧 + 淡出），收口后
+          // onDismissed 卸载；圆钮同步淡变回绿（素材时序）。
+          _setFabExpanded(false);
           _panelController.dismiss();
         } else {
           setState(() {
             _pullPanel = true;
-            _panelExpanded = true;
           });
+          _setFabExpanded(true);
         }
       },
       child: CustomPaint(
         key: _fabKey,
-        painter: GridDotsIconPainter(Colors.white),
+        painter: GridDotsIconPainter(
+          Color.lerp(
+            Colors.white,
+            fabLight ? Colors.black : Colors.white,
+            fabT,
+          )!,
+        ),
         size: const Size.square(18.2),
       ),
     );
@@ -360,10 +406,12 @@ class _DemoHomeState extends State<DemoHome> {
                           anchorPoint: _fabAnchor,
                           themeMode: widget.themeMode,
                           controller: _panelController,
-                          onDismissed: () => setState(() {
-                            _pullPanel = false;
-                            _panelExpanded = false;
-                          }),
+                          onDismissed: () {
+                            setState(() => _pullPanel = false);
+                            // 面板外点按收回：面板收口后圆钮才淡变回绿
+                            //（圆钮点按收回的路径已在触发时淡变）。
+                            if (_panelExpanded) _setFabExpanded(false);
+                          },
                           child: _QuickActionsPanel(
                             themeMode: widget.themeMode,
                           ),
@@ -393,7 +441,10 @@ class _DemoHomeState extends State<DemoHome> {
                             onTap: (i) => setState(() {
                               _index = i;
                               _pullPanel = false;
-                              _panelExpanded = false;
+                              if (_panelExpanded) {
+                                _panelExpanded = false;
+                                _fabColorCtrl.value = 0;
+                              }
                             }),
                             themeMode: widget.themeMode,
                             expanded: expandedRail,
@@ -430,7 +481,10 @@ class _DemoHomeState extends State<DemoHome> {
                           onTap: (i) => setState(() {
                             _index = i;
                             _pullPanel = false;
-                            _panelExpanded = false;
+                            if (_panelExpanded) {
+                              _panelExpanded = false;
+                              _fabColorCtrl.value = 0;
+                            }
                           }),
                           themeMode: widget.themeMode,
                           // 预留空位圆钮：仅选中「首页」时显示（切走收起）；

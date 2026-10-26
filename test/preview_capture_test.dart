@@ -1005,22 +1005,33 @@ void main() {
                     child: _panelContent(mode),
                   ),
                 ),
-                // 触发圆钮（素材同位：距右缘 66 / 距屏底 52.3 的圆心）
+                // 触发圆钮（素材同位：距右缘 66 / 距屏底 52.3 的圆心）。
+                // 展开态度量：暗 #131313 + 白点阵 / 浅 #FBFBFB + 黑点阵；
+                // 圆钮轻投影为预览示意（推导，与面板阴影同语言）。
                 Positioned(
                   left: 327.0 - 54.1 / 2,
                   top: 803.7 - 54.1 / 2,
                   child: Container(
                     width: 54.1,
                     height: 54.1,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF131313),
+                    decoration: BoxDecoration(
+                      color: light
+                          ? const Color(0xFFFBFBFB)
+                          : const Color(0xFF131313),
                       shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: MiTransparencyTokens.panelShadow,
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(
+                    child: Icon(
                       Icons.apps,
                       size: 22,
-                      color: Colors.white,
+                      color: light ? Colors.black : Colors.white,
                     ),
                   ),
                 ),

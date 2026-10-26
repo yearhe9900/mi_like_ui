@@ -280,6 +280,21 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
                                         borderRadius: BorderRadius.circular(
                                           MiPullUpPanelMetrics.panelRadius,
                                         ),
+                                        // 轻投影（浅色度量拟合，暗色不可分辨）
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color:
+                                                MiTransparencyTokens.panelShadow,
+                                            blurRadius:
+                                                MiPullUpPanelMetrics
+                                                    .shadowBlurRadius,
+                                            offset: Offset(
+                                              0,
+                                              MiPullUpPanelMetrics
+                                                  .shadowOffsetY,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(

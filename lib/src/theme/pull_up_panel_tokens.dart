@@ -9,15 +9,16 @@ import 'theme_mode.dart';
 /// 文字不透底）。注意与弹框卡片 #242424 不同 —— 这是另一套系统面板的表面，
 /// 比弹框亮一档。
 ///
-/// **浅色为推导值**：素材只有暗色样张；按弹框配方的同构关系（面板之于页面
-/// ≈ 卡片之于遮罩）取纯白 #FFFFFF（与 `MiDialogPalette.light.surface` 同值）。
+/// **浅色为度量**（0.25× 慢速浅色素材实测 #FFFFFF）：与
+/// `MiDialogPalette.light.surface` 同值。
 ///
-/// 面板**无压暗遮罩、无投影**（度量：面板外页底像素不变；暗底上看不出投影，
-/// 按本库「无投影」口径取无 —— 后半句为推导）。
+/// 面板**无压暗遮罩**（度量：面板外页底像素不变）；**带轻投影**（浅色素材
+/// 下缘外压暗 14 级，黑 @0.12、blur 14、下偏 4，见
+/// [MiTransparencyTokens.panelShadow]；暗色黑底上不可分辨，推导同值）。
 class MiPullUpPanelPalette {
   const MiPullUpPanelPalette({required this.surface});
 
-  /// 面板填充（度量暗 #2C2C2C / 推导亮 #FFFFFF）。
+  /// 面板填充（度量暗 #2C2C2C / 度量亮 #FFFFFF）。
   final Color surface;
 
   /// 暗色配方。

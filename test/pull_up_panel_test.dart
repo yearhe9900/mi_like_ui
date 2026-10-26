@@ -82,10 +82,14 @@ void main() {
     expect(MiPullUpPanelMetrics.panelWidthFor(393), closeTo(345, 0.01));
     expect(MiPullUpPanelMetrics.panelWidthFor(1366), 440);
     expect(MiPullUpPanelMetrics.maxHeightFor(856, 0), 856 - 24 - 90);
-    // 配色：暗 #2C2C2C（度量）/ 亮 #FFFFFF（推导）；遮罩无压暗（透明）
+    // 配色：暗 #2C2C2C / 亮 #FFFFFF（两段素材分别度量）；遮罩无压暗（透明）
     expect(MiPullUpPanelPalette.dark.surface, const Color(0xFF2C2C2C));
     expect(MiPullUpPanelPalette.light.surface, const Color(0xFFFFFFFF));
     expect(MiTransparencyTokens.panelScrim.alpha, 0);
+    // 投影（浅色度量拟合：黑 @0.12、blur 14、下偏 4）
+    expect(MiTransparencyTokens.panelShadow.alpha, closeTo(0.12 * 255, 0.5));
+    expect(MiPullUpPanelMetrics.shadowBlurRadius, 14.0);
+    expect(MiPullUpPanelMetrics.shadowOffsetY, 4.0);
   });
 
   testWidgets('终态几何：宽 345、居中、底距 90、圆角 33（弹簧收口后）',
@@ -105,6 +109,11 @@ void main() {
       (deco.borderRadius as BorderRadius).topLeft.x,
       closeTo(33.0, 0.01),
     );
+    // 轻投影（度量拟合）：黑 @0.12、blur 14、下偏 4
+    final shadow = deco.boxShadow!.single;
+    expect(shadow.color, MiTransparencyTokens.panelShadow);
+    expect(shadow.blurRadius, closeTo(14.0, 0.01));
+    expect(shadow.offset, const Offset(0, 4.0));
   });
 
   testWidgets('唤起：从锚点等比放大、弹簧过冲后收口（素材拟合）', (tester) async {

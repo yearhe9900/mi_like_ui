@@ -329,6 +329,16 @@ class MiTransparencyTokens {
   /// 点按能交给宿主收起（语义同弹框 `onScrimTap`，只是不压暗）。
   static const Color panelScrim = Color(0x00000000);
 
+  /// 弹出面板投影 alpha（**度量拟合**，0.25× 慢速浅色素材：面板下缘外 +2dp
+  /// 处压暗 14 级、+6dp 压 10 级、+14dp 归零，上缘仅 ~3 级 → 黑 @0.12、
+  /// blur σ≈7、下偏 4dp 的边缘剖面可同时对上两侧读数）。暗色素材黑底上
+  /// **不可分辨**（同配方压在 #000 上无视觉差异 —— 推导同值）。
+  static const double panelShadowAlpha = 0.12;
+
+  /// 弹面投影色（黑 @ 上述 alpha，明暗同值）。
+  static const Color panelShadow =
+      Color.fromRGBO(0, 0, 0, panelShadowAlpha);
+
   // ── 页面推入（`MiCardPageRoute`）────────────────────────────────────────
   //
   // 下层页压暗：度量取「同一像素在转场前后的亮度比」。参考素材里下层页
