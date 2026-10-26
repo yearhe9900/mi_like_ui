@@ -858,7 +858,7 @@ void main() {
       expect(pill(), closeTo(slotCenter(2), 0.5));
     });
 
-    testWidgets('平板 / 桌面：绿色圆钮随「首页」选中显隐、点按弹提示', (tester) async {
+    testWidgets('平板 / 桌面：绿色圆钮随「首页」选中显隐、点按唤起弹出面板', (tester) async {
       setWindow(tester, const Size(1366, 768));
       addTearDown(tester.view.reset);
 
@@ -881,24 +881,32 @@ void main() {
       final deco = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
       expect(deco.color, MiColors.fabGreenFor(MiThemeMode.dark));
 
-      // 点按弹提示（与底部栏形态同一份 fab 声明）
+      // 点按唤起弹出面板（与底部栏形态同一份 fab 声明），圆钮同步变深
+      // （度量 #131313）；面板锚在圆钮圆心、弹簧唤起后收口。
       await tester.tap(fabCircle);
       await tester.pump();
-      expect(find.text('圆形按钮被点击'), findsOneWidget);
       await tester.pumpAndSettle();
+      expect(find.byType(MiPullUpPanel), findsOneWidget);
+      expect(find.text('快捷操作'), findsOneWidget);
+      final opened = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      expect(opened.color, const Color(0xFF131313));
 
-      // 切到「分类」→ 收起（缩放到 0 + IgnorePointer，不占视觉）
+      // 切到「分类」→ 面板随切走收起、圆钮也收起（缩放到 0 + IgnorePointer）
       await tester.tap(find.descendant(of: rail, matching: find.text('分类')));
       await tester.pumpAndSettle();
+      expect(find.byType(MiPullUpPanel), findsNothing);
       final hidden = tester.widget<Opacity>(
         find
             .ancestor(of: fabCircle, matching: find.byType(Opacity)),
       );
       expect(hidden.opacity, 0.0);
 
-      // 切回「首页」→ 弹回
+      // 切回「首页」→ 弹回（面板已收起，圆钮回绿）
       await tester.tap(find.descendant(of: rail, matching: find.text('首页')));
       await tester.pumpAndSettle();
+      expect(find.byType(MiPullUpPanel), findsNothing);
+      final closed = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      expect(closed.color, MiColors.fabGreenFor(MiThemeMode.dark));
       final shown = tester.widget<Opacity>(
         find
             .ancestor(of: fabCircle, matching: find.byType(Opacity)),

@@ -174,6 +174,21 @@ class _DemoHomeState extends State<DemoHome> {
   /// 弹框演示（列表形态）：是否弹出纵向操作列表（issue #1）。
   bool _listDialog = false;
 
+  /// 弹出面板演示：首页右下「更多」圆钮唤起（从按钮弹起、可自定义长高）。
+  bool _pullPanel = false;
+
+  /// 圆钮图标 Paint 的 key：唤起面板时取它的圆心做缩放锚点。
+  final GlobalKey _fabKey = GlobalKey();
+
+  /// 圆钮圆心（全局坐标，面板唤起锚点）。
+  Offset? get _fabAnchor {
+    final box = _fabKey.currentContext?.findRenderObject();
+    if (box is RenderBox && box.attached && box.hasSize) {
+      return box.localToGlobal(box.size.center(Offset.zero));
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final light = widget.themeMode == MiThemeMode.light;
@@ -198,13 +213,16 @@ class _DemoHomeState extends State<DemoHome> {
     // 与直径/间距 token 两种形态逐帧同源。
     final fab = MiGlassNavFab(
       tabIndex: 0,
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('圆形按钮被点击'),
-          duration: Duration(milliseconds: 800),
-        ),
-      ),
+      // 面板展开时圆钮同步变深（度量：暗 #131313；亮色无素材，推导取同系
+      // 浅灰）—— 与素材里「绿钮变深钮」一致。
+      color: _pullPanel
+          ? (widget.themeMode == MiThemeMode.light
+                ? const Color(0xFFE8E8E8)
+                : const Color(0xFF131313))
+          : null,
+      onTap: () => setState(() => _pullPanel = !_pullPanel),
       child: CustomPaint(
+        key: _fabKey,
         painter: GridDotsIconPainter(Colors.white),
         size: const Size.square(18.2),
       ),
@@ -311,6 +329,23 @@ class _DemoHomeState extends State<DemoHome> {
                         ),
                       ),
                     ),
+                    // 弹出面板演示（从圆钮弹起）：插在导航栏**之下**绘制 ——
+                    // 圆钮要压在面板右下角上（与素材同：展开态深色圆钮可见）。
+                    if (_pullPanel)
+                      Positioned.fill(
+                        key: const ValueKey('pullUpPanelOverlay'),
+                        child: MiPullUpPanel(
+                          // 自定义长高：演示传固定 240（null = 内容自适应）
+                          height: 240,
+                          anchorPoint: _fabAnchor,
+                          themeMode: widget.themeMode,
+                          onScrimTap: () =>
+                              setState(() => _pullPanel = false),
+                          child: _QuickActionsPanel(
+                            themeMode: widget.themeMode,
+                          ),
+                        ),
+                      ),
                     if (sideNav)
                       // 侧栏贴顶对齐、距画面左缘与安全区各一档留白（与底部栏
                       // 距屏底一档留白同一口径）；栏体自身收缩到内容高。
@@ -332,7 +367,10 @@ class _DemoHomeState extends State<DemoHome> {
                           child: MiGlassSideNavBar(
                             items: items,
                             selectedIndex: _index,
-                            onTap: (i) => setState(() => _index = i),
+                            onTap: (i) => setState(() {
+                              _index = i;
+                              _pullPanel = false;
+                            }),
                             themeMode: widget.themeMode,
                             expanded: expandedRail,
                             // 绿色圆钮挂在栏尾下方（选中「首页」时弹出）
@@ -365,7 +403,10 @@ class _DemoHomeState extends State<DemoHome> {
                         child: MiGlassNavBar(
                           items: items,
                           selectedIndex: _index,
-                          onTap: (i) => setState(() => _index = i),
+                          onTap: (i) => setState(() {
+                            _index = i;
+                            _pullPanel = false;
+                          }),
                           themeMode: widget.themeMode,
                           // 预留空位圆钮：仅选中「首页」时显示（切走收起）；
                           // 与侧栏形态共用同一份声明。
@@ -454,6 +495,74 @@ class _DemoHomeState extends State<DemoHome> {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 弹出面板演示内容（demo 功能，非框架组件）：标题 + 3×2 快捷操作网格。
+///
+/// 高度由外层 `MiPullUpPanel.height` 自定义（240dp）；内容在终态尺寸下
+/// 排版、随面板一起缩放。
+class _QuickActionsPanel extends StatelessWidget {
+  const _QuickActionsPanel({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  static const List<(IconData, String)> _entries = [
+    (Icons.qr_code_scanner, '扫一扫'),
+    (Icons.payment, '付款码'),
+    (Icons.nfc, '乘车卡'),
+    (Icons.screenshot, '截图'),
+    (Icons.dark_mode_outlined, '深色模式'),
+    (Icons.settings_outlined, '设置'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = MiColors.foregroundFor(themeMode);
+    // 副文字 = 墨色 @70%（demo 层示意值）。
+    final sub = themeMode == MiThemeMode.dark
+        ? const Color(0xB3FFFFFF)
+        : const Color(0xB3000000);
+
+    Widget cell((IconData, String) entry) => Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(entry.$1, size: 26, color: ink),
+          const SizedBox(height: 8),
+          Text(
+            entry.$2,
+            style: MiTypography.dialogItemSubtitle.copyWith(color: sub),
+          ),
+        ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '快捷操作',
+            style: MiTypography.dialogTitle.copyWith(color: ink),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              for (final e in _QuickActionsPanel._entries.sublist(0, 3)) cell(e),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              for (final e in _QuickActionsPanel._entries.sublist(3)) cell(e),
+            ],
+          ),
+        ],
       ),
     );
   }

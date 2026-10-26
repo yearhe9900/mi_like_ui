@@ -64,6 +64,7 @@ MiGlassNavBar(
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
 | `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp） |
+| `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
@@ -330,6 +331,32 @@ MiDialog(
 ```
 
 <img src="doc/preview/dialog_list_dark.png" width="200" alt="深色操作列表弹框" /> <img src="doc/preview/dialog_list_light.png" width="200" alt="浅色操作列表弹框" />
+
+### 弹出面板（MiPullUpPanel）
+
+从触发按钮**弹起并长高**的模态面板（参考 HyperOS 拨号键盘唤起录屏，逐帧
+度量）：点按右下圆钮后，面板从按钮圆心**等比放大**到终态（弹簧 ~0.53s、
+~1.3% 过冲，拟合 stiffness 260 / damping 26），贴在底部导航栏之上；面板外
+**不压暗**（度量：面板外页底像素不变），面板外点按交给宿主收起。**高度与
+内容完全自定义**：内容在终态尺寸下排版、随面板一起缩放（过程中不重排版）。
+
+**规格**（详见 `MiPullUpPanelMetrics`）：宽 = 屏宽 − 2×24dp、圆角 33dp、
+底距屏底 90dp（均为度量）；表面暗 #2C2C2C（度量）/ 亮 #FFFFFF（推导）；
+起点尺寸 = 触发按钮直径（默认 54.1dp 度量）、锚点默认取素材按钮位（推导，
+调用方应传真实按钮圆心的全局坐标）；宽屏档（≥1024）限宽 440（推导，沿用
+弹框宽屏口径）。
+
+```dart
+MiPullUpPanel(
+  height: 240,                       // 自定义长高（null = 内容自适应）
+  anchorPoint: fabCenter,            // 触发按钮圆心（全局坐标）
+  themeMode: mode,
+  onScrimTap: close,                 // 面板外点按，是否移除由宿主决定
+  child: MyPanelContent(),           // 任意内容（终态尺寸下排版）
+);
+```
+
+<img src="doc/preview/panel_dark.png" width="200" alt="深色弹出面板" /> <img src="doc/preview/panel_light.png" width="200" alt="浅色弹出面板" />
 
 ### 页面推入转场（MiCardPageRoute）
 
@@ -606,6 +633,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiGradientBlur` — 顶部渐进模糊
 - [x] `MiThemeCard` — 主题卡片
 - [x] `MiDialog` — 弹框（含纵向操作列表形态）
+- [x] `MiPullUpPanel` — 弹出面板（按钮弹起 / 弹簧动效）
 - [x] `MiCardPageRoute` — 页面推入转场
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`
 - [ ] `MiForm` — 表单

@@ -948,6 +948,146 @@ void main() {
       matchesGoldenFile('../doc/preview/dialog_list_light.png'),
     );
   });
+
+  testWidgets('README preview: pull-up panel (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 856 * 2);
+    addTearDown(tester.view.reset);
+    await _loadPreviewFonts(tester);
+
+    // 弹出面板（度量：宽 345、圆角 33、底距 90、无压暗）：背景色块被面板
+    // 压住但不压暗（度量点）；右下画触发圆钮示意唤起源（素材同位）。
+    Widget frame(MiThemeMode mode) {
+      final light = mode == MiThemeMode.light;
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor:
+              light ? const Color(0xFFFFFFFF) : const Color(0xFF000000),
+          body: KeyedSubtree(
+            key: const ValueKey('pullPanelPreview'),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(11.9, 60, 11.9, 60),
+                    child: Column(
+                      children: [
+                        for (final color in const [
+                          Color(0xFF3B6BF5),
+                          Color(0xFF808080),
+                          Color(0xFF3B6BF5),
+                          Color(0xFF808080),
+                        ])
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: MiPullUpPanel(
+                    height: 240,
+                    themeMode: mode,
+                    onScrimTap: _noop,
+                    child: _panelContent(mode),
+                  ),
+                ),
+                // 触发圆钮（素材同位：距右缘 66 / 距屏底 52.3 的圆心）
+                Positioned(
+                  left: 327.0 - 54.1 / 2,
+                  top: 803.7 - 54.1 / 2,
+                  child: Container(
+                    width: 54.1,
+                    height: 54.1,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF131313),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.apps,
+                      size: 22,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(frame(MiThemeMode.dark));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byKey(const ValueKey('pullPanelPreview')),
+      matchesGoldenFile('../doc/preview/panel_dark.png'),
+    );
+
+    await tester.pumpWidget(frame(MiThemeMode.light));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byKey(const ValueKey('pullPanelPreview')),
+      matchesGoldenFile('../doc/preview/panel_light.png'),
+    );
+  });
+}
+
+/// 弹出面板预览内容：标题 + 3×2 快捷操作网格（与 demo 同构）。
+Widget _panelContent(MiThemeMode mode) {
+  final ink = MiColors.foregroundFor(mode);
+  final sub = mode == MiThemeMode.dark
+      ? const Color(0xB3FFFFFF)
+      : const Color(0xB3000000);
+  const entries = <(IconData, String)>[
+    (Icons.qr_code_scanner, '扫一扫'),
+    (Icons.payment, '付款码'),
+    (Icons.nfc, '乘车卡'),
+    (Icons.screenshot, '截图'),
+    (Icons.dark_mode_outlined, '深色模式'),
+    (Icons.settings_outlined, '设置'),
+  ];
+  Widget cell((IconData, String) e) => Expanded(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(e.$1, size: 26, color: ink),
+        const SizedBox(height: 8),
+        Text(
+          e.$2,
+          style: MiTypography.dialogItemSubtitle.copyWith(color: sub),
+        ),
+      ],
+    ),
+  );
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('快捷操作', style: MiTypography.dialogTitle.copyWith(color: ink)),
+        const SizedBox(height: 18),
+        Row(children: [for (final e in entries.sublist(0, 3)) cell(e)]),
+        const SizedBox(height: 16),
+        Row(children: [for (final e in entries.sublist(3)) cell(e)]),
+      ],
+    ),
+  );
 }
 
 /// 弹框预览的空回调（预览不接行为）。
