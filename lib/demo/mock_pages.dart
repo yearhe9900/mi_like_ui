@@ -1105,8 +1105,8 @@ class _ThemeCardGrid extends StatelessWidget {
 /// 搜索栏 / 胶囊行及其间隙）盖在**同一条渐进磨砂**下，零件不再各绘 backdrop。
 ///
 /// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整素材度量），用来切分
-/// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 6 位展示
-/// `nav_icons.dart` 的全部 logo（真实框架 logo），「按钮展示」组先陈列
+/// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 N 位（N =
+/// `nav_icons.dart` 全量 logo 数）展示全部真实框架 logo，「按钮展示」组先陈列
 /// `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位补足
 /// 可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
 ///
@@ -1131,7 +1131,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明/磨砂透射。
   static const List<int> _counts = [32, 32, 32, 32];
 
-  /// 「Logo 展示」组的 logo 名称（与 [_logos] 顺序一致）。
+  /// 「Logo 展示」组的 logo 名称（与 [_logos] 顺序一致；`nav_icons.dart`
+  /// 全量，含顶栏返回箭头与竖点「更多」）。
   static const List<String> _logoNames = [
     '滚筒刷',
     '网格闪光',
@@ -1139,6 +1140,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     '点阵圆钮',
     '笑脸贝雷',
     '加号',
+    '返回箭头',
+    '竖点更多',
   ];
 
   /// 「Logo 展示」组 = `nav_icons.dart` 全量 logo 展示（真实框架 logo，非占位）。
@@ -1149,6 +1152,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
         GridDotsIconPainter(ink),
         SmileyBeretIconPainter(ink),
         PlusIconPainter(ink),
+        BackChevronIconPainter(ink),
+        MoreVerticalIconPainter(ink),
       ];
 
   int _tab = 0;
@@ -1207,8 +1212,9 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     widget.onSearchActiveChanged?.call(false);
   }
 
-  /// 展示位：「Logo 展示」组前 6 位给真实 logo 全量展示位，其余铺占位展示位
-  /// （补足可滚长度）；其余分组全给占位展示位。
+  /// 展示位：「Logo 展示」组前 [_logoNames.length] 位给真实 logo 全量展示位
+  /// （= `nav_icons.dart` 全部 logo），其余铺占位展示位（补足可滚长度）；
+  /// 其余分组全给占位展示位。
   Widget _tileAt(int i, bool logoMode, List<CustomPainter> logos) {
     if (logoMode && i < _logoNames.length) {
       return _ShowcaseTile(
@@ -1217,7 +1223,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
         name: _logoNames[i],
       );
     }
-    // 占位下标从头计（「Logo 展示」组的占位跟在 6 个 logo 之后，命名从一重排）
+    // 占位下标从头计（「Logo 展示」组的占位跟在全量 logo 之后，命名从一重排）
     final k = logoMode ? i - _logoNames.length : i;
     return _ShowcaseTile(
       colors: _tileGradients[(k + _tab * 2) % _tileGradients.length],

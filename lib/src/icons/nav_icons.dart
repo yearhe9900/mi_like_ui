@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 /// 底部导航栏 logo 合集（全部 像素级度量自参考视频/截图）。
 ///
 /// Contents: the 4 tab icons + the FAB dot-grid glyph (theme-store videos),
-/// and the white plus glyph of the green action button ([PlusIconPainter],
-/// phone-app screenshot 1220x378).
+/// the white plus glyph of the green action button ([PlusIconPainter],
+/// phone-app screenshot 1220x378), the top-bar back chevron
+/// ([BackChevronIconPainter]) and the vertical three-dot "more" glyph
+/// ([MoreVerticalIconPainter], 推导值).
 ///
 /// Each painter draws inside a normalized coordinate system that is
 /// 100 units tall; the natural width follows the measured pixel aspect
@@ -284,4 +286,32 @@ class PlusIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant PlusIconPainter old) => old.color != color;
+}
+
+/// 更多 logo —— 竖向三点（⋮，「更多操作」语义）。
+///
+/// 规格（**推导值**，无参考素材；沿用 [GridDotsIconPainter] 的点阵语言）：
+/// 点径 21（同九宫格点径）、三点等距竖排，首末点外缘正好铺满 100 单位高
+/// （点距 = (100 − 21) / 2 = 39.5）、x 居中于 50 —— 墨宽即点径，呈窄竖条。
+/// 与 [GridDotsIconPainter] 同尺寸使用（如 18.2dp）即同档视觉大小。
+class MoreVerticalIconPainter extends CustomPainter {
+  MoreVerticalIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ink bbox: width = 点径、高铺满 100 单位，x 中心 50
+    _fit(canvas, size, 50);
+    final p = Paint()..color = color;
+    const r = 10.5;
+    const step = 39.5;
+    for (final dy in const [-step, 0.0, step]) {
+      canvas.drawCircle(Offset(50, 50 + dy), r, p);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant MoreVerticalIconPainter old) => old.color != color;
 }
