@@ -534,11 +534,13 @@ class _SettingsRowState extends State<_SettingsRow> {
                 widget.trailing!,
               ] else if (widget.chevron && widget.onTap != null) ...[
                 const SizedBox(width: 10),
-                // chevron 墨盒 11.7×21.3（BackChevronIconPainter 度量）
+                // chevron 墨盒 11.7×21.3（前进箭头 = 返回箭头的水平镜像）
                 SizedBox(
                   width: 11.7,
                   height: 21.3,
-                  child: CustomPaint(painter: BackChevronIconPainter(chevronColor)),
+                  child: CustomPaint(
+                    painter: ForwardChevronIconPainter(chevronColor),
+                  ),
                 ),
               ],
             ],
@@ -1397,6 +1399,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     '笑脸贝雷',
     '加号',
     '返回箭头',
+    '前进箭头',
     '竖点更多',
   ];
 
@@ -1409,6 +1412,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
         SmileyBeretIconPainter(ink),
         PlusIconPainter(ink),
         BackChevronIconPainter(ink),
+        ForwardChevronIconPainter(ink),
         MoreVerticalIconPainter(ink),
       ];
 

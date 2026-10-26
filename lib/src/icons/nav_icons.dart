@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 /// Contents: the 4 tab icons + the FAB dot-grid glyph (theme-store videos),
 /// the white plus glyph of the green action button ([PlusIconPainter],
 /// phone-app screenshot 1220x378), the top-bar back chevron
-/// ([BackChevronIconPainter]) and the vertical three-dot "more" glyph
+/// ([BackChevronIconPainter]) with its row-tail mirror
+/// ([ForwardChevronIconPainter], 推导) and the vertical three-dot "more" glyph
 /// ([MoreVerticalIconPainter], 推导值).
 ///
 /// Each painter draws inside a normalized coordinate system that is
@@ -227,6 +228,7 @@ class SmileyBeretIconPainter extends CustomPainter {
 /// 归一到 100 单位高：笔宽 9.624、顶点 (4.812, 50)、臂端
 /// (50, 4.812)/(50, 95.188)。建议配 [MiTopBarMetrics.chevronWidth] /
 /// [MiTopBarMetrics.chevronHeight]（即该墨盒）使用。
+/// 行尾前进箭头「›」见 [ForwardChevronIconPainter]（本图的水平镜像）。
 class BackChevronIconPainter extends CustomPainter {
   BackChevronIconPainter(this.color);
 
@@ -254,6 +256,42 @@ class BackChevronIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant BackChevronIconPainter old) => old.color != color;
+}
+
+/// 行尾前进箭头「›」—— [BackChevronIconPainter] 的水平镜像（**推导值**：
+/// 同一套度量只是朝向相反）。
+///
+/// 墨盒同为 11.68×21.31dp（归一 100 单位高、笔宽 9.624、两臂 45°）：
+/// 顶点 (50, 50)、臂端 (4.812, 4.812)/(4.812, 95.188)，墨中心 x = 27.406。
+/// 用于列表行的「可进入」尾饰（如设置页风格行）。
+class ForwardChevronIconPainter extends CustomPainter {
+  ForwardChevronIconPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // ink bbox x: 0..54.812 -> center 27.406（与返回箭头同盒，仅朝向相反）
+    _fit(canvas, size, 27.406);
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 9.624
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(
+      Path()
+        ..moveTo(4.812, 4.812)
+        ..lineTo(50, 50)
+        ..lineTo(4.812, 95.188),
+      p,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant ForwardChevronIconPainter old) =>
+      old.color != color;
 }
 
 /// 加号 logo —— 绿色圆钮内的白色圆角加号。
