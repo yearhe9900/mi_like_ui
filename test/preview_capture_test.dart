@@ -12,7 +12,10 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 /// README 预览图生成器（不是回归测试）。
 ///
 /// 黄金图测试环境无 CJK 字体（标签渲染为方框），README 展示图需要真实
-/// 文字——这里加载 Windows 中文字体后按明/暗两套样式截图到 `doc/preview/`。
+/// 文字与真实图标——这里统一加载 Windows 中文字体 + Material 图标字体后
+/// 按明/暗两套样式截图到 `doc/preview/`（**全部用例同口径**：字体在同文件
+/// 内共享，只给部分用例加载图标字体会让「单独跑」与「整文件跑」的截图
+/// 不一致）。
 ///
 /// 重新生成：`flutter test --update-goldens test/preview_capture_test.dart`
 /// （本机无中文字体时跳过加载，图会退化为方框标签）。
@@ -111,7 +114,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 160 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     await tester.pumpWidget(_barFrame(MiThemeMode.dark));
     await tester.pump(const Duration(milliseconds: 400));
@@ -132,7 +135,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(196 * 2, 236 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 背景必须是**高频内容**（彩条 + 色块）才能看出磨砂：平坦色在模糊下不变。
     Widget frame(MiThemeMode mode) {
@@ -199,9 +202,9 @@ void main() {
     //（此前 260×470 的窗口会把 393×856 的手机框裁掉一半）。
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
-    // 深色：进「我的」页（模式切换卡片 + 内容卡）
+    // 深色：进「我的」页（设置页风格：搜索栏 + 分组卡片 + 整行按压）
     await tester.pumpWidget(const DemoApp());
     await tester.pumpAndSettle();
     await tester.tap(find.text('我的'));
@@ -222,7 +225,7 @@ void main() {
 
   testWidgets('README preview: adaptive stage across breakpoints', (tester) async {
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     Future<void> capture(
       Size logical,
@@ -281,7 +284,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 96 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 胶囊条特写（页底 = 分类页实测底色）
     Widget strip(MiThemeMode mode) => MaterialApp(
@@ -320,7 +323,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     Future<void> capture(
       MiThemeMode mode,
@@ -363,7 +366,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 132 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 按钮特写（页底 = 「我的关注」页实测底色，三态：主 / 次级 / 禁用）
     Widget strip(MiThemeMode mode) {
@@ -411,7 +414,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 1100 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 四格形态对照（垂直四等分）：
     //  ① **纯材质形态**（`title` 不传 → 顶栏不内嵌任何组件，与参考录屏
@@ -515,7 +518,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     Future<void> capture(
       MiThemeMode mode,
@@ -564,7 +567,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 原地搜索态在「分类」页（首页那条搜索栏是**推入搜索页**，见下一例）
     Future<void> capture(MiThemeMode mode, String file) async {
@@ -594,7 +597,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(393, 856);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     Future<void> openSearch({required bool light}) async {
       await tester.pumpWidget(DemoApp(key: UniqueKey()));
@@ -641,7 +644,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 264 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 主题卡特写（页底 = 首页实测底色；3 列实测壁纸主色渐变占位）
     Widget frame(MiThemeMode mode) => MaterialApp(
@@ -690,7 +693,7 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = const Size(393 * 2, 856 * 2);
     addTearDown(tester.view.reset);
-    await _loadCjkFont(tester);
+    await _loadPreviewFonts(tester);
 
     // 背景放**已知色块**（蓝 #3B6BF5 / 白 #FFFFFF / 灰 #808080）：遮罩是
     // 实心黑 @0.20（亮）/ @0.60（暗），色块透射后应为原色 ×0.8 / ×0.4 ——

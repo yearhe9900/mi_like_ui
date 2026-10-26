@@ -233,109 +233,365 @@ class MockPage extends StatelessWidget {
           onSearchActiveChanged: onSearchActiveChanged,
         );
       default:
-        // 次级页形态：**带返回圆钮**（`showBack: true`），首行是卡片 →
-        // 用卡片档上内边距（183，即 `_MockPageShell` 默认值）。
-        final inset = _pageInset(context, 20);
+        // 设置页风格（参考素材：系统设置页明暗截图）：顶层页形态
+        // （showBack: false），首行搜索栏 → 内容顶缘 168.5dp（度量
+        // `searchBarTopInset`），卡片页边距 11.9dp，分组卡片 + 整行按压。
+        final inset = _pageInset(context, 11.9);
         return _MockPageShell(
           title: '我的',
-          showBack: true,
+          showBack: false,
           padding: EdgeInsets.fromLTRB(
             inset,
-            MiTopBarMetrics.contentTopInset,
+            MiTopBarMetrics.searchBarTopInset,
             inset,
             20,
           ),
           children: [
-            // 模式切换入口（demo 功能，放在「我的」里）
-            if (onThemeModeChanged != null)
-              _ThemeModeSwitch(mode: themeMode, onChanged: onThemeModeChanged!),
-            if (onThemeModeChanged != null) const SizedBox(height: 12),
-            // 弹框演示：三档位置（默认底部），遮罩点按收起
-            if (onShowDialog != null) ...[
-              const _SectionTitle('弹框演示'),
-              _DialogDemoRow(
-                caption: '底部弹框（默认）',
-                onTap: () => onShowDialog!(MiDialogPosition.bottom),
-              ),
-              const SizedBox(height: 12),
-              _DialogDemoRow(
-                caption: '顶部弹框',
-                onTap: () => onShowDialog!(MiDialogPosition.top),
-              ),
-              const SizedBox(height: 12),
-              _DialogDemoRow(
-                caption: '居中弹框',
-                onTap: () => onShowDialog!(MiDialogPosition.center),
-              ),
-              const SizedBox(height: 12),
-              // 纵向操作列表形态（issue #1）：两行左对齐标题 + 图标 /
-              // 副标题 / 危险项红字（几何全为推导值）。
-              if (onShowListDialog != null)
-                _DialogDemoRow(
-                  caption: '操作列表弹框（纵向）',
-                  onTap: onShowListDialog!,
+            // 搜索栏（静态展示；平底页不开磨砂，填充仍是度量合成色）
+            MiSearchBar(
+              hint: '搜索系统设置项',
+              themeMode: themeMode,
+              frosted: false,
+            ),
+            const SizedBox(height: 16),
+            // 外观模式（demo 功能行：右侧开关，无 chevron）
+            if (onThemeModeChanged != null) ...[
+              _SettingsCard(children: [
+                _SettingsRow(
+                  label: '外观模式',
+                  value: themeMode == MiThemeMode.light ? '浅色' : '深色',
+                  leading: const _SettingsTile(Icons.light_mode_outlined, Color(0xFF7A5CFA)),
+                  chevron: false,
+                  trailing: Switch(
+                    value: themeMode != MiThemeMode.light,
+                    onChanged: (v) => onThemeModeChanged!(
+                      v ? MiThemeMode.dark : MiThemeMode.light,
+                    ),
+                  ),
+                  onTap: () => onThemeModeChanged!(
+                    themeMode == MiThemeMode.light
+                        ? MiThemeMode.dark
+                        : MiThemeMode.light,
+                  ),
                 ),
-              if (onShowListDialog != null) const SizedBox(height: 12),
+              ]),
+              const SizedBox(height: 14),
             ],
-            ..._mineItems,
+            // 弹框演示（demo 功能行）
+            if (onShowDialog != null) ...[
+              _SettingsCard(children: [
+                _SettingsRow(
+                  label: '底部弹框（默认）',
+                  leading: const _SettingsTile(Icons.arrow_downward_rounded, Color(0xFF2F9BFF)),
+                  onTap: () => onShowDialog!(MiDialogPosition.bottom),
+                ),
+                _SettingsRow(
+                  label: '顶部弹框',
+                  leading: const _SettingsTile(Icons.arrow_upward_rounded, Color(0xFF34C759)),
+                  onTap: () => onShowDialog!(MiDialogPosition.top),
+                ),
+                _SettingsRow(
+                  label: '居中弹框',
+                  leading: const _SettingsTile(Icons.crop_square_rounded, Color(0xFFFF9500)),
+                  onTap: () => onShowDialog!(MiDialogPosition.center),
+                ),
+                // 纵向操作列表形态（issue #1）：两行左对齐标题 + 图标 /
+                // 副标题 / 危险项红字（几何全为推导值）。
+                if (onShowListDialog != null)
+                  _SettingsRow(
+                    label: '操作列表弹框（纵向）',
+                    leading: const _SettingsTile(Icons.view_agenda_outlined, Color(0xFF7A5CFA)),
+                    onTap: onShowListDialog,
+                  ),
+              ]),
+              const SizedBox(height: 14),
+            ],
+            // 账号卡（参考素材：头像 + 名称 + 副标题）
+            _SettingsCard(children: [
+              _SettingsRow(
+                label: 'LJ_li',
+                subtitle: '账号、云服务、会员权益等',
+                leading: const _SettingsAvatar(),
+                onTap: () => _mockTap(context, '账号中心'),
+              ),
+              _SettingsRow(
+                label: '我的设备',
+                leading: const _SettingsTile(Icons.smartphone, Color(0xFF8E8E93)),
+                onTap: () => _mockTap(context, '我的设备'),
+              ),
+              _SettingsRow(
+                label: '妙享背屏',
+                leading: const _SettingsTile(Icons.picture_in_picture_alt, Color(0xFF7A5CFA)),
+                onTap: () => _mockTap(context, '妙享背屏'),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            // 网络卡（参考素材：右侧状态文案 + chevron）
+            _SettingsCard(children: [
+              _SettingsRow(
+                label: 'WLAN',
+                value: '已开启',
+                leading: const _SettingsTile(Icons.wifi, Color(0xFF2F9BFF)),
+                onTap: () => _mockTap(context, 'WLAN'),
+              ),
+              _SettingsRow(
+                label: '蓝牙',
+                value: '已开启',
+                leading: const _SettingsTile(Icons.bluetooth, Color(0xFF2F9BFF)),
+                onTap: () => _mockTap(context, '蓝牙'),
+              ),
+              _SettingsRow(
+                label: '移动网络',
+                leading: const _SettingsTile(Icons.signal_cellular_alt, Color(0xFF34C759)),
+                onTap: () => _mockTap(context, '移动网络'),
+              ),
+              _SettingsRow(
+                label: '设备互联',
+                leading: const _SettingsTile(Icons.devices_other, Color(0xFF5AC8FA)),
+                onTap: () => _mockTap(context, '设备互联'),
+              ),
+              _SettingsRow(
+                label: '个人热点',
+                value: '已关闭',
+                leading: const _SettingsTile(Icons.wifi_tethering, Color(0xFF2F9BFF)),
+                onTap: () => _mockTap(context, '个人热点'),
+              ),
+              _SettingsRow(
+                label: 'VPN',
+                leading: const _SettingsTile(Icons.public, Color(0xFF0A84FF)),
+                onTap: () => _mockTap(context, 'VPN'),
+              ),
+            ]),
+            const SizedBox(height: 20),
           ],
         );
     }
   }
 }
 
-/// 深/浅色模式切换卡片（demo 功能项，非框架组件）。
-class _ThemeModeSwitch extends StatelessWidget {
-  const _ThemeModeSwitch({required this.mode, required this.onChanged});
+/// 设置页风格 tokens（demo 层）。参考素材：系统设置页明暗截图（1220×2656）；
+/// 卡片/按压色与几何为**目测推导值**，页底与搜索栏填充沿用框架度量 token
+/// （`_MockPageShell` 页底、`MiSearchBar` 合成填充）。
+///
+/// **点击效果**（参考素材亮/暗两张按压态）：按压时**整行满铺**一条高亮带
+/// （方角、与卡片同宽、压在图标与文字之下、无缩放），松开渐隐；高亮色与
+/// 搜索框填充同语言 —— 亮 #E7E7E7 / 暗 #3A3A3A。
+class _SettingsStyle {
+  _SettingsStyle._();
 
-  final MiThemeMode mode;
-  final ValueChanged<MiThemeMode> onChanged;
+  /// 卡片圆角（目测 ≈20dp）。
+  static const double cardRadius = 20;
+
+  /// 卡片填充（亮 #FFFFFF / 暗 #1E1E1E，目测）。
+  static Color cardFor(bool light) =>
+      light ? const Color(0xFFFFFFFF) : const Color(0xFF1E1E1E);
+
+  /// 按压高亮带（亮 #E7E7E7 / 暗 #3A3A3A，目测；与搜索框填充同语言）。
+  static Color pressFor(bool light) =>
+      light ? const Color(0xFFE7E7E7) : const Color(0xFF3A3A3A);
+
+  /// 按压渐变时长（推导：MIUI 行按压为快闪档，~120ms）。
+  static const int pressDurationMs = 120;
+
+  /// 行高（副标题行随内容增高）。
+  static const double rowHeight = 56;
+
+  /// 图标块边长 / 圆角（目测 38 / 10）。
+  static const double tileSide = 38;
+  static const double tileRadius = 10;
+}
+
+/// 设置页风格行占位点按（demo 层）：与圆钮/返回钮同一套 SnackBar 反馈。
+void _mockTap(BuildContext context, String label) =>
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$label 被点击'),
+        duration: const Duration(milliseconds: 800),
+      ),
+    );
+
+/// 设置页风格分组卡片（demo 层）：圆角容器裁剪按压高亮带（方角带在圆角
+/// 处随卡片裁切，与素材一致）。
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({required this.children});
+
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final light = mode == MiThemeMode.light;
-    final fg = Theme.of(context).colorScheme.onSurface;
-    return Container(
-      height: 56,
-      decoration: BoxDecoration(
-        color: light ? const Color(0xFFE7E7E7) : const Color(0xFF1F1F22),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: Row(
-        children: [
-          Text('外观模式',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
-          const Spacer(),
-          Text(light ? '浅色' : '深色',
-              style: TextStyle(fontSize: 12, color: fg.withValues(alpha: 0.6))),
-          const SizedBox(width: 8),
-          Switch(
-            value: !light,
-            onChanged: (v) => onChanged(v ? MiThemeMode.dark : MiThemeMode.light),
-          ),
-        ],
+    final light = Theme.of(context).brightness == Brightness.light;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(_SettingsStyle.cardRadius),
+      child: ColoredBox(
+        color: _SettingsStyle.cardFor(light),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
       ),
     );
   }
 }
 
-/// 弹框演示入口行（demo 功能项，非框架组件）：点按把弹框挂到外壳浮层。
-class _DialogDemoRow extends StatelessWidget {
-  const _DialogDemoRow({required this.caption, required this.onTap});
+/// 设置页风格行（demo 层）：前导图标块/头像 + 主文案（+ 副标题）+ 可选
+/// 右侧状态文案 / 自定义尾部（如开关）+ chevron；**按压整行满铺高亮带**
+/// （见 [_SettingsStyle] 类注释）。
+class _SettingsRow extends StatefulWidget {
+  const _SettingsRow({
+    required this.label,
+    this.subtitle,
+    this.value,
+    this.leading,
+    this.trailing,
+    this.chevron = true,
+    this.onTap,
+  });
 
-  final String caption;
-  final VoidCallback onTap;
+  final String label;
+  final String? subtitle;
+  final String? value;
+  final Widget? leading;
+  final Widget? trailing;
+
+  /// 无 [trailing] 时是否显示 chevron（有 [onTap] 才显示）。
+  final bool chevron;
+
+  final VoidCallback? onTap;
+
+  @override
+  State<_SettingsRow> createState() => _SettingsRowState();
+}
+
+class _SettingsRowState extends State<_SettingsRow> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (widget.onTap == null || _pressed == value) return;
+    setState(() => _pressed = value);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: _GradientCard(
-        height: 56,
-        colors: const [Color(0xFF2E3A8C), Color(0xFF49A09D)],
-        caption: caption,
+    final light = Theme.of(context).brightness == Brightness.light;
+    final fg = Theme.of(context).colorScheme.onSurface;
+    final sub = fg.withValues(alpha: 0.55);
+    final chevronColor = fg.withValues(alpha: 0.30);
+    return Semantics(
+      button: widget.onTap != null,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onTapDown: (_) => _setPressed(true),
+        onTapUp: (_) => _setPressed(false),
+        onTapCancel: () => _setPressed(false),
+        child: AnimatedContainer(
+          duration: const Duration(
+            milliseconds: _SettingsStyle.pressDurationMs,
+          ),
+          curve: Curves.easeOut,
+          color: _pressed ? _SettingsStyle.pressFor(light) : Colors.transparent,
+          constraints: const BoxConstraints(minHeight: _SettingsStyle.rowHeight),
+          padding: EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: widget.subtitle == null ? 0 : 10,
+          ),
+          child: Row(
+            children: [
+              if (widget.leading != null) ...[
+                widget.leading!,
+                const SizedBox(width: 14),
+              ],
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: fg,
+                      ),
+                    ),
+                    if (widget.subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        widget.subtitle!,
+                        style: TextStyle(fontSize: 13, color: sub),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (widget.value != null) ...[
+                const SizedBox(width: 8),
+                Text(widget.value!, style: TextStyle(fontSize: 14, color: sub)),
+              ],
+              if (widget.trailing != null) ...[
+                const SizedBox(width: 8),
+                widget.trailing!,
+              ] else if (widget.chevron && widget.onTap != null) ...[
+                const SizedBox(width: 10),
+                // chevron 墨盒 11.7×21.3（BackChevronIconPainter 度量）
+                SizedBox(
+                  width: 11.7,
+                  height: 21.3,
+                  child: CustomPaint(painter: BackChevronIconPainter(chevronColor)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 设置页风格前导图标块（demo 层）：38dp 彩色圆角方块 + 白色字形
+/// （目测推导，参考素材各彩色图标块）。
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile(this.icon, this.color);
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _SettingsStyle.tileSide,
+      height: _SettingsStyle.tileSide,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(_SettingsStyle.tileRadius),
+      ),
+      child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+}
+
+/// 设置页风格头像（demo 层）：圆形底 + 笑脸贝雷 logo（复用框架 painter）。
+class _SettingsAvatar extends StatelessWidget {
+  const _SettingsAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _SettingsStyle.tileSide,
+      height: _SettingsStyle.tileSide,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4C565F), Color(0xFF23272B)],
+        ),
+      ),
+      alignment: Alignment.center,
+      child: CustomPaint(
+        painter: SmileyBeretIconPainter(Colors.white),
+        size: const Size.square(24),
       ),
     );
   }
@@ -1552,42 +1808,6 @@ const List<String> _tileNames = [
   '示例组件八',
 ];
 
-const List<Widget> _mineItems = [
-  _GradientCard(
-    height: 120,
-    colors: [Color(0xFF232526), Color(0xFF414345)],
-    caption: 'LJ_li   已绑定小米账号',
-  ),
-  _SectionTitle('模块混搭'),
-  Row(children: [
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF5F2C82), Color(0xFF49A09D)], caption: '主题')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF134E5E), Color(0xFF71B280)], caption: '壁纸')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFFB24592), Color(0xFFF15F79)], caption: '字体')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF396AFC), Color(0xFF2948FF)], caption: '息屏')),
-  ]),
-  _SectionTitle('我的服务'),
-  _GradientCard(height: 56, colors: [Color(0xFF1F1F22), Color(0xFF2A2A2E)], caption: '我的关注 / 我的点赞 / 我的收藏 / 我的订单'),
-  SizedBox(height: 12),
-  _GradientCard(height: 56, colors: [Color(0xFF1F1F22), Color(0xFF2A2A2E)], caption: '主题圈子 / 混搭搭配'),
-  SizedBox(height: 12),
-  _GradientCard(height: 56, colors: [Color(0xFF1F1F22), Color(0xFF2A2A2E)], caption: '设置 / 关于'),
-  SizedBox(height: 12),
-  _SectionTitle('我的作品'),
-  Row(children: [
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF2193B0), Color(0xFF6DD5ED)], caption: '混搭')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFFED213A), Color(0xFF93291E)], caption: '收藏')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFFF2994A), Color(0xFFF2C94C)], caption: '下载')),
-    SizedBox(width: 10),
-    Expanded(child: _GradientCard(height: 80, colors: [Color(0xFF606C88), Color(0xFF3F4C6B)], caption: '投稿')),
-  ]),
-  SizedBox(height: 12),
-  _GradientCard(height: 90, colors: [Color(0xFF0F3443), Color(0xFF34E89E)], caption: '会员中心 / 客服与反馈  ›'),
-];
 
 /// 搜索页（示例层）：首页点搜索栏后由 [MiCardPageRoute] 推入。
 ///

@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **demo「我的」页改版为系统设置页风格**（2026-10-26，参考设置页明暗截图，
+  卡片/按压色与几何为目测推导值）
+  - 顶层页形态（`showBack: false`），首行搜索栏（`MiSearchBar` 静态展示，
+    `frosted: false` 平底页不加磨砂）、内容顶缘 168.5dp（度量
+    `searchBarTopInset`）、卡片页边距 11.9dp
+  - 分组圆角卡片（亮 #FFFFFF / 暗 #1E1E1E、圆角 20）+ 设置行（38dp 彩色
+    圆角图标块 + 主文案 16 + 副标题/右侧状态文案 + chevron 复用
+    `BackChevronIconPainter`）；原渐变卡演示行 / `_mineItems` 占位卡全部
+    退场，弹框演示与外观模式开关改建为设置行
+  - **点击效果**（参考素材按压态）：按压**整行满铺**高亮带（方角、与卡片
+    同宽、压在图标文字之下、无缩放），亮 #E7E7E7 / 暗 #3A3A3A、120ms
+    渐变渐隐（推导）；新增 desktop_nav 回归用例钉住按压态
+
 ### Added
 
 - **新增竖点「更多」logo（`MoreVerticalIconPainter`）并补全「Logo 展示」**

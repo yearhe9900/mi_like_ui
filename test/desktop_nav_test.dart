@@ -962,4 +962,48 @@ void main() {
       expect(pageScrollOffset(tester), closeTo(scrolled, 0.01));
     });
   });
+
+  testWidgets('「我的」设置行：按压整行满铺高亮带、松开渐隐并触发点按反馈',
+      (tester) async {
+    setWindow(tester, const Size(1366, 768));
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(const DemoApp());
+    await tester.pumpAndSettle();
+    // 进「我的」（侧栏档）：设置页风格分组卡片
+    final rail = find.byType(MiGlassSideNavBar);
+    await tester.tap(find.descendant(of: rail, matching: find.text('我的')));
+    await tester.pumpAndSettle();
+
+    Color? fillOf(String label) => (
+            tester
+                .widget<AnimatedContainer>(
+                  find
+                      .ancestor(
+                        of: find.text(label),
+                        matching: find.byType(AnimatedContainer),
+                      )
+                      .first,
+                )
+                .decoration! as BoxDecoration
+              )
+              .color;
+
+    // 静止：行底透明（卡片色透出）
+    expect(fillOf('WLAN'), Colors.transparent);
+
+    // 按下 → 渐变到按压高亮带（设置页风格：整行满铺、暗 #3A3A3A）
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('WLAN')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(fillOf('WLAN'), const Color(0xFF3A3A3A));
+
+    // 松开 → 渐隐回透明；点按触发占位反馈（SnackBar，demo 同款交互）
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(fillOf('WLAN'), Colors.transparent);
+    expect(find.text('WLAN 被点击'), findsOneWidget);
+  });
 }
