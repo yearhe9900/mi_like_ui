@@ -98,15 +98,10 @@ class MiPullUpPanelMetrics {
       collapsedSize / panelWidth;
 
   // ── 唤起动效（弹簧，度量拟合）─────────────────────────────────────────
-
-  /// 弹簧刚度 260（拟合：ζ ≈ 0.81、ωn ≈ 16.2 → k = ωn² ≈ 263，取整）。
-  static const double springStiffness = 260;
-
-  /// 弹簧阻尼 26（拟合：c = 2ζωn ≈ 26.2；ζ = c / 2√(km) = 0.807，过冲 1.4%）。
-  static const double springDamping = 26;
-
-  /// 弹簧质量 1（单位质量归一）。
-  static const double springMass = 1;
+  //
+  // 展开 / 收回弹簧的真身已迁至 `theme/motion_tokens.dart` 的
+  // `MiMotionTokens.panelExpand` / `MiMotionTokens.panelCollapse`
+  //（拟合档案随迁；本文件类文档保留素材复核脉络）。
 
   /// 名义收口时长 600ms（拟合稳态 ~0.53s + 余量；`AnimationController` 只拿
   /// 它做兜底，实际由 `SpringSimulation` 驱动到收敛）。
@@ -125,12 +120,7 @@ class MiPullUpPanelMetrics {
   /// 终点 = 屏底 − 2×[bottomGap]。
   //（originOffsetY 复用 bottomGap，不另立常量。）
 
-  /// 收回弹簧刚度 530（拟合：临界阻尼 ζ≈1，0.041/0.082s 处剩余进度
-  /// 0.77/0.45 与 e^{-ωt}(1+ωt)（ω=√530≈23）吻合，总时长 ~0.19s）。
-  static const double closeStiffness = 530;
-
-  /// 收回弹簧阻尼 46（临界阻尼 2√530 ≈ 46.3，无过冲 —— 素材收回帧无回摆）。
-  static const double closeDamping = 46;
+  /// 收回弹簧已迁至 `MiMotionTokens.panelCollapse`（临界阻尼，拟合档案见彼处）。
 
   /// 动画上界 1.2（推导：`AnimationController` 会把值钳在 [lower, upper] 内，
   /// 不放开上界会把 ~1.4% 的弹簧过冲抹平；1.2 给过冲留足余量）。

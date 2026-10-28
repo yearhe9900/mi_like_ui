@@ -1,3 +1,5 @@
+import '../../../theme/motion_tokens.dart';
+
 /// [MiSearchCancelButton] 的几何规格（设计度量，393dp 设计宽）。
 ///
 /// 规格取自搜索态参考素材（592×1280 @24fps），以同一帧搜索栏高度
@@ -38,8 +40,10 @@ class MiSearchCancelMetrics {
   static const double glyphStroke = 1.9;
 
   /// 按压反馈淡入时长（推导：沿用返回圆钮度量 420ms，同一套按压语言）。
-  static const int pressFadeInMs = 420;
+  ///
+  /// 同源转发自 [MiMotionTokens]（统一动效配置），新代码请直接取 token。
+  static const int pressFadeInMs = MiMotionTokens.pressFadeInMs;
 
   /// 按压反馈淡出时长（推导：同上，度量 300ms）。
-  static const int pressFadeOutMs = 300;
+  static const int pressFadeOutMs = MiMotionTokens.pressFadeOutMs;
 }

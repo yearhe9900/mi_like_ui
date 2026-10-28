@@ -61,4 +61,8 @@ class MiThemeCardMetrics {
 
   /// 操作条内按钮间距 **8**（= [MiDimens.spaceSm] 档）。
   static const double quickActionsGap = 8;
+
+  /// 操作条滑入时长 180ms `easeOutCubic`（**推导值**：无悬停样张，取通行
+  /// 缩略图操作条的快滑档；曲线与页面推入转场同族）。
+  static const int quickActionsSlideMs = 180;
 }

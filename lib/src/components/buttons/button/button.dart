@@ -75,7 +75,9 @@ class MiButton extends StatelessWidget {
             enabled: enabled,
             borderRadius: BorderRadius.circular(MiDimens.radiusPill),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(
+                milliseconds: MiButtonMetrics.pressDurationMs,
+              ),
               curve: Curves.easeOut,
               height: MiButtonMetrics.height,
               padding: const EdgeInsets.symmetric(

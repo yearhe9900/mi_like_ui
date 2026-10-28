@@ -113,7 +113,9 @@ class MiPillTabBar extends StatelessWidget {
             enabled: !selected,
             borderRadius: BorderRadius.circular(MiDimens.radiusPill),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(
+                milliseconds: MiPillTabMetrics.fillFadeMs,
+              ),
               curve: Curves.easeOut,
               width: itemWidth,
               height: MiPillTabMetrics.pillHeight,

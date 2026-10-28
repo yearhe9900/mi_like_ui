@@ -34,4 +34,8 @@ class MiPillTabMetrics {
 
   /// 标签行首/尾内边距（横滑内容区，与搜索框等页面内容同为 37px 页边距）。
   static const double edgeInset = 11.9;
+
+  /// 选中态填充切换过渡 200ms `easeOut`（**推导值**：素材无切换帧；与
+  /// `MiButton` 按压同值同曲线，构成胶囊类控件的统一淡变档）。
+  static const int fillFadeMs = 200;
 }

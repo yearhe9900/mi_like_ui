@@ -26,6 +26,7 @@ export 'src/theme/top_bar_tokens.dart';
 export 'src/theme/gradient_blur_tokens.dart';
 export 'src/theme/dialog_tokens.dart';
 export 'src/theme/pull_up_panel_tokens.dart';
+export 'src/theme/motion_tokens.dart';
 
 // ── 组件层 ────────────────────────────────────────────────────────────────
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar.dart';

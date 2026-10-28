@@ -127,7 +127,12 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
       'fab.tabIndex 必须落在 items 范围内',
     );
     _from = _to = widget.selectedIndex.toDouble();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(
+        milliseconds: MiGlassNavMetrics.nominalFlightFallbackMs,
+      ),
+    );
     _pressCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: MiGlassNavMetrics.pressMs),

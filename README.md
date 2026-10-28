@@ -425,6 +425,27 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 填充之下预合成（`veiledFill`），使零件在平坦页面上与普通填充无异、内容滚到
 其后方时才显出磨砂玻璃质感，无需随滚动状态切换配方。
 
+## 动效体系
+
+动效规格（弹簧 / 时长 / 曲线）与透明参数同构：跨组件复用的动效只定义于
+`MiMotionTokens`（`theme/motion_tokens.dart`），组件私有动效留在各
+`*_metrics.dart`，实现层不许裸写数值字面量 —— 由
+`test/motion_config_test.dart` 源码扫描约束。
+
+- **语义命名**：名字说的是「什么时候用」，不是「数值是多少」。已收录：
+  按压叠色 150ms `easeOutQuad`（弹框按压度量）、按压反馈 420/300ms
+  `easeOut`（顶栏返回钮度量，搜索取消钮推导沿用 —— 同一套按压语言，
+  三方同值由测试钉住）、弹出面板展开 / 收回弹簧（拨号键盘录屏拟合：
+  ζ≈0.807 过冲 ~1.4% / 临界阻尼无过冲）；
+- **换算工具** `miSpring(damping, response)`：按 Folme 口径
+  `stiffness = (2π/response)²` 把设计侧的「阻尼比 + 响应时间」换算为
+  Flutter 弹簧（思路参考 flutter_miuix，Apache-2.0，按本库风格重写）；
+  已有度量值不强迁 —— 它们是素材拟合的真源，两边注释互写换算关系；
+- **三层归属**：跨组件 → tokens（真身）；组件私有 → metrics（玻璃栏
+  飞行 / 果冻形变、顶栏搜索转场等）；已迁走的旧常量（如
+  `MiTopBarMetrics.pressFadeInMs`）以**同源转发**保留，调用点零改动，
+  新代码直接取 token。
+
 ## 搜索态
 
 搜索两条路径都支持，按页面结构选用：
@@ -601,7 +622,7 @@ test/                        # 单元 / 交互 / 视觉回归测试
 |---|---|
 | 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
-| 主题层 `src/theme/` | 跨组件样式令牌；透明 / 磨砂参数统一在 `transparency_tokens.dart` |
+| 主题层 `src/theme/` | 跨组件样式令牌；透明 / 磨砂参数统一在 `transparency_tokens.dart`，动效规格统一在 `motion_tokens.dart` |
 | 图标 `src/icons/` | 导航图标 painter 合集（`*IconPainter`） |
 | 工具层 `src/utils/` | 无状态纯函数 |
 | 示例层 `lib/demo/` | 演示应用，模拟真实使用方 |

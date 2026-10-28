@@ -66,16 +66,14 @@ void main() {
     final anchor = MiPullUpPanelMetrics.defaultAnchorFor(393, 856);
     expect(anchor.dx, closeTo(327.0, 0.01));
     expect(anchor.dy, closeTo(803.7, 0.01));
-    // 弹簧拟合：ζ = 26 / 2√260 = 0.807 → 过冲 ~1.4%
-    expect(MiPullUpPanelMetrics.springStiffness, 260);
-    expect(MiPullUpPanelMetrics.springDamping, 26);
+    // 弹簧拟合：ζ = 26 / 2√260 = 0.807 → 过冲 ~1.4%（真身已迁
+    // MiMotionTokens，拟合档案见彼处；此处确认面板弹簧未被改动）
+    const spring = MiMotionTokens.panelExpand;
+    expect(spring.stiffness, 260);
+    expect(spring.damping, 26);
     expect(
-      MiPullUpPanelMetrics.springDamping /
-          (2 *
-              math.sqrt(
-                MiPullUpPanelMetrics.springStiffness *
-                    MiPullUpPanelMetrics.springMass,
-              )),
+      spring.damping /
+          (2 * math.sqrt(spring.stiffness * spring.mass)),
       closeTo(0.807, 0.001),
     );
     // 面板宽 / 可用高

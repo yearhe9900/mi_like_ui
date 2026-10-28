@@ -30,4 +30,8 @@ class MiButtonMetrics {
 
   /// 列表行距（度量 174px，参考页头像行的行间节奏，demo 行高沿用）。
   static const double listRowPitch = 56.1;
+
+  /// 按压 / 状态切换过渡 200ms `easeOut`（**推导值**：参考素材无按压帧，
+  /// 按本库按压反馈语义取快闪档；与胶囊标签选中淡入同值同曲线）。
+  static const int pressDurationMs = 200;
 }

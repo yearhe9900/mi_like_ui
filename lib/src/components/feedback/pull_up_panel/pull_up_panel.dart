@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import '../../../theme/motion_tokens.dart';
 import '../../../theme/pull_up_panel_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
@@ -135,11 +136,8 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
     widget.controller?._state = this;
     _controller.animateWith(
       SpringSimulation(
-        const SpringDescription(
-          mass: MiPullUpPanelMetrics.springMass,
-          stiffness: MiPullUpPanelMetrics.springStiffness,
-          damping: MiPullUpPanelMetrics.springDamping,
-        ),
+        // 展开弹簧（度量拟合档案见 token 文档）。
+        MiMotionTokens.panelExpand,
         0, // 起点缩放比
         1, // 终态
         0, // 初速
@@ -173,11 +171,7 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
     _controller
         .animateWith(
           SpringSimulation(
-            const SpringDescription(
-              mass: MiPullUpPanelMetrics.springMass,
-              stiffness: MiPullUpPanelMetrics.closeStiffness,
-              damping: MiPullUpPanelMetrics.closeDamping,
-            ),
+            MiMotionTokens.panelCollapse,
             _controller.value, // 从当前进度收回
             0,
             0,

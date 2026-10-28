@@ -1,3 +1,4 @@
+import '../../../theme/motion_tokens.dart';
 import '../../../theme/typography.dart';
 
 /// [MiDialog] 的几何与动效规格（设计度量，393dp 设计宽）。
@@ -128,7 +129,9 @@ class MiDialogMetrics {
   ///
   /// 叠色配方（黑/白 @0.12，只压填充不碰标签）见
   /// [MiTransparencyTokens.dialogPressAlpha]。
-  static const int pressDurationMs = 150;
+  ///
+  /// 同源转发自 [MiMotionTokens]（统一动效配置），新代码请直接取 token。
+  static const int pressDurationMs = MiMotionTokens.pressMs;
 
   /// 按钮盒顶缘（[lines] = 正文行数）：双行度量 133.0，行数每 ±1 平移一行距。
   static double actionsTopFor(int lines) =>

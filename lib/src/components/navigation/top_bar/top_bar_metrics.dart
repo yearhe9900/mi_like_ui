@@ -1,6 +1,7 @@
 import 'package:flutter/animation.dart';
 
 import '../../../theme/gradient_blur_tokens.dart';
+import '../../../theme/motion_tokens.dart';
 
 /// [MiTopBar] 的几何与折叠动效规格（设计度量，393dp 设计宽）。
 ///
@@ -78,8 +79,10 @@ class MiTopBarMetrics {
 
   /// 返回圆钮按压反馈：度量 0.4s 内 0 → 25% → 83% → 100%（easeOut 形），
   /// 松开后在 0.3s 内消失（8.4s 帧 13 级 → 8.7s 帧 0 级）。
-  static const int pressFadeInMs = 420;
-  static const int pressFadeOutMs = 300;
+  ///
+  /// 同源转发自 [MiMotionTokens]（统一动效配置），新代码请直接取 token。
+  static const int pressFadeInMs = MiMotionTokens.pressFadeInMs;
+  static const int pressFadeOutMs = MiMotionTokens.pressFadeOutMs;
 
   // ── 大标题 ────────────────────────────────────────────────────────────
   /// 墨心相对**基线**的比例（本机 simhei 0.360 / msyh 0.350 / simsun 0.355

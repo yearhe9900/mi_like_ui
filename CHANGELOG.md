@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+### Added
+
+- **动效令牌 `MiMotionTokens`**（统一动效配置，token → 测试 → 文档同步链）：
+  - 跨组件动效收归 `theme/motion_tokens.dart` 单一来源：按压反馈
+    420/300ms `easeOut`（顶栏返回钮度量、搜索取消钮推导沿用）、按压叠色
+    150ms `easeOutQuad`（弹框按压度量）、弹出面板展开 / 收回弹簧
+    （素材拟合 260/26 与临界 530/46，拟合档案随迁）；原常量同源转发，
+    调用点零改动
+  - 换算工具 `miSpring(damping, response)`：Folme 口径
+    `stiffness = (2π/response)²`（思路参考 flutter_miuix，Apache-2.0，
+    按本库度量驱动风格重写）
+  - 实现层裸值消灭：按钮 / 胶囊标签 200ms、主题卡操作条 180ms、底栏 /
+    侧栏飞行兜底 300ms 收归各自 metrics（补推导注释）
+  - 新增 `test/motion_config_test.dart`：源码扫描禁裸时长 / 弹簧 / 自创
+    曲线字面量 + 跨组件同值断言；全量 276 测试通过、golden 零变化
+
 ### Fixed
 
 - **底栏选中高亮改回高磨砂块**（2026-10-27，实机反馈六轮）：

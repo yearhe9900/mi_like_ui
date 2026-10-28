@@ -110,7 +110,10 @@ class _MiThemeCardState extends State<MiThemeCard> {
                       ignoring: !_hovered,
                       child: AnimatedSlide(
                         offset: _hovered ? Offset.zero : const Offset(0, 1),
-                        duration: const Duration(milliseconds: 180),
+                        duration: const Duration(
+                          milliseconds:
+                              MiThemeCardMetrics.quickActionsSlideMs,
+                        ),
                         curve: Curves.easeOutCubic,
                         child: _QuickActionsBar(
                           mode: mode,

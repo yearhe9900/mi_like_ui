@@ -97,6 +97,11 @@ class MiGlassNavMetrics {
   static const double flightPerCellMs = 20;
   static const double settleMs = 350;
 
+  /// 名义兑底时长 300ms：`AnimationController` 的占位 duration，每次飞行前
+  /// 按 [flightBaseMs] + [flightPerCellMs]×跨格数重设（兑底惯例同
+  /// `MiPullUpPanelMetrics.springSettleMs`）。底栏 / 侧栏共用。
+  static const int nominalFlightFallbackMs = 300;
+
   /// Peak centre overshoot past the target, as a fraction of one cell width.
   static const double settleOvershoot = 0.037;
 
