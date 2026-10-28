@@ -8,6 +8,7 @@ import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
 import '../../../utils/glass_rim.dart';
 import '../../../utils/hover_feedback.dart';
+import '../../../utils/squircle.dart';
 import 'pill_tab_bar_metrics.dart';
 
 /// 胶囊分类标签行（明暗双模式）。
@@ -169,9 +170,9 @@ class MiPillTabBar extends StatelessWidget {
               curve: Curves.easeOut,
               width: widths[i],
               height: MiPillTabMetrics.pillHeight,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 color: selected ? palette.selectedFill : unselectedFill,
-                borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+                shape: const MiSquircleBorder(MiDimens.radiusPill),
               ),
               alignment: Alignment.center,
               child: Text(
@@ -317,14 +318,14 @@ class _CapsuleStripClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    final radius = Radius.circular(height / 2);
     for (var i = 0; i < widths.length; i++) {
       final left = _cellLeft(widths, i, gap);
-      path.addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, 0, widths[i], height),
-          radius,
-        ),
+      // 连续圆角胶囊（squircle），半径取高的一半 —— 与裁形外的 stadium
+      //（radiusPill 钳位后）同语义。
+      MiSquircle.addRect(
+        path,
+        Rect.fromLTWH(left, 0, widths[i], height),
+        height / 2,
       );
     }
     return path;
@@ -358,16 +359,13 @@ class _CapsuleRimPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final radius = Radius.circular(height / 2);
     for (var i = 0; i < widths.length; i++) {
       if (i == skipIndex) continue;
       final left = _cellLeft(widths, i, gap);
       MiGlassRimPainter.drawRim(
         canvas,
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(left, 0, widths[i], height),
-          radius,
-        ),
+        Rect.fromLTWH(left, 0, widths[i], height),
+        height / 2,
         color,
       );
     }

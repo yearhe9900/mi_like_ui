@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/glass_tokens.dart';
+import '../../../utils/squircle.dart';
 
 /// Paints the scrim (with a stadium-shaped hole where the pill is),
 /// the pill glass lens and the subtle rim highlights.
@@ -30,40 +31,31 @@ class GlassBarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final barR = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(size.height / 2),
-    );
+    // 栏体与选中块均为连续圆角（stadium 端头：半径 = 高/2，瓦片夹到短边一半）。
+    final barPath = MiSquircle.pathOf(Offset.zero & size, size.height / 2);
     final pillRect = Rect.fromCenter(
       center: Offset(pillCenterX, size.height / 2),
       width: pillWidth,
       height: pillHeight,
     );
-    final pillR = RRect.fromRectAndRadius(
-      pillRect,
-      Radius.circular(pillHeight / 2),
-    );
+    final pillPath = MiSquircle.pathOf(pillRect, pillHeight / 2);
 
     // 1) scrim；选中块处按配方决定是否开洞（亮色 = 透镜体，暗色 = 高磨砂块
     //    压在完整遮罩之上，见 MiGlassPalette.lensCutsScrim）
     final scrim = palette.lensCutsScrim
-        ? Path.combine(
-            PathOperation.difference,
-            Path()..addRRect(barR),
-            Path()..addRRect(pillR),
-          )
-        : (Path()..addRRect(barR));
+        ? Path.combine(PathOperation.difference, barPath, pillPath)
+        : barPath;
     canvas.drawPath(scrim, _layerPaint(palette.scrimGradient, palette.scrim, size));
 
     // 2) 选中块：暗化 + 色调叠在开洞处（亮）或栏体玻璃上（暗）
     //    —— 暗色实测是 (c,t)≈(84,0.05) 的高磨砂块，不是透明窗口
-    canvas.drawRRect(pillR, Paint()..color = palette.lensShade);
-    canvas.drawRRect(
-      pillR,
+    canvas.drawPath(pillPath, Paint()..color = palette.lensShade);
+    canvas.drawPath(
+      pillPath,
       _layerPaint(palette.lensTintGradient, palette.lensTint, size),
     );
-    canvas.drawRRect(
-      pillR,
+    canvas.drawPath(
+      pillPath,
       Paint()
         ..color = palette.lensStroke
         ..style = PaintingStyle.stroke
@@ -71,8 +63,8 @@ class GlassBarPainter extends CustomPainter {
     );
 
     // 3) bar rim highlight
-    canvas.drawRRect(
-      barR,
+    canvas.drawPath(
+      barPath,
       Paint()
         ..color = palette.rim
         ..style = PaintingStyle.stroke

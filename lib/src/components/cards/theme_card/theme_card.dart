@@ -6,6 +6,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/hover_feedback.dart';
+import '../../../utils/squircle.dart';
 import 'theme_card_metrics.dart';
 
 /// 竖向预览卡片（明暗双模式）。
@@ -93,8 +94,8 @@ class _MiThemeCardState extends State<MiThemeCard> {
     // 预览图区：可选的悬停操作条叠在底部（裁在图区圆角内）。
     Widget previewArea = AspectRatio(
       aspectRatio: widget.previewAspectRatio,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(MiDimens.radiusLg),
+      child: ClipPath(
+        clipper: const MiSquircleClipper(MiDimens.radiusLg),
         child: hasActions
             ? Stack(
                 fit: StackFit.expand,

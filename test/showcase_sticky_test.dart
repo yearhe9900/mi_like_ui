@@ -71,6 +71,6 @@ void main() {
         matching: find.byType(AnimatedContainer),
       ),
     );
-    expect((container.decoration! as BoxDecoration).color, dark.selectedFill);
+    expect((container.decoration! as ShapeDecoration).color, dark.selectedFill);
   });
 }

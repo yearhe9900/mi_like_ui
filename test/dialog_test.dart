@@ -41,8 +41,8 @@ Widget _harness({
   );
 }
 
-/// 卡片本体：`MiDialog` 里唯一的 [ClipRRect]（按钮是圆角 DecoratedBox 不裁剪）。
-Finder _card() => find.byType(ClipRRect);
+/// 卡片本体：`MiDialog` 里唯一的 [ClipPath]（按钮是圆角 ShapeDecoration 不裁剪）。
+Finder _card() => find.byType(ClipPath);
 
 void main() {
   test('默认形态：位置=底部、对齐=居中、无按钮', () {
@@ -150,11 +150,11 @@ void main() {
           .widget<DecoratedBox>(
             find.ancestor(of: _card(), matching: find.byType(DecoratedBox)),
           )
-          .decoration as BoxDecoration;
+          .decoration as ShapeDecoration;
       expect(cardDecoration.color, palette.surface);
-      // 圆角 49.3（实测）
+      // 圆角 49.3（实测，连续圆角名义半径）
       expect(
-        (cardDecoration.borderRadius as BorderRadius).topLeft.x,
+        (cardDecoration.shape as MiSquircleBorder).cornerRadius,
         closeTo(MiDialogMetrics.cardRadius, 0.01),
       );
       // 遮罩（MiDialog 内唯一的 ColoredBox）
@@ -175,7 +175,7 @@ void main() {
                     matching: find.byType(DecoratedBox),
                   )
                   .first)
-              .decoration as BoxDecoration)
+              .decoration as ShapeDecoration)
           .color;
       expect(fillOf('取消'), palette.neutralActionFill);
       expect(fillOf('确定'), palette.filledActionFill);
@@ -273,7 +273,7 @@ void main() {
                     matching: find.byType(AnimatedContainer),
                   )
                   .first)
-              .decoration as BoxDecoration)
+              .decoration as ShapeDecoration)
           .color;
 
       // 静止填充
@@ -360,8 +360,8 @@ void main() {
       expect(card.center.dy, moreOrLessEquals(768 / 2, epsilon: 0.5),
           reason: '垂直居中（position: bottom 被忽略）');
 
-      final clip = tester.widget<ClipRRect>(_card());
-      expect(clip.borderRadius, BorderRadius.circular(16));
+      final clip = tester.widget<ClipPath>(_card());
+      expect((clip.clipper as MiSquircleClipper).radius, 16);
     });
 
     testWidgets('受限容器（460 宽）：卡片收到容器可用宽内（不溢出）', (tester) async {
@@ -423,8 +423,8 @@ void main() {
         1280 - card.bottom,
         moreOrLessEquals(MiDialogMetrics.edgeInset, epsilon: 0.5),
       );
-      final clip = tester.widget<ClipRRect>(_card());
-      expect(clip.borderRadius, BorderRadius.circular(49.3));
+      final clip = tester.widget<ClipPath>(_card());
+      expect((clip.clipper as MiSquircleClipper).radius, 49.3);
     });
   });
 }

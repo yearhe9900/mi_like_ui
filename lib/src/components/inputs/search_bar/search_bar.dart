@@ -10,6 +10,7 @@ import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
 import '../../../utils/glass_rim.dart';
 import '../../../utils/hover_feedback.dart';
+import '../../../utils/squircle.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
 
@@ -133,8 +134,8 @@ class MiSearchBar extends StatelessWidget {
     // [frosted] 为 false 时跳过 backdrop，只留半透明填充（宿主另有整条
     // 材质时用；顶栏内的内置搜索栏**仍自绘玻璃**——顶栏那层是随 y 衰减的
     // 背景磨砂，零件自己那层才是它的「透明模糊属性」）。
-    Widget bar = ClipRRect(
-      borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+    Widget bar = ClipPath(
+      clipper: const MiSquircleClipper(MiDimens.radiusPill),
       child: frosted
           ? BackdropFilter(
               // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）

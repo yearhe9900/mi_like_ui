@@ -10,6 +10,8 @@
 
 - **成套组件**：玻璃悬浮底部 / 侧边导航栏、胶囊标签行、胶囊按钮、搜索栏、
   大标题折叠顶栏、渐进模糊、主题卡片、弹框
+- **连续圆角**：全库圆角为 Squircle（G2 连续曲率，HyperOS / iOS 标志性
+  角形，边缘高光不打折），半径语义与度量值不变
 - **明暗双模式**：全部组件提供深 / 浅两套配方，`MiThemeMode` 统一切换
 - **像素级设计规格**：几何、排版、配色、动效曲线均以设计规格数值定义
   （见各组件 `*_metrics.dart`），跨字体排版稳定（基线锚定）
@@ -445,6 +447,22 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 磨砂玻璃质感，无需随滚动状态切换配方。**胶囊行为行区限定的渐变膜带**
 （只覆胶囊行那一段、上下缘羽化，行外与间隙不垫；不再逐胶囊预合成）；
 搜索栏等单个控件仍用 `veiledFill` 预合成（控件形状即栏体）。
+
+### 连续圆角（Squircle）
+
+全库圆角容器（卡片 / 胶囊 / 面板 / 转场前缘）均为 **Squircle 连续圆角**：
+曲率自直线平滑过渡（G2 连续），边缘高光不打折 —— 普通 RRect 的曲率在
+接点从 0 跳到 1/r，高光会打出一个「折」。实现为每角一段三次贝塞尔
+（瓦片 = 半径 × 1.1、控制点比例 0.643；思路参考 flutter_miuix
+`foundation/miuix_squircle.dart`，Apache-2.0，按本库度量驱动风格重写）。
+
+- **半径语义不变**：各 metrics 里的圆角值仍是名义半径，只换「怎么画」，
+  外接几何逐像素不变；stadium（胶囊）端头自动成立（瓦片夹到短边一半）；
+- **API 面**：`MiSquircleBorder`（ShapeDecoration 用）、`MiSquircleClipper`
+  （ClipPath 用）、`MiSquircleShadowPainter`（BoxShadow 的 squircle 版 ——
+  ShapeDecoration 不带 boxShadow，带投影的表面用它垫底）；
+- **不适用处**：真圆（取消钮 / 返回钮 / FAB）、悬停 / 焦点包装层的
+  `borderRadius` 参数（5.6% 叠色下角差不可辨，保留参数避免 API 破坏）。
 
 ## 动效体系
 

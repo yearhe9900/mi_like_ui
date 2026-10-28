@@ -8,6 +8,24 @@
 
 ### Added
 
+- **全库圆角升级为 Squircle 连续圆角**（G2 连续曲率，HyperOS / iOS 标志性
+  角形）：
+  - 新增 `MiSquircle`（每角三次贝塞尔：瓦片 = 半径×1.1、控制比 0.643；
+    思路参考 flutter_miuix `miuix_squircle.dart`（Apache-2.0），按本库
+    度量驱动风格重写）+ `MiSquircleClipper` / `MiSquircleBorder` /
+    `MiSquircleShadowPainter`（BoxShadow 的 squircle 版）
+  - 26 处圆角画点全部迁移：玻璃底栏 / 侧栏（栏体 + 胶囊，painter 挖洞与
+    内缘亮边同步换 path）、胶囊标签行（填充 / 磨砂裁形 / 亮边三遍绘制
+    共用同一 squircle 栅格）、按钮、搜索栏、主题卡、弹框卡片与按钮、
+    弹出面板（投影改 painter 垫底）、推入转场前缘
+  - 半径语义不变（metrics 数值照旧，只换画法）；悬停 / 焦点包装层的
+    borderRadius 参数保留（5.6% 叠色下角差不可辨，避免 API 破坏）
+  - golden 16/17 重拍 + README 预览 47 张重生成，全量 281 测试通过；
+    Widget 测试查找器同步迁移（BoxDecoration→ShapeDecoration、
+    ClipRRect→ClipPath）
+
+### Added（动效）
+
 - **issue #2 / #3 / #4 三连：框架 API 补强**（2026-10-28）
   - **#2 宿主自拼头部的生产消费**：barrel 导出 `glass_rim.dart`
     （`MiGlassRimPainter`，下游自适应宽胶囊变体可直用同一支亮边画笔）；

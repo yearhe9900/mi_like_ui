@@ -1,6 +1,6 @@
-import 'dart:ui';
-
 import 'package:flutter/rendering.dart';
+
+import 'squircle.dart';
 
 /// 玻璃片**内缘亮边**（「边缘逐渐变亮」的受光边）：贴形状边缘内侧约 1dp
 /// 的白色亮边、向内渐变收尾，外侧仅微溢 ~1px。
@@ -31,15 +31,17 @@ class MiGlassRimPainter extends CustomPainter {
   /// 柔边羽化 σ（dp）；`MaskFilter.blur` 随画布变换走逻辑坐标，无需按 dpr 换算。
   static const double feather = 0.5;
 
-  /// 在 [rrect] 边界上描一圈亮边（多胶囊条等复用同一套笔刷参数）。
+  /// 在 [rect] 的**连续圆角**（squircle）边界上描一圈亮边（多胶囊条等
+  /// 复用同一套笔刷参数；[radius] 夹位见 [MiSquircle.pathOf]）。
   static void drawRim(
     Canvas canvas,
-    RRect rrect,
+    Rect rect,
+    double radius,
     Color color, {
     double strokeWidth = 1.1,
   }) {
-    canvas.drawRRect(
-      rrect,
+    canvas.drawPath(
+      MiSquircle.pathOf(rect, radius),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
@@ -53,10 +55,8 @@ class MiGlassRimPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     drawRim(
       canvas,
-      RRect.fromRectAndRadius(
-        (Offset.zero & size).deflate(strokeWidth / 2),
-        Radius.circular(radius),
-      ),
+      (Offset.zero & size).deflate(strokeWidth / 2),
+      radius,
       color,
       strokeWidth: strokeWidth,
     );

@@ -7,6 +7,7 @@ import '../../../theme/motion_tokens.dart';
 import '../../../theme/pull_up_panel_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
+import '../../../utils/squircle.dart';
 import 'pull_up_panel_metrics.dart';
 
 /// [MiPullUpPanel] 的显隐控制器（宿主可编程收起）。
@@ -268,14 +269,14 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
                                     height: widget.height == null
                                         ? null
                                         : math.min(widget.height!, maxH),
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: palette.surface,
-                                        borderRadius: BorderRadius.circular(
-                                          MiPullUpPanelMetrics.panelRadius,
-                                        ),
-                                        // 轻投影（浅色度量拟合，暗色不可分辨）
-                                        boxShadow: const [
+                                    child: CustomPaint(
+                                      // 轻投影（浅色度量拟合，暗色不可分辨）。
+                                      // ShapeDecoration 不带 boxShadow，投影用
+                                      // squircle 画笔垫在底层（语义对齐 BoxShadow）。
+                                      painter: const MiSquircleShadowPainter(
+                                        radius:
+                                            MiPullUpPanelMetrics.panelRadius,
+                                        shadows: [
                                           BoxShadow(
                                             color:
                                                 MiTransparencyTokens.panelShadow,
@@ -290,11 +291,19 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
                                           ),
                                         ],
                                       ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(
-                                          MiPullUpPanelMetrics.panelRadius,
+                                      child: DecoratedBox(
+                                        decoration: ShapeDecoration(
+                                          color: palette.surface,
+                                          shape: const MiSquircleBorder(
+                                            MiPullUpPanelMetrics.panelRadius,
+                                          ),
                                         ),
-                                        child: widget.child,
+                                        child: ClipPath(
+                                          clipper: const MiSquircleClipper(
+                                            MiPullUpPanelMetrics.panelRadius,
+                                          ),
+                                          child: widget.child,
+                                        ),
                                       ),
                                     ),
                                   ),

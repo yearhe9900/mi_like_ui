@@ -50,10 +50,10 @@ Widget _harness({
 Finder _panel({MiThemeMode mode = MiThemeMode.dark}) => find.byWidgetPredicate(
       (w) =>
           w is DecoratedBox &&
-          w.decoration is BoxDecoration &&
-          (w.decoration! as BoxDecoration).color ==
+          w.decoration is ShapeDecoration &&
+          (w.decoration! as ShapeDecoration).color ==
               MiPullUpPanelPalette.of(mode).surface &&
-          (w.decoration! as BoxDecoration).borderRadius != null,
+          (w.decoration! as ShapeDecoration).shape is MiSquircleBorder,
     );
 
 void main() {
@@ -102,13 +102,19 @@ void main() {
     expect(panel.height, closeTo(240, 0.5));
     expect(856 - panel.bottom, closeTo(90, 0.5));
 
-    final deco = tester.widget<DecoratedBox>(_panel()).decoration! as BoxDecoration;
+    final deco = tester.widget<DecoratedBox>(_panel()).decoration! as ShapeDecoration;
     expect(
-      (deco.borderRadius as BorderRadius).topLeft.x,
+      (deco.shape as MiSquircleBorder).cornerRadius,
       closeTo(33.0, 0.01),
     );
-    // 轻投影（度量拟合）：黑 @0.12、blur 14、下偏 4
-    final shadow = deco.boxShadow!.single;
+    // 轻投影（度量拟合）：黑 @0.12、blur 14、下偏 4 —— ShapeDecoration 不带
+    // boxShadow，投影由 MiSquircleShadowPainter 垫在面板底层
+    final painter = tester
+        .widget<CustomPaint>(
+          find.ancestor(of: _panel(), matching: find.byType(CustomPaint)).first,
+        )
+        .painter as MiSquircleShadowPainter;
+    final shadow = painter.shadows.single;
     expect(shadow.color, MiTransparencyTokens.panelShadow);
     expect(shadow.blurRadius, closeTo(14.0, 0.01));
     expect(shadow.offset, const Offset(0, 4.0));
@@ -266,7 +272,7 @@ void main() {
       await tester.pumpAndSettle();
       final deco = tester
           .widget<DecoratedBox>(_panel(mode: mode))
-          .decoration! as BoxDecoration;
+          .decoration! as ShapeDecoration;
       expect(deco.color, MiPullUpPanelPalette.of(mode).surface);
     }
   });

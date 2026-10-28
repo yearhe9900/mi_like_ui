@@ -8,6 +8,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
+import '../../../utils/squircle.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/cell_grid.dart';
 import '../../../utils/filter_cache.dart';
@@ -331,8 +332,8 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
               );
 
           // 浅色下玻璃体带投影；深色配方投影为空，不包任何额外层（视觉回归零变化）。
-          Widget glass = ClipRRect(
-            borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
+          Widget glass = ClipPath(
+            clipper: const MiSquircleClipper(MiGlassNavMetrics.barHeight / 2),
             child: BackdropFilter(
                   // σ 固定 → 复用缓存的 native filter（每帧重建是纯开销）
                   filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
@@ -467,10 +468,10 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
               );
 
           if (palette.elevationShadow.isNotEmpty) {
-            glass = DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(MiGlassNavMetrics.barHeight / 2),
-                boxShadow: palette.elevationShadow,
+            glass = CustomPaint(
+              painter: MiSquircleShadowPainter(
+                radius: MiGlassNavMetrics.barHeight / 2,
+                shadows: palette.elevationShadow,
               ),
               child: glass,
             );

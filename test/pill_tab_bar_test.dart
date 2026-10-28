@@ -82,7 +82,7 @@ void main() {
       final container = tester.widget<AnimatedContainer>(
         find.ancestor(of: find.text(label), matching: find.byType(AnimatedContainer)),
       );
-      final box = container.decoration! as BoxDecoration;
+      final box = container.decoration! as ShapeDecoration;
       // 选中态颜色与标签色一致切换
       expect(
         (text.style!.color == light.selectedLabel) == (box.color == light.selectedFill),
@@ -123,7 +123,7 @@ void main() {
     final container = tester.widget<AnimatedContainer>(
       find.ancestor(of: find.text('示例六'), matching: find.byType(AnimatedContainer)),
     );
-    expect((container.decoration! as BoxDecoration).color, light.selectedFill);
+    expect((container.decoration! as ShapeDecoration).color, light.selectedFill);
   });
 
   testWidgets('selectedIndex out of range asserts at build', (tester) async {
@@ -160,7 +160,7 @@ void main() {
     Color fillOf(String label) => (tester
             .widget<AnimatedContainer>(find.ancestor(
                 of: find.text(label), matching: find.byType(AnimatedContainer)))
-            .decoration! as BoxDecoration)
+            .decoration! as ShapeDecoration)
         .color!;
 
     for (final mode in MiThemeMode.values) {

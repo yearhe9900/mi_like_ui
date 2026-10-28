@@ -6,6 +6,7 @@ import '../../../theme/dialog_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/squircle.dart';
 import 'dialog_list_metrics.dart';
 import 'dialog_metrics.dart';
 
@@ -444,14 +445,14 @@ class MiDialog extends StatelessWidget {
     return Semantics(
       container: true,
       child: DecoratedBox(
-        decoration: BoxDecoration(
+        decoration: ShapeDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(spec.radius),
+          shape: MiSquircleBorder(spec.radius),
         ),
         // 裁剪圆角：按钮 / 文字都不出圈（`Clip.antiAlias` 恒定，避免状态切换
         // 增删裁剪层重建子树）。
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(spec.radius),
+        child: ClipPath(
+          clipper: MiSquircleClipper(spec.radius),
           child: Stack(
             children: [
               if (title != null)
@@ -802,14 +803,14 @@ class _MiDialogActionButtonState extends State<_MiDialogActionButton> {
           duration:
               const Duration(milliseconds: MiDialogMetrics.pressDurationMs),
           curve: Curves.easeOutQuad,
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: _pressed
                 ? MiTransparencyTokens.dialogPressedFill(
                     fill,
                     widget.themeMode,
                   )
                 : fill,
-            borderRadius: BorderRadius.circular(MiDialogMetrics.actionRadius),
+            shape: const MiSquircleBorder(MiDialogMetrics.actionRadius),
           ),
           child: Baseline(
             baseline: MiDialogMetrics.actionLabelBaseline,

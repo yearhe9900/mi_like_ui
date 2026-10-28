@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/transparency_tokens.dart';
+import '../../../utils/squircle.dart';
 import 'card_page_route_metrics.dart';
 
 /// 卡片式页面推入转场：新页从右缘滑入、前缘带大圆角，下层页左移视差并压暗。
@@ -180,8 +181,8 @@ class _MiPushIncoming extends StatelessWidget {
             Positioned.fill(
               child: FractionalTranslation(
                 translation: Offset(1 - visual, 0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(cornerRadius),
+                child: ClipPath(
+                  clipper: MiSquircleClipper(cornerRadius),
                   child: page,
                 ),
               ),
@@ -279,8 +280,8 @@ class _MiPushWide extends StatelessWidget {
             // 4dp 抬起落位（自下而上）+ 转场期小圆角。
             Transform.translate(
               offset: Offset(0, MiCardPageRouteMetrics.wideRiseDp * (1 - visual)),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(cornerRadius),
+              child: ClipPath(
+                clipper: MiSquircleClipper(cornerRadius),
                 child: page,
               ),
             ),

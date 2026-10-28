@@ -18,7 +18,7 @@ void main() {
     final container = tester.widget<AnimatedContainer>(
       find.ancestor(of: find.text(label), matching: find.byType(AnimatedContainer)),
     );
-    return (container.decoration! as BoxDecoration).color!;
+    return (container.decoration! as ShapeDecoration).color!;
   }
 
   testWidgets('filled button matches the measured follow button', (tester) async {

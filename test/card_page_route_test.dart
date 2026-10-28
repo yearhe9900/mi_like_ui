@@ -102,24 +102,24 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      final clip = tester.widget<ClipRRect>(
+      final clip = tester.widget<ClipPath>(
         find
             .ancestor(
               of: find.byKey(pageKey),
-              matching: find.byType(ClipRRect),
+              matching: find.byType(ClipPath),
             )
             .first,
       );
       expect(
-        clip.borderRadius,
-        BorderRadius.circular(MiCardPageRouteMetrics.cornerRadius),
+        (clip.clipper as MiSquircleClipper).radius,
+        MiCardPageRouteMetrics.cornerRadius,
       );
 
       await tester.pump(const Duration(milliseconds: 400));
       expect(
         find.ancestor(
           of: find.byKey(pageKey),
-          matching: find.byType(ClipRRect),
+          matching: find.byType(ClipPath),
         ),
         findsNothing,
         reason: '归位后不加任何图层：静止页逐像素不变',
@@ -361,11 +361,11 @@ void main() {
         moreOrLessEquals(0, epsilon: 0.5),
         reason: '4dp 位移应归零',
       );
-      // 落定后 ClipRRect / 幕布都不在（静止页零额外绘制）
+      // 落定后 ClipPath / 幕布都不在（静止页零额外绘制）
       expect(
         find.ancestor(
           of: find.byKey(pageKey),
-          matching: find.byType(ClipRRect),
+          matching: find.byType(ClipPath),
         ),
         findsNothing,
       );

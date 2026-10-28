@@ -43,8 +43,8 @@ Widget _harness({
   );
 }
 
-/// 卡片本体：`MiDialog` 里唯一的 [ClipRRect]。
-Finder _card() => find.byType(ClipRRect);
+/// 卡片本体：`MiDialog` 里唯一的 [ClipPath]。
+Finder _card() => find.byType(ClipPath);
 
 /// 列表行容器（带定高的 AnimatedContainer —— 按钮行那只是无约束的）。
 Finder _rows() => find.descendant(
