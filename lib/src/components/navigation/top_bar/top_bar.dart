@@ -153,6 +153,7 @@ class MiTopBar extends StatefulWidget {
     this.showBack = false,
     this.onBack,
     this.themeMode,
+    this.palette,
     this.scrollOffset = 0,
     this.searchBar,
     this.searchHint,
@@ -231,6 +232,25 @@ class MiTopBar extends StatefulWidget {
 
   /// 明暗模式；null = 跟随环境 Theme 亮度。
   final MiThemeMode? themeMode;
+
+  /// 材质/墨色配方（null = 按 [themeMode] 取 `MiTopBarPalette.of`，现有
+  /// 行为逐像素不变）。
+  ///
+  /// 传 [MiTopBarPalette.transparent]（或 `transparentFor(mode)`）即切到
+  /// **透明顶栏配方档**（issue #4②）：零叠色渐变 + [scrimOpaqueBottom] = 0；
+  /// 完整透明形态再配 `showBlur: false`（σ=0：栏内无磨砂）与默认常亮的
+  /// 内缘亮边（`rimProgress` 1.0）—— 阅读页这类「顶栏叠在任意内容上、靠
+  /// 零件亮边读分隔」的宿主一行切到该形态，不自己拼参数：
+  ///
+  /// ```dart
+  /// MiTopBar(
+  ///   title: '章节名',
+  ///   showBlur: false,
+  ///   showSurface: false,
+  ///   palette: MiTopBarPalette.transparentFor(themeMode),
+  /// )
+  /// ```
+  final MiTopBarPalette? palette;
 
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
   final double scrollOffset;
@@ -314,8 +334,11 @@ class MiTopBar extends StatefulWidget {
 
   /// 头部区是否**压在内容上**（照片/视频从下方经过，默认 false）。
   ///
-  /// 只影响内置零件的填充（[searchHint] / [tabs] 产出的组件）：
-  /// 开启后在低调填充之下再垫一层玻璃膜（[MiTransparencyTokens.veiledFill]）。
+  /// 只影响内置零件的填充（[searchHint] / [tabs] 产出的组件），开启后在
+  /// 低调填充之下垫一层玻璃膜：
+  ///  * 胶囊行 = **行区限定的渐变膜带**（issue #4①：膜只覆盖胶囊行那一段、
+  ///    上下缘羽化，行外与胶囊间隙不垫；不再逐胶囊预合成）；
+  ///  * 搜索栏 = 自身栏体形状下垫膜（单个控件，`veiledFill` 预合成）。
   /// 首页素材度量：压在横幅上的胶囊内侧比同 y 间隙亮 33 级（亮）/暗 100 级
   /// （暗），那层落差只能来自膜 —— 模糊只改局部对比、不改局部均值。
   ///
@@ -516,7 +539,13 @@ class MiTopBar extends StatefulWidget {
   /// 几何按 [extent] / [MiHeaderBlurProfile.nominalExtent] 等比拉伸。
   /// 深色开叠色时，α = 1 的实心段之内那段模糊 100% 不可见，照旧跳过
   ///（[underSurface] 为 `false` 时不得跳，否则栏顶一片清晰）。
-  @visibleForTesting
+  ///
+  /// **公开 API**：这是「有头部区」形态的**权威磨砂曲线**，顶栏自己与宿主
+  /// 自拼浮动头部（如下游书架首页：搜索胶囊 + 分组胶囊行压在滚动内容上，
+  /// 形态等价顶栏吸顶头部）应当消费同一条曲线，避免第二份事实源。宿主侧：
+  /// `MiGradientBlur(bands: MiTopBar.headerBlurBands(palette, extent: …))`。
+  /// 与之相对，[visibleBlurBands] 只是「无头部区」形态的测试口径（
+  /// `@visibleForTesting`），不要在生产代码消费。
   static List<MiTopBarBlurBand> headerBlurBands(
     MiTopBarPalette palette, {
     required double extent,
@@ -618,7 +647,7 @@ class MiTopBar extends StatefulWidget {
         (Theme.of(context).brightness == Brightness.light
             ? MiThemeMode.light
             : MiThemeMode.dark);
-    final palette = MiTopBarPalette.of(mode);
+    final palette = this.palette ?? MiTopBarPalette.of(mode);
     final title = this.title;
     // 搜索态下标题整体淡出（参考素材那页的大标题在转场中消失）。
     final titleFade = 1 - progress;

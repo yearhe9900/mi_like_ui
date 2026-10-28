@@ -8,6 +8,25 @@
 
 ### Added
 
+- **issue #2 / #3 / #4 三连：框架 API 补强**（2026-10-28）
+  - **#2 宿主自拼头部的生产消费**：barrel 导出 `glass_rim.dart`
+    （`MiGlassRimPainter`，下游自适应宽胶囊变体可直用同一支亮边画笔）；
+    `MiTopBar.headerBlurBands` 去掉 `@visibleForTesting` **公开化**（有头部区
+    形态的权威磨砂曲线，宿主自拼浮动头部与顶栏同源；与仅测试口径的
+    `visibleBlurBands` 定位分开）
+  - **#3 自适应胶囊宽度档**（`MiPillItemWidth.adaptive`，全推导值）：
+    `胶囊宽 = clamp(标签文字自然宽 + 2×textInset(16), min(87.6), max(175.2))`，
+    超上限 ellipsis 截断；填充 / 磨砂裁形 / 内缘亮边三遍对齐同一宽序列；
+    默认 `fixed` 现有度量行为逐像素不变（golden 锁）；新增
+    `pill_adaptive_dark` golden
+  - **#4① 胶囊行区膜带**：`overContent` 的玻璃膜改为**行区限定的渐变膜带**
+    （同胶囊栅格裁形、上下缘羽化 8dp，行外与间隙不垫，羽化端点
+    `veilFeatherFor`）；不再逐胶囊预合成 `veiledFill`，胶囊填充两态同值 ——
+    膜管「形状可读」、内缘亮边管「受光边」；首页头部预览随之重生成
+  - **#4② 透明顶栏配方档**：`MiTopBarPalette.transparent` / `transparentFor`
+    （零叠色渐变 + `scrimOpaqueBottom` 0）+ `MiTopBar.palette` 可选参数；
+    配合 `showBlur: false` 与常亮亮边，阅读页顶栏一行切到透明形态
+
 - **动效令牌 `MiMotionTokens`**（统一动效配置，token → 测试 → 文档同步链）：
   - 跨组件动效收归 `theme/motion_tokens.dart` 单一来源：按压反馈
     420/300ms `easeOut`（顶栏返回钮度量、搜索取消钮推导沿用）、按压叠色
@@ -23,6 +42,13 @@
     曲线字面量 + 跨组件同值断言；全量 276 测试通过、golden 零变化
 
 ### Fixed
+
+- **横屏/宽屏下侧栏与内容列无分隔**（2026-10-27，实机反馈七轮）：内容列
+  的让位此前 = 侧栏列（栏体右缘与内容左缘相贴，间距 0，横幅通栏满铺时
+  没有呼吸感）。新增 `MiGlassSideNavMetrics.contentSeparation = 24dp`
+  （推导值，与栏体左留白 25.5 同档）与 `contentInsetFor(expanded:)`
+  助手（侧栏列 + 分隔，外壳与几何测试同源）；responsive/desktop_nav
+  几何断言与预览图同步
 
 - **底栏选中高亮改回高磨砂块**（2026-10-27，实机反馈六轮）：
   - 参考实测（滚动对齐帧多点回归、胶囊全宽无字带 2503–2522）：暗色选中块

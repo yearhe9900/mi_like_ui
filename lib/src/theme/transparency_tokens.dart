@@ -163,6 +163,22 @@ class MiTransparencyTokens {
       ? veilBaseDark.withAlpha(veilAlphaDark)
       : veilBaseLight.withAlpha(veilAlphaLight);
 
+  // ── 三·二、胶囊行区膜带（issue #4①：只覆胶囊行区、上下缘羽化）────────
+  //
+  // 旧口径是逐胶囊预合成膜（`veiledFill`）：膜边界绑死胶囊形状，行区上下
+  // 缘是硬边。素材口径是膜带**只覆盖胶囊行那一段**、上下缘羽化（与头部
+  // 磨砂的羽化收尾同一语言），行外与胶囊间隙不垫。羽化端点即 veil 色
+  // @0（与中段同色相、零 alpha，渐变两端自然收净）。
+
+  /// 膜带羽化端点（veil @0）：亮 = 页底色 @0、暗 = 纯黑 @0。
+  static const Color veilFeatherLight = Color.fromRGBO(243, 243, 243, 0);
+  static const Color veilFeatherDark = Color.fromRGBO(0, 0, 0, 0);
+
+  /// 按明暗取膜带羽化端点色。
+  static Color veilFeatherFor(MiThemeMode mode) => mode == MiThemeMode.dark
+      ? veilFeatherDark
+      : veilFeatherLight;
+
   /// 玻璃片**内缘亮边** alpha（搜索栏 / 未选中胶囊；明暗各一档）。
   ///
   /// 边缘受光的「逐渐变亮」效果：贴玻璃体边缘内侧约 1dp 的白色亮边，
@@ -416,6 +432,11 @@ class MiTransparencyTokens {
   /// 保持原值，内容列表亮度不变）。仍保留一层全屏透明命中层，让面板外
   /// 点按能交给宿主收起（语义同弹框 `onScrimTap`，只是不压暗）。
   static const Color panelScrim = Color(0x00000000);
+
+  /// 全透明端点（零叠色配方档的渐变端色，如
+  /// `MiTopBarPalette.transparent`）—— 组件层要表达「透明」一律引用它，
+  /// 不自写字面量（守门测试扫描口径）。
+  static const Color clear = Color(0x00000000);
 
   /// 弹出面板投影 alpha（**度量拟合**，0.25× 慢速浅色素材：面板下缘外 +2dp
   /// 处压暗 14 级、+6dp 压 10 级、+14dp 归零，上缘仅 ~3 级 → 黑 @0.12、

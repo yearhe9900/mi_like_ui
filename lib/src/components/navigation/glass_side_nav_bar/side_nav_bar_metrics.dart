@@ -49,6 +49,14 @@ class MiGlassSideNavMetrics {
   /// 侧栏占用列的总宽 = 留白 + 栏宽；示例用它给内容让位。
   static const double gutterWidth = railMargin + railWidth;
 
+  /// 内容列与侧栏之间的**分隔留白**（推导值，参考素材无横屏样张）。
+  ///
+  /// 栏体是浮在页面底色上的玻璃面板，内容列的横幅又通栏满铺 —— 两者
+  /// 相贴（间距 0）时没有呼吸感（实机反馈：横屏下左栏与内容无分隔）。
+  /// 取 [MiDimens.spaceXxl]（24，与栏体左留白 25.5 同档），示例外壳在
+  /// [gutterWidthFor] 之外再让出这一档。
+  static const double contentSeparation = MiDimens.spaceXxl;
+
   // ── 展开态（带文字标签，桌面档）──────────────────────────────────────────
   //
   // 参考素材同样没有展开态样张，以下全部是**推导值**：只沿用已度量的
@@ -88,6 +96,12 @@ class MiGlassSideNavMetrics {
   /// 侧栏列宽（按形态取窄栏 / 展开栏），示例外壳给内容让位时用它。
   static double gutterWidthFor({bool expanded = false}) =>
       expanded ? expandedGutterWidth : gutterWidth;
+
+  /// 内容列的左缘让位 = 侧栏列 + 分隔留白（[contentSeparation]）。
+  ///
+  /// 示例外壳与几何测试同源取用，避免两处各算一份。
+  static double contentInsetFor({bool expanded = false}) =>
+      gutterWidthFor(expanded: expanded) + contentSeparation;
 
   /// 栏体宽（按形态取窄栏 / 展开栏）。
   static double railWidthFor({bool expanded = false}) =>

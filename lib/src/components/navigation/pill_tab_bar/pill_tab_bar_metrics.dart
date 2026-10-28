@@ -38,4 +38,37 @@ class MiPillTabMetrics {
   /// 选中态填充切换过渡 200ms `easeOut`（**推导值**：素材无切换帧；与
   /// `MiButton` 按压同值同曲线，构成胶囊类控件的统一淡变档）。
   static const int fillFadeMs = 200;
+
+  // ── 自适应宽度档（issue #3，全部为**推导值**：素材只有定宽形态）────────
+  //
+  // 下游 MReader 书架头部用「全部 + 分组名」展示，分组名长短不一：定宽下
+  // 短标签两侧大量留白、长标签只能省略号截断。自适应档按下式取宽：
+  //
+  //   胶囊宽 = clamp(标签文字自然宽 + 2×[adaptiveTextInset],
+  //                  minItemWidth, maxItemWidth)
+
+  /// 自适应档胶囊宽度上限 = 2×[itemWidth] = 175.2（推导：下游目测档，短标签
+  /// 留白与长标签可读性的折中；超过则省略号截断）。
+  static const double adaptiveMaxWidth = 2 * itemWidth;
+
+  /// 自适应档标签两侧内缩 16（推导，下游同款）。
+  static const double adaptiveTextInset = 16.0;
+
+  // ── 胶囊行区膜带（issue #4①，推导值）────────────────────────────────
+
+  /// `overContent` 膜带的上下缘羽化高 8dp（推导：与头部磨砂羽化收尾 ~6dp
+  /// 同语言，取整档；素材无膜带样张）。
+  static const double veilFeatherHeight = 8.0;
+}
+
+/// 胶囊宽度模式（issue #3）。
+enum MiPillItemWidth {
+  /// 定宽（默认）：全部胶囊 = [MiPillTabMetrics.itemWidth]（度量 87.6，
+  /// 现有行为逐像素不变）。
+  fixed,
+
+  /// 自适应：`clamp(标签文字自然宽 + 2×textInset, minItemWidth,
+  /// maxItemWidth)`，超过上限以省略号截断；多胶囊仍同一栅格
+  /// （填充 / 磨砂裁形 / 内缘亮边三遍对齐同一宽序列）。
+  adaptive,
 }

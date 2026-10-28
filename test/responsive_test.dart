@@ -307,13 +307,14 @@ void main() {
 
       final page = tester.getRect(find.byType(MockPage));
       // 画面 = 窗口 768×1280（铺满、无外围卡片）；画面宽 > 导航断点 600 →
-      // 用侧栏，页面让出 120.9 的侧栏列。
+      // 用侧栏，页面让出「侧栏列 + 分隔留白」（120.9 + 24 = 144.9）。
+      final inset = MiGlassSideNavMetrics.contentInsetFor();
       expect(
         page.width,
-        closeTo(768 - MiGlassSideNavMetrics.gutterWidth, 0.01),
+        closeTo(768 - inset, 0.01),
       );
       expect(page.height, closeTo(1280, 0.01));
-      expect(page.left, closeTo(MiGlassSideNavMetrics.gutterWidth, 0.01));
+      expect(page.left, closeTo(inset, 0.01));
       expect(page.left, greaterThanOrEqualTo(0));
       expect(page.right, lessThanOrEqualTo(768.01));
       expect(page.bottom, lessThanOrEqualTo(1280.01));
@@ -328,19 +329,20 @@ void main() {
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
       // 手机 → 桌面：画面铺满窗口、底部栏换成**展开侧栏**（≥1024 换形态）；
-      // **内容列**限宽 1120 居中（列宽 = min(窗口 − 侧栏列, 1120)，两侧留白
-      // 相等）。
+      // **内容列**限宽 1120 居中（列宽 = min(窗口 − 侧栏让位, 1120)，两侧
+      // 留白相等）。
       setWindow(tester, const Size(1366, 768));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final wide = tester.getRect(find.byType(MockPage));
-      final gutter = MiGlassSideNavMetrics.gutterWidthFor(expanded: true);
-      final area = 1366 - gutter;
+      final inset =
+          MiGlassSideNavMetrics.contentInsetFor(expanded: true);
+      final area = 1366 - inset;
       final column = math.min(area, MiBreakpoints.contentMaxWidth);
       expect(wide.width, closeTo(column, 0.01));
       expect(
         wide.left,
-        closeTo(gutter + (area - column) / 2, 0.01),
+        closeTo(inset + (area - column) / 2, 0.01),
       );
 
       // 桌面 → 小窗：又缩回等比 contain

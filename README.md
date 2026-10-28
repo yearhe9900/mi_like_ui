@@ -115,6 +115,9 @@ FAB 直径 55.4dp。玻璃配方（σ = 9.0dp 磨砂、栏体遮罩、选中块�
 
 **规格**（详见 `MiGlassSideNavMetrics`）：条目高 49.3dp、条目间距 8dp；
 FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格的纵向换算（推导值）。
+内容列在侧栏列之外再让出 **24dp 分隔留白**（`contentSeparation`，推导值 ——
+栏体是浮在页面底色上的玻璃面板、内容横幅又通栏满铺，相贴时没有呼吸感），
+外壳与几何测试同源取 `contentInsetFor(expanded:)`。
 
 > **形态切换建议直接替换子树、不做淡入淡出**：`Opacity` /
 > `AnimatedSwitcher` 会对含 `BackdropFilter` 的子树引入 saveLayer，
@@ -127,9 +130,18 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
 横向分类标签行，选中项为磨砂玻璃胶囊（透镜），支持出血滚动；适合吸顶
 分类切换场景（滚动内容可从半透明胶囊后方经过）。
 
-**规格**（详见 `MiPillTabBarMetrics`）：胶囊 87.6×39.9dp、胶囊间距 /
+**规格**（详见 `MiPillTabMetrics`）：胶囊 87.6×39.9dp、胶囊间距 /
 两端留白 11.9dp、标签 13.85dp Medium；磨砂膜与填充配方见
 `MiPillTabPalette` 与 `MiTransparencyTokens`。
+
+**宽度两档**（`itemWidthMode`）：默认 `fixed`（度量定宽，行为逐像素不变）；
+`MiPillItemWidth.adaptive` 按标签文字自然宽取
+`clamp(文字宽 + 2×16, 87.6, 175.2)`（上限内缩均为**推导值**），超出上限以
+省略号截断，填充 / 磨砂裁形 / 内缘亮边三遍对齐同一宽序列。
+
+**压内容膜带**（`overContent: true`）：胶囊行垫一层**行区限定**的玻璃膜带
+（**推导值**：羽化高 8dp，与头部磨砂羽化收尾同一语言）——膜只覆盖胶囊行
+那一段、上下缘羽化，行外与胶囊间隙不垫；胶囊填充两态同值。
 
 <img src="doc/preview/pill_light.png" width="360" alt="浅色胶囊分类标签行" /> <img src="doc/preview/pill_dark.png" width="360" alt="深色胶囊分类标签行" />
 
@@ -171,6 +183,13 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
 - **搜索态**（`searchActive` / `onSearchCancel`）：内置搜索栏切换为输入态，
   右侧淡入取消钮、胶囊标签淡出并退出排版；
 - **材质开关**：`showBlur`（顶部磨砂）与 `showSurface`（顶部压色）独立控制；
+- **命名配方档**：`palette` 可选（null = 按明暗取 `MiTopBarPalette.of`）；
+  传 `MiTopBarPalette.transparentFor(mode)` 即**透明顶栏档**（推导）——
+  零叠色 + 无实心段，配合 `showBlur: false`（σ=0）与常亮内缘亮边，阅读页
+  这类「叠在任意内容上、靠亮边读分隔」的顶栏一行切到该形态；
+- **磨砂曲线公开**：`MiTopBar.headerBlurBands(palette, extent: …)` 是「有
+  头部区」形态的**权威渐进曲线**（公开 API）—— 宿主自拼浮动头部（如书架
+  首页）与顶栏消费同一条曲线，不抄第二份事实源；
 - **宽屏收敛**（三个参数，手机档传默认值逐像素不变）：
   - `headerTopInset` —— 头部区顶部让位。桌面传 **24**（`desktopHeaderTopInset`，
     推导值：窗口没有状态栏，留度量 56 会悬出一条空带）；
@@ -422,8 +441,10 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 `test/transparency_config_test.dart` 扫描源码约束。
 
 其中「玻璃膜」用于压在滚动内容上的零件（`overContent: true`）：垫在低调
-填充之下预合成（`veiledFill`），使零件在平坦页面上与普通填充无异、内容滚到
-其后方时才显出磨砂玻璃质感，无需随滚动状态切换配方。
+填充之下，使零件在平坦页面上与普通填充无异、内容滚到其后方时才显出
+磨砂玻璃质感，无需随滚动状态切换配方。**胶囊行为行区限定的渐变膜带**
+（只覆胶囊行那一段、上下缘羽化，行外与间隙不垫；不再逐胶囊预合成）；
+搜索栏等单个控件仍用 `veiledFill` 预合成（控件形状即栏体）。
 
 ## 动效体系
 

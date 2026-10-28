@@ -12,13 +12,13 @@ import 'package:mi_like_ui/demo/mock_pages.dart';
 import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
 
 /// 宽屏**内容列**在给定窗口下的几何（`MiContentColumn` 1120dp 上限 + 居中）：
-/// 返回两侧留白与列宽。侧栏列宽先被扣掉（桌面档是**展开态** 201.5），剩下
-/// 的区域再决定列宽。
+/// 返回两侧留白与列宽。内容让位（侧栏列 + 分隔留白，桌面档展开态）先被
+/// 扣掉，剩下的区域再决定列宽。
 ({double gutter, double width}) contentColumn(Size window) {
-  final gutter = MiGlassSideNavMetrics.gutterWidthFor(
+  final inset = MiGlassSideNavMetrics.contentInsetFor(
     expanded: MiBreakpoints.usesExpandedRail(window.width),
   );
-  final area = window.width - gutter;
+  final area = window.width - inset;
   final width = math.min(area, MiBreakpoints.contentMaxWidth);
   return (gutter: (area - width) / 2, width: width);
 }
@@ -741,13 +741,13 @@ void main() {
         final page = tester.getRect(find.byType(MockPage));
         final rail = tester.getRect(find.byType(MiGlassSideNavBar));
         final col = contentColumn(window);
-        final gutter = MiGlassSideNavMetrics.gutterWidthFor(
+        final inset = MiGlassSideNavMetrics.contentInsetFor(
           expanded: MiBreakpoints.usesExpandedRail(window.width),
         );
         expect(page.width, closeTo(col.width, 0.01), reason: '$window');
         expect(
           page.left,
-          closeTo(gutter + col.gutter, 0.01),
+          closeTo(inset + col.gutter, 0.01),
           reason: '$window',
         );
         expect(page.left - rail.left, greaterThan(0), reason: '$window');
@@ -810,7 +810,8 @@ void main() {
       );
       expect(page.left,
           closeTo(
-            MiGlassSideNavMetrics.expandedGutterWidth + col.gutter, 0.01),
+            MiGlassSideNavMetrics.contentInsetFor(expanded: true) + col.gutter,
+            0.01),
           reason: '页面应落在展开侧栏右侧的内容列里（列宽上限 1120 + 居中）');
       expect(page.top, closeTo(0, 0.01));
       // 展开栏让出 201.5 后剩 1366 − 201.5 = 1164.5 > 1120 → 列宽取**上限**

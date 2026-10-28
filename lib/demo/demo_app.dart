@@ -363,7 +363,7 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
                   children: [
                     Positioned(
                       left: sideNav
-                          ? MiGlassSideNavMetrics.gutterWidthFor(
+                          ? MiGlassSideNavMetrics.contentInsetFor(
                               expanded: expandedRail,
                             )
                           : 0,

@@ -1611,6 +1611,75 @@ void main() {
     const withBack = MiTopBar(title: kTitle, showBack: true);
     expect(withBack.showBack, isTrue);
   });
+
+  group('透明顶栏配方档（issue #4②）', () {
+    test('palette.transparent = 零叠色 + 无实心段；transparentFor 随明暗取墨', () {
+      final transparent = MiTopBarPalette.transparent;
+      expect(transparent.scrimOpaqueBottom, 0);
+      final gradient = transparent.scrimGradient as LinearGradient;
+      expect(gradient.colors.map((c) => c.alpha), everyElement(0));
+      expect(transparent.ink, MiColors.foreground);
+
+      final light = MiTopBarPalette.transparentFor(MiThemeMode.light);
+      expect(light.ink, MiColors.foregroundLight);
+      expect(light.pressHighlight, MiTransparencyTokens.pressHighlightLight);
+      expect(light.scrimOpaqueBottom, 0);
+      // 透明档（随明暗取墨色 / 按压高光；叠色两档同为零叠色）
+      expect(
+        identical(
+          MiTopBarPalette.transparentFor(MiThemeMode.dark),
+          MiTopBarPalette.transparent,
+        ),
+        isTrue,
+      );
+    });
+
+    testWidgets('showBlur/showSurface 全关 + transparent：无磨砂、无叠色层',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            backgroundColor: const Color(0xFF222222),
+            body: MiTopBar(
+              title: '章节名',
+              themeMode: MiThemeMode.dark,
+              showBlur: false,
+              showSurface: false,
+              palette: MiTopBarPalette.transparent,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MiTopBar), findsOneWidget);
+      // σ=0：整条材质层（磨砂 + 叠色）都不渲染
+      expect(find.byType(BackdropFilter), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(MiTopBar),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is DecoratedBox &&
+                (w.decoration! as BoxDecoration).gradient != null,
+          ),
+        ),
+        findsNothing,
+      );
+    });
+
+    test('headerBlurBands 已公开：宿主自拼头部可直接消费同一曲线', () {
+      // `@visibleForTesting` 已移除 —— 编译期即验证公开性（生产代码合法）
+      // 用浅色配方（全段半透明 → 平台段不被实心段裁剪）验证平台段 σ=8.5
+      final bands = MiTopBar.headerBlurBands(
+        MiTopBarPalette.light,
+        extent: 200,
+      );
+      expect(bands, isNotEmpty);
+      // σ 量化 0.05 档 / 平台段 σ=8.5（MiHeaderBlurProfile）不因公开化改变
+      expect(bands.first.sigma, closeTo(8.5, 0.001));
+    });
+  });
 }
 
 /// 定高自定义头部（`header` 插槽的测试替身）。
