@@ -29,9 +29,11 @@ import 'pill_tab_bar_metrics.dart';
 ///
 /// 未选中胶囊是低调表面（onSurface @6%）。压在滚动内容上时（[overContent]）
 /// 额外垫一层**行区限定的玻璃膜带**（issue #4①）：膜只覆盖胶囊行那一段、
-/// **上下缘羽化**（`MiPillTabMetrics.veilFeatherHeight`，与头部磨砂的羽化
-/// 收尾同一语言），行外与胶囊间隙不垫 —— 膜是独立一层（不再逐胶囊预合成
-/// `veiledFill`），胶囊填充两态同值，膜管「形状可读」、内缘亮边管「受光边」。
+/// 行外与胶囊间隙不垫 —— 膜是独立一层（不再逐胶囊预合成 `veiledFill`），
+/// 胶囊填充两态同值，膜管「形状可读」、内缘亮边管「受光边」。
+/// 上下缘羽化（`MiPillTabMetrics.veilFeatherHeight`）现为 **0（均匀铺满）**：
+/// 8dp 羽化曾把 40dp 胶囊上下各 1/3 的膜吃掉，彩色内容直接透出（实机截图
+/// 否定，2026-10-28）；参考的胶囊膜是均匀的。
 class MiPillTabBar extends StatelessWidget {
   const MiPillTabBar({
     super.key,
