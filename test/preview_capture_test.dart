@@ -616,24 +616,27 @@ void main() {
       await tester.pump();
     }
 
-    // 转场中（120ms，easeOutCubic 已走 66%）：新页带着 61.2 圆角压进来，
-    // 首页左移 0.25 × 页宽并压暗 —— 两张图各截一帧浅/深。
+    // 转场中（时程 0.30：300ms 档取 90ms，与旧 400ms 档的 120ms 同一进度 ——
+    // 截图与既有预览图逐像素一致）：新页带着 61.2 圆角压进来，首页左移
+    // 0.25 × 页宽并压暗 —— 两张图各截一帧浅/深。
     await openSearch(light: true);
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 90));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/push_transition_light.png'),
     );
 
     await openSearch(light: false);
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 90));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/push_transition_dark.png'),
     );
 
-    // 落定后的搜索页（头部：返回圆钮 + 输入框 + 搜索钮）
-    await tester.pump(const Duration(milliseconds: 400));
+    // 落定后的搜索页（头部：返回圆钮 + 输入框 + 搜索钮）。
+    // ⚠️ 累计时长保持 90 + 430 = 520ms：输入光标 500/500ms 闪烁，截图必须落在
+    // 同一相位上（改 pump 分配会让这张图 0.01% 差）。
+    await tester.pump(const Duration(milliseconds: 430));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/search_page_dark.png'),

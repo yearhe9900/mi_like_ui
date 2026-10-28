@@ -10,13 +10,18 @@ import 'package:flutter/animation.dart';
 /// | 新页起手位置             | x = 1220    | = 屏宽 | 整页从右缘外滑入，无纵向位移 |
 /// | 新页前缘圆角             | R = 190px   | 61.2  | 逐帧拟合四分之一圆，残差 ≤ 2px |
 /// | 下层页左移（终值）       | 0.25 × 屏宽 | —     | 见下「视差」 |
-/// | 转场时长                 | 410ms       | 400   | 见下「时值」 |
+/// | 转场时长                 | 410ms       | 300   | 见下「时值」 |
 ///
 /// ## 时值（逐帧拟合）
 ///
 /// 逐帧量新页左缘（px）：`1101 807 536 362 214 120 65 23 9 7 3 2`，
 /// 以「曲线族 × 时长 × 起手偏移」网格搜索拟合，`easeOutCubic` + 400ms
 /// 的平均残差 **1.6dp**（次优 `easeOutQuart` + 500ms 为 2.1dp）。
+///
+/// 本库取 **300ms**：拟合最优的 400ms 与素材同为「大屏慢慢推」，整页滑完
+/// 一个屏宽要 0.4s，连同键盘升起读起来是「点了以后等了一下才到位」。曲线
+/// 不变（`easeOutCubic` 的形状是实测的，压缩时长不改读感 —— 前段更快、
+/// 落位更早），只把尾巴截短 100ms。
 ///
 /// ## 视差（下层页）
 ///
@@ -32,8 +37,8 @@ import 'package:flutter/animation.dart';
 class MiCardPageRouteMetrics {
   MiCardPageRouteMetrics._();
 
-  /// 转场时长（拟合 400ms，见类文档）。
-  static const int durationMs = 400;
+  /// 转场时长（见类文档「时值」：实测拟合 400ms，本库取 300ms）。
+  static const int durationMs = 300;
 
   /// 位置曲线：`Curves.easeOutCubic`（Cubic(0.215, 0.61, 0.355, 1.0)）。
   static const Curve motion = Cubic(0.215, 0.61, 0.355, 1.0);
@@ -60,11 +65,12 @@ class MiCardPageRouteMetrics {
   /// 桌面档视觉时长 **220ms**。
   ///
   /// 实现上不改 [durationMs]（`transitionDuration` 在路由构造时定死、拿不到
-  /// 上下文里的窗口宽），而是把视觉进度压进前 55%（220/400）：桌面档用
-  /// `Interval(0, 0.55)` 曲线，220ms 时视觉已落定，其后的空转不影响观感。
+  /// 上下文里的窗口宽），而是把视觉进度压进前 [wideVisualFraction]
+  /// （220/300 ≈ 0.73）：桌面档用 `Interval(0, 0.73)` 曲线，220ms 时视觉
+  /// 已落定，其后的空转不影响观感。
   static const int wideDurationMs = 220;
 
-  /// [durationMs] 中视觉完成的比例（220 / 400 = 0.55）。
+  /// [durationMs] 中视觉完成的比例（220 / 300 ≈ 0.73）。
   static const double wideVisualFraction = wideDurationMs / durationMs;
 
   /// 桌面档新页的纵向位移 **4dp**（自下而上轻微抬起；不横移、不缩放）。

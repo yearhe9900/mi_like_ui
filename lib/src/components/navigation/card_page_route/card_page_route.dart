@@ -217,11 +217,12 @@ class _MiPushParallax extends StatelessWidget {
         final progress = animation.value.clamp(0.0, 1.0);
         if (progress <= 0) return page!;
         final visual = motion.transform(progress).clamp(0.0, 1.0);
-        return LayoutBuilder(
-          builder: (context, constraints) => Transform.translate(
-            offset: Offset(-fraction * constraints.maxWidth * visual, 0),
-            child: page,
-          ),
+        // 位移按**页宽的比例** → `FractionalTranslation`（绘制期变换，不参与
+        // 布局）。旧写法是 `LayoutBuilder + Transform.translate`：每帧重建
+        // builder、多跑一次布局，而这里只需要一个平移。
+        return FractionalTranslation(
+          translation: Offset(-fraction * visual, 0),
+          child: page,
         );
       },
     );

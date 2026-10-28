@@ -51,7 +51,9 @@ void main() {
 
   group('几何与时值', () {
     test('时值 / 圆角 / 视差都是度量值', () {
-      expect(MiCardPageRouteMetrics.durationMs, 400);
+      // 实测拟合 400ms；本库取 300ms（整页滑完一个屏宽，400ms 读作「点了
+      // 以后等了一下才到位」）。曲线不变。
+      expect(MiCardPageRouteMetrics.durationMs, 300);
       // 素材 190px ÷ 3.104 px/dp = 61.2
       expect(MiCardPageRouteMetrics.cornerRadius, moreOrLessEquals(61.2));
       expect(MiCardPageRouteMetrics.parallaxFraction, 0.25);
@@ -80,7 +82,7 @@ void main() {
           moreOrLessEquals(MiTransparencyTokens.pushDimAlphaMax, epsilon: 0.01));
     });
 
-    testWidgets('新页起手整页在右缘外、400ms 归位到 0', (tester) async {
+    testWidgets('新页起手整页在右缘外、t 走完归位到 0', (tester) async {
       await pumpHost(tester);
       await tester.tap(find.text('push'));
       await tester.pump();
@@ -92,7 +94,8 @@ void main() {
       final mid = leftOf(tester, pageKey);
       expect(mid, greaterThan(0));
       expect(mid, lessThan(w));
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(
+          Duration(milliseconds: MiCardPageRouteMetrics.durationMs));
       expect(leftOf(tester, pageKey), moreOrLessEquals(0, epsilon: 0.5));
     });
 
@@ -130,7 +133,9 @@ void main() {
       await pumpHost(tester);
       await tester.tap(find.text('push'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      // 走到时程一半（压暗是**线性**的，按 progress 取值）
+      await tester.pump(
+          Duration(milliseconds: MiCardPageRouteMetrics.durationMs ~/ 2));
 
       final dim = MiTransparencyTokens.pushDimAt(0.5).a;
       expect(
@@ -145,7 +150,8 @@ void main() {
         findsWidgets,
       );
 
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(
+          Duration(milliseconds: MiCardPageRouteMetrics.durationMs));
       expect(
         find.byWidgetPredicate(
           (w) => w is ColoredBox && w.color.a > 0 && w.color.a < 0.9,
@@ -159,7 +165,8 @@ void main() {
       await pumpHost(tester);
       await tester.tap(find.text('push'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(
+          Duration(milliseconds: MiCardPageRouteMetrics.durationMs ~/ 2));
 
       final visual = Curves.easeOutCubic.transform(0.5);
       expect(
@@ -301,7 +308,7 @@ void main() {
       expect(MiCardPageRouteMetrics.wideDurationMs, 220);
       expect(
         MiCardPageRouteMetrics.wideVisualFraction,
-        moreOrLessEquals(220 / 400),
+        moreOrLessEquals(220 / MiCardPageRouteMetrics.durationMs),
       );
       expect(MiCardPageRouteMetrics.wideRiseDp, 4);
       expect(MiCardPageRouteMetrics.wideCornerRadius, 16);
@@ -353,7 +360,7 @@ void main() {
       await pumpWideHost(tester);
       await tester.tap(find.text('push'));
       await tester.pump();
-      // 视觉曲线只走前 55%（220ms）；多泵几帧到绝对稳态
+      // 视觉曲线只走前 220ms；多泵几帧到绝对稳态
       await tester.pump(const Duration(milliseconds: 230));
 
       expect(

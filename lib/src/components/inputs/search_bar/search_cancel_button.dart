@@ -33,7 +33,8 @@ class MiSearchCancelButton extends StatefulWidget {
     this.frosted = true,
     this.overContent = false,
     this.diameter = MiSearchCancelMetrics.diameter,
-  });
+    this.fade = 1.0,
+  }) : assert(fade >= 0 && fade <= 1);
 
   /// 点按回调；null = 只展示、不可点（不参与手势、无按压反馈）。
   final VoidCallback? onTap;
@@ -49,6 +50,16 @@ class MiSearchCancelButton extends StatefulWidget {
 
   /// 圆钮直径（默认 [MiSearchCancelMetrics.diameter] = 搜索栏高）。
   final double diameter;
+
+  /// 淡入 / 淡出系数（0…1，默认 1 = 完全显示）。
+  ///
+  /// 供搜索态转场用：值乘进圆盘填充、按压反馈圆盘与叉号墨色的 alpha，
+  /// 圆钮结构不变。
+  ///
+  /// **不要用父级 `Opacity` 代替**：圆钮内含 backdrop 磨砂（[frosted]），
+  /// saveLayer 会让 backdrop 变空 —— 整段转场里磨砂消失，还每帧多一次
+  /// 离屏合成（与搜索栏、胶囊行同一套规则）。
+  final double fade;
 
   @override
   State<MiSearchCancelButton> createState() => _MiSearchCancelButtonState();
@@ -68,24 +79,28 @@ class _MiSearchCancelButtonState extends State<MiSearchCancelButton> {
             ? MiThemeMode.light
             : MiThemeMode.dark);
     final palette = MiSearchBarPalette.of(mode);
+    // 淡入 / 淡出：alpha 乘进各层颜色（不做离屏合成，见 [fade]）。
+    final f = widget.fade;
+    Color faded(Color c) => f >= 1 ? c : c.withValues(alpha: c.a * f);
     // 圆盘填充 = 搜索栏填充（度量同色）；压在内容上时同款玻璃膜。
-    final fill = widget.overContent
+    final fill = faded(widget.overContent
         ? MiTransparencyTokens.veiledFill(palette.fill, mode)
-        : palette.fill;
-    final pressHighlight = mode == MiThemeMode.dark
+        : palette.fill);
+    final pressHighlight = faded(mode == MiThemeMode.dark
         ? MiTransparencyTokens.pressHighlightDark
-        : MiTransparencyTokens.pressHighlightLight;
+        : MiTransparencyTokens.pressHighlightLight);
+    final ink = faded(palette.cancelInk);
 
     Widget content = SizedBox(
       width: widget.diameter,
       height: widget.diameter,
       child: ClipOval(
-        child: widget.frosted
+        child: widget.frosted && f > 0
             ? BackdropFilter(
                 filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
-                child: _disc(fill, pressHighlight, palette),
+                child: _disc(fill, pressHighlight, ink),
               )
-            : _disc(fill, pressHighlight, palette),
+            : _disc(fill, pressHighlight, ink),
       ),
     );
 
@@ -103,7 +118,7 @@ class _MiSearchCancelButtonState extends State<MiSearchCancelButton> {
   }
 
   /// 圆盘本体：填充 → 按压反馈圆盘 → 叉号。
-  Widget _disc(Color fill, Color pressHighlight, MiSearchBarPalette palette) {
+  Widget _disc(Color fill, Color pressHighlight, Color ink) {
     return ColoredBox(
       color: fill,
       child: Stack(
@@ -122,7 +137,7 @@ class _MiSearchCancelButtonState extends State<MiSearchCancelButton> {
           ),
           Center(
             child: CustomPaint(
-              painter: SearchCancelGlyphPainter(palette.cancelInk),
+              painter: SearchCancelGlyphPainter(ink),
               size: const Size.square(MiSearchCancelMetrics.glyphSize),
             ),
           ),

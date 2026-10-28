@@ -21,6 +21,7 @@ class _Host extends StatefulWidget {
     this.autofocus = false,
     this.controller,
     this.cancelInset,
+    this.showBlur = false,
   });
 
   final MiThemeMode themeMode;
@@ -29,6 +30,7 @@ class _Host extends StatefulWidget {
   final bool autofocus;
   final TextEditingController? controller;
   final double? cancelInset;
+  final bool showBlur;
 
   @override
   State<_Host> createState() => _HostState();
@@ -70,7 +72,7 @@ class _HostState extends State<_Host> {
               },
               tabs: widget.tabs,
               showSurface: false,
-              showBlur: false,
+              showBlur: widget.showBlur,
               searchCancelInset:
                   widget.cancelInset ?? MiSearchCancelMetrics.trailingInset,
             ),
@@ -81,18 +83,25 @@ class _HostState extends State<_Host> {
   }
 }
 
-/// 取消钮上最近那层 `Opacity` 的 alpha（取祖先里最小的一档 = 它自己的）。
-double _cancelOpacity(WidgetTester tester) {
-  final found = find.ancestor(
-    of: find.byType(MiSearchCancelButton),
-    matching: find.byType(Opacity),
-  );
-  final values = tester.widgetList<Opacity>(found).map((o) => o.opacity);
-  return values.isEmpty ? -1 : values.reduce((a, b) => a < b ? a : b);
-}
+/// 取消钮当前淡入系数（组件自己的 `fade`，不是父级 `Opacity` —— 圆钮里有
+/// backdrop 磨砂，saveLayer 会把它清空）。
+double _cancelFade(WidgetTester tester) =>
+    tester.widget<MiSearchCancelButton>(find.byType(MiSearchCancelButton)).fade;
 
 MiTopBar _bar(WidgetTester tester) =>
     tester.widget<MiTopBar>(find.byKey(const ValueKey('bar')));
+
+/// 顶栏磨砂段（满宽 `ClipRect + BackdropFilter`）的矩形 —— 段位 / 盒高一一对应。
+///
+/// 只取满宽的那些：搜索栏、胶囊行、取消钮各有自己的（窄）backdrop。
+List<Rect> _bandRects(WidgetTester tester) {
+  final rects = <Rect>[];
+  for (final element in find.byType(BackdropFilter).evaluate()) {
+    final rect = tester.getRect(find.byElementPredicate((e) => identical(e, element)));
+    if (rect.left == 0 && rect.right == _w) rects.add(rect);
+  }
+  return rects;
+}
 
 Future<_HostState> _pump(
   WidgetTester tester, {
@@ -102,6 +111,7 @@ Future<_HostState> _pump(
   bool autofocus = false,
   TextEditingController? controller,
   double? cancelInset,
+  bool showBlur = false,
 }) async {
   tester.view.devicePixelRatio = 1.0;
   tester.view.physicalSize = const Size(_w, 800);
@@ -113,6 +123,7 @@ Future<_HostState> _pump(
     autofocus: autofocus,
     controller: controller,
     cancelInset: cancelInset,
+    showBlur: showBlur,
   ));
   await tester.pump();
   return tester.state<_HostState>(find.byType(_Host));
@@ -177,7 +188,8 @@ void main() {
   });
 
   group('动效', () {
-    testWidgets('480ms 内走完；起手先静止，取消钮中段才淡入', (tester) async {
+    testWidgets('转场时长内走完；起手先静止，取消钮中段才淡入', (tester) async {
+      const ms = MiTopBarMetrics.searchTransitionMs;
       final host = await _pump(tester);
       final rest = tester.getRect(find.byType(MiSearchBar)).width;
 
@@ -187,29 +199,68 @@ void main() {
       expect(tester.getRect(find.byType(MiSearchBar)).width, rest);
       expect(find.byType(MiSearchCancelButton), findsNothing);
 
-      // 100ms：位移已走掉一大半（easeOutQuint + 前 10% 静止），但取消钮
-      // 还没到淡入区间（起于 35% ≈ 168ms）→ 现算 alpha 必须是 0
-      await tester.pump(const Duration(milliseconds: 100));
+      // 1/4 时程：位移已走掉一大半（easeOutQuint + 前 10% 静止），但取消钮
+      // 还没到淡入区间（起于 35%）→ 现算 alpha 必须是 0
+      await tester.pump(Duration(milliseconds: ms ~/ 4));
       final mid = tester.getRect(find.byType(MiSearchBar)).width;
       expect(mid, lessThan(rest));
       expect(mid, greaterThan(rest - 54.1)); // 还没走完
-      expect(_cancelOpacity(tester), 0);
+      expect(_cancelFade(tester), 0);
 
-      // 240ms：落在淡入区间中段
-      await tester.pump(const Duration(milliseconds: 140));
-      final alpha = _cancelOpacity(tester);
+      // 半程：落在淡入区间（0.35…0.62）中段
+      await tester.pump(Duration(milliseconds: ms ~/ 4));
+      final alpha = _cancelFade(tester);
       expect(alpha, greaterThan(0));
       expect(alpha, lessThan(1));
 
-      // 收尾：480ms 之后一切就位
-      await tester.pump(const Duration(milliseconds: 300));
+      // 收尾：一切就位
+      await tester.pump(Duration(milliseconds: ms));
       expect(
         tester.getRect(find.byType(MiSearchBar)).width,
         moreOrLessEquals(_w -
             MiTopBarMetrics.headerInset -
             (MiSearchCancelMetrics.barGap + MiSearchCancelMetrics.diameter)),
       );
-      expect(_cancelOpacity(tester), 1);
+      expect(_cancelFade(tester), 1);
+    });
+
+    testWidgets('转场期间材质盒高钉住：磨砂段不逐帧重排', (tester) async {
+      const ms = MiTopBarMetrics.searchTransitionMs;
+      final host = await _pump(tester, showBlur: true);
+      final rest = _bandRects(tester);
+      expect(rest, isNotEmpty, reason: '头部区磨砂是分段 ClipRect + BackdropFilter');
+
+      host.openSearch();
+      await tester.pump();
+      await tester.pump(Duration(milliseconds: ms ~/ 3));
+      final a = _bandRects(tester);
+      await tester.pump(Duration(milliseconds: ms ~/ 3));
+      final b = _bandRects(tester);
+
+      // 盒高若随进度插值，每条段的 top / height 每帧都变 → 9 条全宽高斯每帧
+      // 重跑一遍（转场丢帧的主因）。钉住后两帧矩形必须逐值相等。
+      expect(a.length, rest.length);
+      expect(b, a, reason: '磨砂段矩形在转场中必须恒定');
+    });
+
+    testWidgets('淡出都不套 Opacity：含磨砂的子树进 saveLayer 会丢磨砂、每帧多一次离屏',
+        (tester) async {
+      final host = await _pump(tester);
+      host.openSearch();
+      await tester.pump();
+      // 走到淡入区间内（半程）：取消钮在树上、胶囊行还没退干净
+      await tester.pump(
+          Duration(milliseconds: MiTopBarMetrics.searchTransitionMs ~/ 2));
+
+      final pills = tester.widget<MiPillTabBar>(find.byType(MiPillTabBar));
+      expect(pills.fade, inExclusiveRange(0, 1));
+      for (final target in [find.byType(MiPillTabBar), find.byType(MiSearchCancelButton)]) {
+        expect(
+          find.ancestor(of: target, matching: find.byType(Opacity)),
+          findsNothing,
+          reason: '淡出走颜色 alpha（组件 fade 参数），不是 Opacity',
+        );
+      }
     });
 
     testWidgets('退出搜索态会把取消钮与让位一起收回', (tester) async {

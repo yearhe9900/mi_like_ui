@@ -144,8 +144,20 @@ import 'top_bar_metrics.dart';
 ///  * 胶囊标签行淡出并退出排版（不计入 [occupiedHeight]）；
 ///  * 材质盒高度收到「仅搜索栏」档。
 ///
-/// 转场 480ms（起手静止 48ms + 位移 `easeOutQuint` 430ms），参数见
+/// 转场 220ms（起手静止 22ms + 位移 `easeOutQuint` 198ms），参数见
 /// [MiTopBarMetrics.searchTransitionMs] / [MiTopBarMetrics.searchMotion]。
+///
+/// ## 转场期的绘制成本
+///
+/// 这一段是全库最贵的逐帧路径（顶栏磨砂段 + 搜索栏 / 胶囊行 / 取消钮各自的
+/// backdrop 一起动），因此有两条硬约束：
+///
+///  * **淡出一律走颜色 alpha**（胶囊行 `fade`、取消钮 `fade`）。`Opacity` 会
+///    引入 saveLayer —— 子树里 `BackdropFilter` 的输入被清空（磨砂在整段转场
+///    里消失），还每帧多一次离屏合成；
+///  * **材质盒高在转场期间不插值**（见 `_buildBar` 里 `materialHeight`）：
+///    盒高每帧变一点，磨砂段的 `ClipRect` 全部要重定位，整条头部区的全宽
+///    高斯（9 段定 σ 阶梯，尾部按 σ 下限剔除）每帧重跑一遍。
 class MiTopBar extends StatefulWidget {
   const MiTopBar({
     super.key,
@@ -715,19 +727,25 @@ class MiTopBar extends StatefulWidget {
                 frosted: true,
                 overContent: overContent,
                 rimProgress: rimProgress,
+                // 搜索态淡出：把 alpha 乘进胶囊自身的填充 / 文案 / 膜带 /
+                // 亮边色 —— 不走 `Opacity`（saveLayer 会清空 backdrop 的输入，
+                // 磨砂消失 + 每帧多一次全宽离屏合成）。常规态 progress = 0 → 1。
+                fade: 1 - progress,
               ));
     // 材质层：磨砂（可关，独立组件）+ 压色（可关），两者共用「顶栏盖住的
     // 那块区域」，磨砂曲线拉伸到同一高度并在那里归零。
     //
-    // 搜索态下材质盒矮了一整行「间隙 + 胶囊行」。`materialExtent` 给的是
-    // **目标态**的值（它就是按 [isSearchMode] 算的），所以这里把常规态的值
-    // 反推回来再插值 —— 转场中磨砂边界跟着收，不会在最后一帧突然跳。
+    // ⚠️ 转场期间盒高**钉住不插值**。盒高每帧变一点，磨砂段（头部曲线一档
+    // 9 段 `ClipRect` + `BackdropFilter`）的矩形就每帧位移一次 —— 整条头部区
+    // 的全宽高斯每帧重来一遍，是这一转场最贵的开销（丢帧主因之一）。
+    // 冻结在高位（= 常规态）后段矩形全程不动，只在端点收一次；两端的跳变
+    // 都发生在「那一区被搜索态底色盖住 / 胶囊行已淡到 0」时，看不见像素。
     final targetMaterialHeight = materialExtent(context);
     final collapsedRow = hasSearchBar && hasTabBar
         ? MiTopBarMetrics.searchBarGap + tabBarHeight
         : 0.0;
-    final materialHeight = searching && collapsedRow > 0
-        ? targetMaterialHeight + collapsedRow * (1 - t)
+    final materialHeight = searching && t < 1
+        ? targetMaterialHeight + collapsedRow
         : targetMaterialHeight;
 
     return SizedBox(
@@ -910,15 +928,19 @@ class MiTopBar extends StatefulWidget {
                             height: MiTopBarMetrics.searchBarGap * (1 - t)),
                       // 胶囊行：搜索态淡出（参考素材那页没有标签行，这一段的
                       // 呈现属推导 —— 与取消钮同一段转场里退场，不硬切）。
-                      // ⚠️ 不要给自带 backdrop 的自定义 `tabBar` 走这条路：Opacity
-                      // 会引入 saveLayer 并把底下的 backdrop 变空（见类文档）。
+                      // 内置胶囊行自带 `fade`（见上面的构造函数）；自定义
+                      // `tabBar` 插槽没有这个契约，退回 `Opacity` —— ⚠️ 它会给
+                      // 自带 backdrop 的插槽引入 saveLayer、把磨砂变空，所以
+                      // 自定义插槽要么别在这条路径上用磨砂，要么自己实现淡出。
                       if (resolvedTabBar != null && t < 1)
                         SizedBox(
                           height: tabBarHeight,
-                          child: Opacity(
-                            opacity: 1 - progress,
-                            child: resolvedTabBar,
-                          ),
+                          child: tabBar != null
+                              ? Opacity(
+                                  opacity: 1 - progress,
+                                  child: resolvedTabBar,
+                                )
+                              : resolvedTabBar,
                         ),
                     ],
                   ),
@@ -961,18 +983,18 @@ class MiTopBar extends StatefulWidget {
     ).transform(progress).clamp(0.0, 1.0);
 
     // 搜索态取消钮（两种路径共用）：点按经 onSearchCancel 通知宿主退出。
-    // IgnorePointer 必须包在**外层**：淡出到 0 时若还留在命中测试里，
-    // 这块不可见区域会吞掉下方内容的点击。
+    // 淡入由圆钮自己的 `fade`（alpha 乘进填充 / 叉号墨色）完成，**不套**
+    // `Opacity`：圆钮里有一层 backdrop 磨砂，saveLayer 会把它清空、还多一次
+    // 离屏合成（转场每帧都付）。`IgnorePointer` 必须包在**外层**：淡出到 0
+    // 时若还留在命中测试里，这块不可见区域会吞掉下方内容的点击。
     Widget cancelButton = IgnorePointer(
       ignoring: cancelFade <= 0,
-      child: Opacity(
-        opacity: cancelFade,
-        child: MiSearchCancelButton(
-          onTap: onSearchCancel,
-          themeMode: mode,
-          frosted: true,
-          overContent: overContent,
-        ),
+      child: MiSearchCancelButton(
+        onTap: onSearchCancel,
+        themeMode: mode,
+        frosted: true,
+        overContent: overContent,
+        fade: cancelFade,
       ),
     );
 

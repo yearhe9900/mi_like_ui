@@ -50,10 +50,12 @@ class MiPillTabBar extends StatelessWidget {
     this.frosted = true,
     this.overContent = false,
     this.rimProgress = 1.0,
+    this.fade = 1.0,
   })  : assert(itemWidth > 0),
         assert(minItemWidth > 0),
         assert(maxItemWidth >= minItemWidth),
-        assert(textInset >= 0);
+        assert(textInset >= 0),
+        assert(fade >= 0 && fade <= 1);
   // labels 非空与 selectedIndex 范围校验见 build()：const 构造断言不支持
   // .length 求值（放构造器会封死 const 构造）
 
@@ -107,6 +109,16 @@ class MiPillTabBar extends StatelessWidget {
   /// 不是常驻描边）。顶栏按滚动位置下发（见 `MiTopBarMetrics.rimFadeDistance`）。
   final double rimProgress;
 
+  /// 整行淡出系数（0…1，默认 1 = 完全显示）。
+  ///
+  /// 供**退场转场**用：值乘进各处颜色的 alpha（选中 / 未选填充、标签墨色、
+  /// 膜带、内缘亮边），行结构不变。
+  ///
+  /// **不要用父级 `Opacity` 代替**：本行自带 backdrop 磨砂（[frosted]），
+  /// 套 `Opacity` 会引入 saveLayer —— backdrop 的输入被清空、磨砂在整段
+  /// 转场里消失，且每帧多一次整行离屏合成（转场掉帧的主因）。
+  final double fade;
+
   /// 自适应档：量取标签文字自然宽（单行，不截断）。
   double _labelWidth(BuildContext context, String label) {
     final painter = TextPainter(
@@ -140,9 +152,17 @@ class MiPillTabBar extends StatelessWidget {
       'selectedIndex 必须落在 labels 范围内',
     );
     final palette = MiPillTabPalette.of(themeMode);
+    // 淡出（[fade] < 1）：把系数乘进各处颜色的 alpha，行结构与绘制层次不变。
+    final f = fade;
+    Color faded(Color c) => f >= 1 ? c : c.withValues(alpha: c.a * f);
+    // 淡出途中**不做填充色过渡**：`AnimatedContainer` 默认会在 200ms 里插值，
+    // 每帧一个新目标色 → 淡出被拖成一条长尾（也在退场时白跑一堆动画）。
+    final Duration fillDuration = f < 1
+        ? Duration.zero
+        : const Duration(milliseconds: MiPillTabMetrics.fillFadeMs);
     // 未选填充：两态同值（issue #4①）—— 压内容时的膜是独立的行区渐变带，
     // 不再在这里逐胶囊预合成 veiledFill。
-    final unselectedFill = palette.unselectedFill;
+    final unselectedFill = faded(palette.unselectedFill);
     final widths = _widths(context);
     // 填充/文案/手势层（与磨砂分离成两层，保证模糊源里没有填充色）。
     final fills = <Widget>[];
@@ -164,14 +184,12 @@ class MiPillTabBar extends StatelessWidget {
             enabled: !selected,
             borderRadius: BorderRadius.circular(MiDimens.radiusPill),
             child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: MiPillTabMetrics.fillFadeMs,
-              ),
+              duration: fillDuration,
               curve: Curves.easeOut,
               width: widths[i],
               height: MiPillTabMetrics.pillHeight,
               decoration: ShapeDecoration(
-                color: selected ? palette.selectedFill : unselectedFill,
+                color: selected ? faded(palette.selectedFill) : unselectedFill,
                 shape: const MiSquircleBorder(MiDimens.radiusPill),
               ),
               alignment: Alignment.center,
@@ -180,8 +198,9 @@ class MiPillTabBar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: MiTypography.pillLabel.copyWith(
-                  color:
-                      selected ? palette.selectedLabel : palette.unselectedLabel,
+                  color: faded(
+                    selected ? palette.selectedLabel : palette.unselectedLabel,
+                  ),
                 ),
               ),
             ),
@@ -208,8 +227,9 @@ class MiPillTabBar extends StatelessWidget {
             // 高斯 + N 个 saveLayer（4 个胶囊即 4 次，滚动时每帧重算，是分类页
             // 的主要掉帧源）。合并后只有 1 次 —— 相邻胶囊仍不会串色：模糊层
             // 先于所有填充绘制，backdrop 里只有背景内容，没有别的胶囊填充。
-            // [frosted] 为 false时整层跳过（材质由顶栏给）。
-            if (frosted)
+            // [frosted] 为 false时整层跳过（材质由顶栏给）；淡到 0 时也跳过
+            //（不可见的磨砂不必每帧再跑一次高斯）。
+            if (frosted && f > 0)
               Positioned.fill(
                 child: IgnorePointer(
                   child: ClipPath(
@@ -244,10 +264,10 @@ class MiPillTabBar extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            MiTransparencyTokens.veilFeatherFor(themeMode),
-                            MiTransparencyTokens.veilFor(themeMode),
-                            MiTransparencyTokens.veilFor(themeMode),
-                            MiTransparencyTokens.veilFeatherFor(themeMode),
+                            faded(MiTransparencyTokens.veilFeatherFor(themeMode)),
+                            faded(MiTransparencyTokens.veilFor(themeMode)),
+                            faded(MiTransparencyTokens.veilFor(themeMode)),
+                            faded(MiTransparencyTokens.veilFeatherFor(themeMode)),
                           ],
                           stops: const [
                             0.0,
@@ -275,8 +295,8 @@ class MiPillTabBar extends StatelessWidget {
                     widths: widths,
                     gap: MiPillTabMetrics.gap,
                     height: MiPillTabMetrics.pillHeight,
-                    color: MiTransparencyTokens.surfaceRimFor(themeMode,
-                        progress: rimProgress),
+                    color: faded(MiTransparencyTokens.surfaceRimFor(themeMode,
+                        progress: rimProgress)),
                     skipIndex: selectedIndex,
                   ),
                 ),
