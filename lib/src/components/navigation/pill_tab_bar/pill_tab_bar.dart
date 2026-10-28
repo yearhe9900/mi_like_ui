@@ -340,8 +340,8 @@ class _CapsuleStripClipper extends CustomClipper<Path> {
     final path = Path();
     for (var i = 0; i < widths.length; i++) {
       final left = _cellLeft(widths, i, gap);
-      // 连续圆角胶囊（squircle），半径取高的一半 —— 与裁形外的 stadium
-      //（radiusPill 钳位后）同语义。
+      // 胶囊（半径 = 高/2）：端头为真半圆（MiSquircle 胶囊例外），
+      // 与裁形外的填充 / 亮边同一栅格、逐像素对齐。
       MiSquircle.addRect(
         path,
         Rect.fromLTWH(left, 0, widths[i], height),

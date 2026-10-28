@@ -31,7 +31,8 @@ class GlassBarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 栏体与选中块均为连续圆角（stadium 端头：半径 = 高/2，瓦片夹到短边一半）。
+    // 栏体与选中块：胶囊形（半径 = 高/2）—— 端头为真半圆（见 MiSquircle
+    // 的胶囊例外），squircle 不修饰无过渡段的完整端头。
     final barPath = MiSquircle.pathOf(Offset.zero & size, size.height / 2);
     final pillRect = Rect.fromCenter(
       center: Offset(pillCenterX, size.height / 2),

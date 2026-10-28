@@ -29,7 +29,8 @@ class MiSquircle {
   /// 贝塞尔控制点比例（源端 SDF 预烘焙值，勿调）。
   static const double control = 0.643;
 
-  /// [rect] 的连续圆角轮廓；[radius] 夹到短边一半（stadium 端头自动成立）。
+  /// [rect] 的连续圆角轮廓；[radius] ≥ 短边一半时为**真半圆端头的胶囊**
+  ///（圆弧，见 [addRect] 的胶囊例外）。
   static Path pathOf(
     Rect rect,
     double radius, {
@@ -41,6 +42,12 @@ class MiSquircle {
   }
 
   /// 向 [path] 追加 [rect] 的连续圆角轮廓（多胶囊条等复用同一 path）。
+  ///
+  /// **胶囊例外**：[radius] ≥ 短边一半时形状语义是「胶囊」，端头退回
+  /// **真半圆**（圆弧）—— squircle 是「圆角过渡段」的画法，拿角部贝塞尔
+  /// 去画完整半圆会把端头改成外鼓 ~4.8% 的拟圆（45° 径向 = 1.048×r），
+  /// 端头反而失真；真半圆与直边 G1 相切本就是胶囊的设计语义
+  ///（实机素材的胶囊端头均为正半圆）。
   static void addRect(
     Path path,
     Rect rect,
@@ -48,11 +55,13 @@ class MiSquircle {
     double extension = MiSquircle.extension,
   }) {
     if (rect.width <= 0 || rect.height <= 0) return;
+    final halfMin = math.min(rect.width, rect.height) * 0.5;
+    if (radius >= halfMin) {
+      path.addRRect(RRect.fromRectAndRadius(rect, Radius.circular(halfMin)));
+      return;
+    }
     final ext = extension.clamp(minExtension, maxExtension);
-    final tile = (radius * ext).clamp(
-      0.0,
-      math.min(rect.width, rect.height) * 0.5,
-    );
+    final tile = (radius * ext).clamp(0.0, halfMin);
     if (tile <= 0) {
       path.addRect(rect);
       return;

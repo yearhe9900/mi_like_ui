@@ -457,7 +457,8 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 `foundation/miuix_squircle.dart`，Apache-2.0，按本库度量驱动风格重写）。
 
 - **半径语义不变**：各 metrics 里的圆角值仍是名义半径，只换「怎么画」，
-  外接几何逐像素不变；stadium（胶囊）端头自动成立（瓦片夹到短边一半）；
+  外接几何逐像素不变；胶囊（半径吃满短边）端头为**真半圆** —— squircle
+  只修饰有过渡段的部分圆角，不修饰完整端头（45° 径向鼓 4.8% 会失真）；
 - **API 面**：`MiSquircleBorder`（ShapeDecoration 用）、`MiSquircleClipper`
   （ClipPath 用）、`MiSquircleShadowPainter`（BoxShadow 的 squircle 版 ——
   ShapeDecoration 不带 boxShadow，带投影的表面用它垫底）；

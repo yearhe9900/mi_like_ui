@@ -40,7 +40,8 @@ class SideNavPainter extends CustomPainter {
     // 见 MiGlassSideNavMetrics.railRadius）——端头圆弧与胶囊顶角圆弧同心，
     // 内外圈间距四周恒 6.6。曾自算 `size.width / 2`（stadium）：与内圈
     // 不同心，肩部间距会收缩到 0（两圆弧相交、胶囊被裁）。连续圆角端头
-    //（squircle）瓦片夹到短边一半，等距语义不变。
+    //（squircle）；railRadius < 栏宽一半，属部分圆角（连续圆角修饰），
+    // 等距语义不变。胶囊（半径吃满短边）端头为真半圆（MiSquircle 胶囊例外）。
     final railPath = MiSquircle.pathOf(
       Offset.zero & size,
       MiGlassSideNavMetrics.railRadius,
