@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+### Changed（动效 / 性能）
+
+- **搜索转场提速去丢帧**：`MiTopBar.searchTransitionMs` 480 → 220ms、
+  `MiCardPageRouteMetrics.durationMs` 400 → 300ms（曲线与起手静止段比例
+  不变），两级搜索进入 / 退出的落位都提前约一半。
+- **转场期不再逐帧重排 / 离屏合成**：胶囊行与取消钮的淡出改走组件自带的
+  `fade`（alpha 乘进颜色，新增公开参数 `MiPillTabBar.fade` /
+  `MiSearchCancelButton.fade`），去掉两处 `Opacity` —— 它们给含 backdrop
+  磨砂的子树引 saveLayer（磨砂整段消失 + 每帧一次离屏）；顶栏材质盒高在
+  转场期钉住不插值（否则磨砂段 `ClipRect` 每帧重定位、整条头部区全宽高斯
+  每帧重跑）；推入转场的下层视差从 `LayoutBuilder` 换成
+  `FractionalTranslation`（绘制期平移，不再每帧跑布局）。
+
 ### Added
 
 - **全库圆角升级为 Squircle 连续圆角**（G2 连续曲率，HyperOS / iOS 标志性

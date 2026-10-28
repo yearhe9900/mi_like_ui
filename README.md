@@ -414,7 +414,7 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 ));
 ```
 
-**规格**（详见 `MiCardPageRouteMetrics`）：时长 400ms、位置曲线 `easeOutCubic`；
+**规格**（详见 `MiCardPageRouteMetrics`）：时长 300ms、位置曲线 `easeOutCubic`；
 新页前缘圆角 61.2dp；下层页左移 `0.25 × 页宽`（只平移、不缩放）；下层页压暗
 由 0 线性升至黑 @0.55。新页归位后不保留任何变换层与遮罩（静止页零额外绘制）。
 
@@ -430,7 +430,7 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 **不用 `Opacity`**：新页含磨砂顶栏，套 saveLayer 会让它自己的 backdrop 变空；
 改在新页之上盖一层**页底色实色**（`ColoredBox`，普通绘制）做 alpha 1→0，
 观感即「从页面底色里浮出来」。下层页不做视差、不压暗。220ms 通过
-`Interval(0, 0.55)` 落在原 400ms 路由时长的前 55% 段（`transitionDuration`
+`Interval(0, 0.73)` 落在 300ms 路由时长的前 73% 段（`transitionDuration`
 在构造时定死、拿不到上下文里的窗口宽）。
 
 <img src="doc/preview/push_transition_light.png" width="180" alt="浅色推入转场中" /> <img src="doc/preview/push_transition_dark.png" width="180" alt="深色推入转场中" /> <img src="doc/preview/search_page_dark.png" width="180" alt="落定后的搜索页头部" />
@@ -491,8 +491,13 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 
 **① 原地搜索态**（`MiTopBar.searchActive`）—— 搜索栏就地变输入框，右侧淡入
 取消钮（`MiSearchCancelButton`），胶囊标签行淡出并退出排版（`occupiedHeight`
-由 156dp 收至 100.1dp）；转场 480ms（起手静止 48ms + 位移 `easeOutQuint`），
+由 156dp 收至 100.1dp）；转场 220ms（起手静止 22ms + 位移 `easeOutQuint`），
 取消钮淡入与位移不同步、落在转场中段。示例在「分类」页。
+
+> **转场期的两条绘制约束**：① 胶囊行与取消钮的淡出**乘 alpha**（组件自带的
+> `fade` 参数），不套 `Opacity` —— saveLayer 会让子树里 backdrop 变空（磨砂
+> 整段消失）、并每帧多一次离屏合成；② 材质盒高在转场中**钉住不插值**，否则
+> 磨砂段的 `ClipRect` 每帧重定位、整条头部区的全宽高斯每帧重跑。
 
 **② 推入搜索页**（`MiCardPageRoute`）—— 整页自右缘滑入（见上一节），落定后
 头部为「返回圆钮 + 输入框 + 搜索钮」三段：头部行顶缘 52.2dp、圆钮 ⌀44.1dp、
