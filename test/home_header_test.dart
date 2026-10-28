@@ -7,16 +7,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/mock_pages.dart';
 
-/// 首页「搜索栏 + 胶囊按钮的磨砂效果」（2026-10-20 亮/暗完整截图实测形态）。
+/// 首页「搜索栏 + 胶囊按钮的磨砂效果」（2026-10-27 亮/暗原生录屏实测形态）。
 ///
 /// 参考图的三条硬事实，这里逐条钉住：
 ///  1. 搜索栏与胶囊行**悬浮**在高频横幅上（横幅从屏顶 y = 0 起铺）；
-///  2. 头部区磨砂是**一整段恒定 σ**，从 y = 0 铺满到栏底（实测 152dp，
-///     本 demo = `occupiedHeight` 156dp），往下内容立刻清晰；
+///  2. 头部区磨砂是**渐进阶梯**（[MiHeaderBlurProfile]：平台段 8.5dp，
+///     沿 y 线性衰减），从 y = 0 铺满到栏底（实测 152dp，
+///     本 demo = `occupiedHeight` 156dp），之后完全清晰；
 ///  3. 胶囊行底就是磨砂底 —— 再往下滚进来的横幅 / 卡片是锐利的。
 ///
 /// 这层模糊是**内容区自己的**（`MiTopBar.showBlur` 复用 `MiGradientBlur` 的
-/// 分段思路），所以断言写在 demo 层：组件层只保证「一段满宽、σ = token」。
+/// 分段思路），所以断言写在 demo 层：组件层只保证「分段铺满、σ = token」。
 void main() {
   Future<void> pumpHome(WidgetTester tester, MiThemeMode mode) async {
     tester.view.devicePixelRatio = 1.0;
@@ -37,6 +38,20 @@ void main() {
         of: find.byType(MiTopBar),
         matching: find.byType(BackdropFilter),
       );
+
+  /// 顶栏内的**渐进磨砂段**（排除搜索栏 / 胶囊自带的零件玻璃层：它们的 σ
+  /// 是 [MiTransparencyTokens.blurSigma]，不在曲线档位表里）。
+  List<Element> bandFilters(WidgetTester tester) =>
+      bandBlurs().evaluate().where((e) {
+        final filter = (e.widget as BackdropFilter).filter;
+        return MiHeaderBlurProfile.bands
+            .any((b) => filter == ImageFilter.blur(sigmaX: b.sigma, sigmaY: b.sigma));
+      }).toList();
+
+  Rect rectOf(Element e) {
+    final box = e.renderObject! as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
 
   testWidgets('横幅铺到屏顶，搜索栏 / 胶囊行由顶栏产出并悬浮其上', (tester) async {
     await pumpHome(tester, MiThemeMode.dark);
@@ -80,30 +95,45 @@ void main() {
     expect(find.byType(MiTopBar), findsOneWidget);
   });
 
-  testWidgets('头部区磨砂 = 一整段恒定 σ、0…栏底，胶囊行底即糊／清晰分界', (tester) async {
+  testWidgets('头部区磨砂 = 渐进阶梯（平台 8.5dp → 羽化收尾）、0…栏底', (tester) async {
     for (final mode in MiThemeMode.values) {
       await pumpHome(tester, mode);
 
-      final filters = bandBlurs().evaluate().toList();
-      expect(filters, hasLength(1), reason: '$mode：头部区只有一段（恒定 σ）');
-
-      final rect = tester.getRect(bandBlurs());
-      expect(rect.left, 0);
-      expect(rect.width, 393, reason: '磨砂满宽（含胶囊行两侧的间隙）');
-      expect(rect.top, 0, reason: '从屏顶开始糊，状态栏后面一样糊');
+      final filters = bandFilters(tester);
       expect(
-        rect.height,
-        closeTo(156, 0.01),
-        reason: '$mode：一直糊到栏底（= 胶囊行底），往下立刻清晰',
+        filters,
+        hasLength(MiHeaderBlurProfile.bands.length),
+        reason: '$mode：头部区是渐进阶梯（每段定 σ，见 MiHeaderBlurProfile）',
       );
 
-      final filter = tester.widget<BackdropFilter>(bandBlurs()).filter;
-      const sigma = MiTopBarPalette.blurSigma;
-      expect(filter, ImageFilter.blur(sigmaX: sigma, sigmaY: sigma));
+      final first = rectOf(filters.first);
+      final last = rectOf(filters.last);
+      expect(first.left, 0);
+      expect(first.width, 393, reason: '磨砂满宽（含胶囊行两侧的间隙）');
+      expect(first.top, 0, reason: '从屏顶开始糊，状态栏后面一样糊');
+      expect(
+        last.bottom,
+        closeTo(156, 0.01),
+        reason: '$mode：糊到栏底（= 胶囊行底）收完，之后完全清晰',
+      );
+
+      // 每段 σ 逐档取自实测曲线：平台段 8.5dp 起单调递减（顶部最糊、
+      // 向下渐清，不是恒定一段）
+      for (var i = 0; i < filters.length; i++) {
+        final sigma = MiHeaderBlurProfile.bands[i].sigma;
+        expect(
+          (filters[i].widget as BackdropFilter).filter,
+          ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        );
+      }
+      expect(
+        MiHeaderBlurProfile.bands.first.sigma,
+        greaterThan(MiHeaderBlurProfile.bands.last.sigma),
+      );
 
       // 胶囊行底 == 磨砂底：两者必须同源，否则会出现「胶囊下面还糊着」的断层
       final pillBottom = tester.getRect(find.byType(MiPillTabBar)).bottom;
-      expect(pillBottom, closeTo(rect.bottom, 0.01));
+      expect(pillBottom, closeTo(last.bottom, 0.01));
     }
   });
 
@@ -130,7 +160,7 @@ void main() {
     expect(
       tester.getTopLeft(find.byKey(const ValueKey('homeHero'))).dy,
       lessThan(heroTop),
-      reason: '横幅上滚 → 其内容进入头部区，被那层恒定 σ 磨开',
+      reason: '横幅上滚 → 其内容进入头部区，被那层渐进磨砂磨开',
     );
   });
 }

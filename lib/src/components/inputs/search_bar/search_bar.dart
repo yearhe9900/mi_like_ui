@@ -8,6 +8,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/glass_rim.dart';
 import '../../../utils/hover_feedback.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
@@ -45,6 +46,7 @@ class MiSearchBar extends StatelessWidget {
     this.themeMode,
     this.frosted = true,
     this.overContent = false,
+    this.rimProgress = 1.0,
     this.editable = false,
     this.controller,
     this.focusNode,
@@ -80,6 +82,13 @@ class MiSearchBar extends StatelessWidget {
   /// 在杂乱背景上会糊成一片、边缘读不出来。两层预合成成一个等效色
   /// （[MiTransparencyTokens.veiledFill]）：平底页观感不变。
   final bool overContent;
+
+  /// 内缘亮边激活进度（0…1，默认 1 = 常亮）。
+  ///
+  /// **内容靠近顶栏一定程度才亮**（参考实测：内容距栏底 ≲20dp 时玻璃
+  /// 进入激活态；静止且内容较远时亮边 = 0，不是常驻描边）。顶栏按滚动
+  /// 位置下发（见 `MiTopBarMetrics.rimFadeDistance`）；独立使用时按需传。
+  final double rimProgress;
 
   /// 是否变成**可真输入**的搜索栏（默认 false = 只展示占位文字）。
   ///
@@ -121,7 +130,9 @@ class MiSearchBar extends StatelessWidget {
         : palette.fill;
     // 磨砂取景框裁到 stadium 形状（与玻璃导航栏 / 胶囊同款：clip →
     // backdrop → 半透明填充 → 内容），只有栏内透射磨砂，栏外不糊。
-    // [frosted] 为 false 时跳过 backdrop，只留半透明填充（材质由顶栏给）。
+    // [frosted] 为 false 时跳过 backdrop，只留半透明填充（宿主另有整条
+    // 材质时用；顶栏内的内置搜索栏**仍自绘玻璃**——顶栏那层是随 y 衰减的
+    // 背景磨砂，零件自己那层才是它的「透明模糊属性」）。
     Widget bar = ClipRRect(
       borderRadius: BorderRadius.circular(MiDimens.radiusPill),
       child: frosted
@@ -131,6 +142,15 @@ class MiSearchBar extends StatelessWidget {
               child: _content(palette, fill),
             )
           : _content(palette, fill),
+    );
+    // 内缘亮边（「边缘逐渐变亮」的受光边）：贴边缘内侧 ~1dp、向内羽化收尾；
+    // 颜色/宽度见 `MiGlassRimPainter` 与 `MiTransparencyTokens.surfaceRimFor`。
+    bar = CustomPaint(
+      foregroundPainter: MiGlassRimPainter(
+        color: MiTransparencyTokens.surfaceRimFor(mode, progress: rimProgress),
+        radius: MiDimens.radiusPill,
+      ),
+      child: bar,
     );
     if (onTap != null) {
       // 悬停叠色铺在**整条**之上（圆角与栏体同档，避免出现方角）：

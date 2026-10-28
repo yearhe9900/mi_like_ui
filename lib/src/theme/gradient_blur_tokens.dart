@@ -104,3 +104,89 @@ class MiGradientBlurProfile {
     10,
   ];
 }
+
+/// 头部区形态（搜索栏 + 胶囊行悬浮在滚动内容上）的磨砂曲线。
+///
+/// 与 [MiGradientBlurProfile]（「我的」页顶部那条，平台 5.37dp / 119dp
+/// 归零）是**两套度量**：同一件事物在两个页面形态上的实测结果不同，
+/// 按各自的参考页用各自的曲线（先例：深浅两页顶部压色 α 不同也不归一，
+/// 见 `MiTopBarPalette`）。
+///
+/// ## 本轮度量（2026-10-27，1220×2656 明暗双素材，采样密度
+/// s = 393/1220 = 0.32213 dp/px）
+///
+/// 横幅侧边是理想竖直阶跃（区外锐利样本实测 10-90 宽仅 1.3…1.6px），
+/// 以其在不同深度处的 10-90 宽度（w = 2.563σ）erf 最小二乘拟合
+/// （线性内容趋势 + 误差函数边缘，拟合残差 <900 的样本为准）：
+///
+/// | 深度 (dp) | 实测 σ (dp) | 线性模型预测 |
+/// |-----------|-------------|--------------|
+/// | 35…48     | 7.57…9.02   | 8.0…7.6      |
+/// | 100…113   | 3.22…4.35   | 4.2…3.3      |
+/// | 155       | ≈0.4        | 0.5          |
+/// | ≥162      | 0           | 0            |
+///
+/// 即 **平台段 8.5dp 到 35dp，此后线性衰减、158dp 归零**——胶囊行底
+/// （152dp）之后还有约 6dp 的羽化带，不是硬切（胶囊正下方的横幅文字
+/// 仍轻微发虚、再往下才锐利；暗色素材 155dp 处横幅上缘实测 σ0.4dp）。
+/// 佐证：亮色左右缘独立拟合、暗色右缘弱样本、以及滚动帧里横幅上缘穿过
+/// 玻璃区时的宽度变化（502…514dp 处 1.4px、482dp 处 3.5px）指向同一曲线。
+///
+/// ⚠️ 旧口径「头部区是恒定 σ、胶囊底硬切」出自 884×1920 低清素材，
+/// 受视频压缩软化与分辨率限制不可分辨渐变；本轮原生素材推翻该结论。
+@immutable
+class MiHeaderBlurProfile {
+  const MiHeaderBlurProfile._();
+
+  /// 平台段 σ（dp）= [MiTransparencyTokens.blurSigmaHeaderTop]（8.5）。
+  static const double sigma = MiTransparencyTokens.blurSigmaHeaderTop;
+
+  /// 曲线从栏顶到完全清晰的**名义**跨度（dp）= 158。
+  ///
+  /// 材质盒高不同时曲线**等比拉伸**到盒底归零（形状固定、范围跟着走），
+  /// 与 [MiGradientBlurProfile.nominalExtent] 同一口径。
+  static const double nominalExtent =
+      MiTransparencyTokens.headerBlurNominalExtent;
+
+  /// 低于该 σ 的模糊段不绘制（= [MiTransparencyTokens.minVisibleSigma]）。
+  static const double minVisibleSigma = MiTransparencyTokens.minVisibleSigma;
+
+  /// 9 段定 σ 阶梯：段位 / 段高是几何（[_tops] / [_heights]），每段 σ
+  /// 逐档取自 [MiTransparencyTokens.blurSigmaHeaderRamp]（曲线在段中点的值，
+  /// 尾部两档圆整保证相邻比 < 2.4）。
+  static final List<MiTopBarBlurBand> bands =
+      List<MiTopBarBlurBand>.unmodifiable(<MiTopBarBlurBand>[
+    for (var i = 0; i < _tops.length; i++)
+      MiTopBarBlurBand(
+        top: _tops[i],
+        height: _heights[i],
+        sigma: MiTransparencyTokens.blurSigmaHeaderRamp[i],
+      ),
+  ]);
+
+  /// 各段顶部位置（dp）。
+  static const List<double> _tops = <double>[
+    0, // 平台段 0…35
+    35,
+    50,
+    64,
+    78,
+    92,
+    108,
+    124,
+    142, // 羽化尾段 142…158
+  ];
+
+  /// 各段高度（dp）；合计 = [nominalExtent]（158）。
+  static const List<double> _heights = <double>[
+    35,
+    15,
+    14,
+    14,
+    14,
+    16,
+    16,
+    18,
+    16,
+  ];
+}

@@ -65,7 +65,8 @@ import 'transparency_tokens.dart';
 ///
 /// 定义已搬到 [MiTopBarBlurBand] 的**权威位置** `gradient_blur_tokens.dart`
 /// （这层渐进模糊属于内容区、不属于顶栏）；此处 export 保持旧引用可用。
-export 'gradient_blur_tokens.dart' show MiTopBarBlurBand, MiGradientBlurProfile;
+export 'gradient_blur_tokens.dart'
+    show MiTopBarBlurBand, MiGradientBlurProfile, MiHeaderBlurProfile;
 
 /// 墨色沿用框架前景色 [MiColors.foreground]（度量标题笔画内部 246）；
 /// 返回圆钮按压反馈为**白 @9.4%**（叠纯黑底度量 24 级，圆盘内均匀），

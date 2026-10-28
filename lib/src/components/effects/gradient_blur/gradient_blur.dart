@@ -83,6 +83,10 @@ class MiGradientBlur extends StatelessWidget {
   /// 后者是零视觉差异的省帧手段：平板 768×1280 深色首页度量，模糊段从
   /// 8 段 / 119dp 降到 5 段 / 45.4dp，模糊面积 85,680 → 32,688 dp²（−62%）；
   /// 每段在滚动时都要重算一次全宽高斯，这是丢帧的主因。
+  ///  * σ 缩放量化到 0.05 档 —— [MiFilterCache] 以 σ 为键，连续 σScale 会
+  ///    让每帧每段都新建 native filter；0.05 档在运动中仍是渐变观感；
+  ///  * σScale < 1 时，σ 缩放后低于 [MiGradientBlurProfile.minVisibleSigma]
+  ///    的段照常剔除（亚像素模糊与「不模糊」不可分辨）。
   static List<MiTopBarBlurBand> bandsFor({
     double extent = MiGradientBlurProfile.nominalExtent,
     double opaqueScrimBottom = 0,
@@ -90,13 +94,14 @@ class MiGradientBlur extends StatelessWidget {
     double sigmaScale = 1.0,
   }) {
     if (extent <= 0) return const <MiTopBarBlurBand>[];
+    final scale = (sigmaScale * 20).roundToDouble() / 20;
     final nominal = MiGradientBlurProfile.bands.last.bottom;
     final k = extent / nominal;
     // 压色的渐变 stop 是比例值，会跟着同一块盒子一起拉长，实心段下沿同样被拉长
     final opaque = underSurface ? opaqueScrimBottom : 0.0;
     final bands = <MiTopBarBlurBand>[];
     for (final band in MiGradientBlurProfile.bands) {
-      final sigma = band.sigma * sigmaScale;
+      final sigma = band.sigma * scale;
       if (sigma < MiGradientBlurProfile.minVisibleSigma) continue;
       final top = band.top * k;
       final bottom = band.bottom * k;

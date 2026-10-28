@@ -8,6 +8,7 @@ import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/glass_rim.dart';
 import '../../../utils/hover_feedback.dart';
 import 'pill_tab_bar_metrics.dart';
 
@@ -37,6 +38,7 @@ class MiPillTabBar extends StatelessWidget {
     this.themeMode = MiThemeMode.dark,
     this.frosted = true,
     this.overContent = false,
+    this.rimProgress = 1.0,
   }) : assert(itemWidth > 0);
   // labels 非空与 selectedIndex 范围校验见 build()：const 构造断言不支持
   // .length 求值（放构造器会封死 const 构造）
@@ -72,6 +74,11 @@ class MiPillTabBar extends StatelessWidget {
   /// 页底上等于没垫，**平底页观感不变**，只有背景有内容时才显出玻璃片。
   /// 选中胶囊两态同款（近不透明），不参与这层膜。
   final bool overContent;
+
+  /// 内缘亮边激活进度（0…1，默认 1 = 常亮）：**内容靠近顶栏一定程度才亮**
+  /// （参考实测：内容距栏底 ≲20dp 时进入激活态；静止且内容较远时亮边 = 0，
+  /// 不是常驻描边）。顶栏按滚动位置下发（见 `MiTopBarMetrics.rimFadeDistance`）。
+  final double rimProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -165,6 +172,25 @@ class MiPillTabBar extends StatelessWidget {
                 ),
               ),
             Positioned.fill(child: Row(children: fills)),
+            // 内缘亮边（「边缘逐渐变亮」的受光边）：只画**未选中**胶囊 ——
+            // 选中项是近实心填充，实测亮边弱到不可辨（见
+            // `MiTransparencyTokens.surfaceRimFor`）。一次画完整条，
+            // 不给每个胶囊各挂一个 painter。
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _CapsuleRimPainter(
+                    count: labels.length,
+                    itemWidth: itemWidth,
+                    gap: MiPillTabMetrics.gap,
+                    height: MiPillTabMetrics.pillHeight,
+                    color: MiTransparencyTokens.surfaceRimFor(themeMode,
+                        progress: rimProgress),
+                    skipIndex: selectedIndex,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -211,4 +237,51 @@ class _CapsuleStripClipper extends CustomClipper<Path> {
       oldClipper.itemWidth != itemWidth ||
       oldClipper.gap != gap ||
       oldClipper.height != height;
+}
+
+/// 整行未选中胶囊的内缘亮边（几何与 [_CapsuleStripClipper] 同一套）。
+class _CapsuleRimPainter extends CustomPainter {
+  const _CapsuleRimPainter({
+    required this.count,
+    required this.itemWidth,
+    required this.gap,
+    required this.height,
+    required this.color,
+    required this.skipIndex,
+  });
+
+  final int count;
+  final double itemWidth;
+  final double gap;
+  final double height;
+  final Color color;
+
+  /// 选中项下标（近实心，不画亮边）。
+  final int skipIndex;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = Radius.circular(height / 2);
+    for (var i = 0; i < count; i++) {
+      if (i == skipIndex) continue;
+      final left = i * (itemWidth + gap);
+      MiGlassRimPainter.drawRim(
+        canvas,
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, 0, itemWidth, height),
+          radius,
+        ),
+        color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_CapsuleRimPainter oldDelegate) =>
+      oldDelegate.count != count ||
+      oldDelegate.itemWidth != itemWidth ||
+      oldDelegate.gap != gap ||
+      oldDelegate.height != height ||
+      oldDelegate.color != color ||
+      oldDelegate.skipIndex != skipIndex;
 }

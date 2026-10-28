@@ -97,7 +97,8 @@ void main() {
     await tester.pumpWidget(_harness(mode: MiThemeMode.dark));
 
     // 与底部导航栏 / 胶囊同源：所有 BackdropFilter 共用 blurSigma
-    expect(MiTransparencyTokens.blurSigma, 28);
+    // （9.0dp ≈ 28px，滚动对齐帧合成匹配纯净条实测；见 nav_glass_fit.py）
+    expect(MiTransparencyTokens.blurSigma, 9.0);
     expect(
       find.descendant(of: find.byType(MiSearchBar), matching: find.byType(BackdropFilter)),
       findsOneWidget,
@@ -123,10 +124,13 @@ void main() {
     expect(bar.width, closeTo(393, 0.01));
     final barTopLeft = tester.getTopLeft(find.byType(MiSearchBar));
 
-    // 图标：左缘 15.4、17.8 见方、垂心居中
+    // 图标：左缘 15.4、17.8 见方、垂心居中（无 child 的 CustomPaint =
+    // 放大镜 painter；带 child 的那层是内缘亮边前景层）
     final icon = find.descendant(
       of: find.byType(MiSearchBar),
-      matching: find.byType(CustomPaint),
+      matching: find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter != null && w.child == null,
+      ),
     );
     expect(icon, findsOneWidget);
     final iconSize = tester.getSize(icon);

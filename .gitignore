@@ -23,3 +23,7 @@ test/failures/
 
 # 参考截图原图（用户提供，含联系人/手机号等隐私内容，只存本地）
 .workbuddy/dialog_ref/
+
+# 参考素材抽帧（原始视频另行归档，可重抽）
+.workbuddy/vframes/
+__pycache__/

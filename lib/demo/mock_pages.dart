@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
@@ -222,9 +222,9 @@ class MockPage extends StatelessWidget {
     switch (index) {
       case 0:
         // 首页 = 参考页形态：**悬浮头部**（搜索栏 + 胶囊标签行）压在高频横幅
-        // 上，横幅与下方区块一起从头部后方滚过 —— 头部区那层恒定 σ 磨砂在
-        // 这一页才看得见（见 [_HomePage]）。点搜索栏由本页自己推入搜索页，
-        // 不需要外壳配合。
+        // 上，横幅与下方区块一起从头部后方滚过 —— 头部区那层渐进磨砂（平台
+        // 段最糊、向下衰减、胶囊行底羽化收尾）在这一页才看得见（见 [_HomePage]）。
+        // 点搜索栏由本页自己推入搜索页，不需要外壳配合。
         return _HomePage(themeMode: themeMode);
       case 1:
         // 「分类」tab = 组件展示库：胶囊分类标签切分组，网格是展示位
@@ -792,6 +792,74 @@ class _GradientCard extends StatelessWidget {
   }
 }
 
+/// 「滚动降 σ」的**实时**驱动器（推导值的性能优化，非素材度量）。
+///
+/// 磨砂 σ 缩放跟随滚动**速度**连续变化：运动越快磨砂越轻（1.0 → 0.6，
+/// 满速 [vRef] 封顶），速度衰减后逐帧平滑回升 —— 实时渐变，不在停顿瞬间
+/// 从 0.6 跳回 1.0（实机反馈：那一下「突然更糊」很扎眼）。σ 与高斯成本
+/// 近似线性，运动掩蔽下视觉几乎无差，GPU 省近半。
+///
+/// 输入取相邻帧的滚动位移差（帧时间戳用 `SchedulerBinding` 的假时钟友
+/// 好时间源）+ EMA 抹平 —— **不碰墙钟 / 定时器**：逐帧值只取决于滚动事件
+/// 序列，golden 回归可复现（用 `DateTime.now()` 差分速度会因测试时假
+/// 时钟与真实时钟错位而漂移）。
+///
+/// 用法：`attach(controller)` 后把本对象当 [ValueListenable<double>] 交给
+/// `ValueListenableBuilder` 包住 `MiTopBar`（只重建顶栏，不重建整页），
+/// `value` 即 `sigmaScale`。
+class _ScrollSigma extends ValueNotifier<double> {
+  _ScrollSigma() : super(1.0);
+
+  /// 满速参考（dp/s，**推导**）：常规滑动 600…1500，取 1200 封顶。
+  static const double vRef = 1200;
+
+  /// 满速下的 σ 缩放（**推导值**：0.6 —— 再低就能看出「糊变轻」了）。
+  static const double minScale = 0.6;
+
+  /// 速度低于该值（dp/s）即视为静止。
+  static const double _stopEpsilon = 24;
+
+  ScrollController? _controller;
+  double _speed = 0;
+  double _lastOffset = 0;
+  Duration _lastFrame = Duration.zero;
+
+  void attach(ScrollController controller) {
+    _controller = controller..addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final position = _controller?.position;
+    if (position == null || !position.hasPixels) return;
+    // 帧时间戳（不是墙钟）：测试里跟随假时钟，序列可复现。
+    final now = SchedulerBinding.instance.currentSystemFrameTimeStamp;
+    final dt = (now - _lastFrame).inMicroseconds / 1e6;
+    final offset = position.pixels;
+    if (dt > 0) {
+      final v = (offset - _lastOffset).abs() / dt;
+      // EMA 抹平逐帧抖动；慢速（含收尾）直接归零 → σ 确定地回到 1.0。
+      _speed = v < _stopEpsilon ? 0.0 : _speed * 0.55 + v * 0.45;
+    }
+    _lastFrame = now;
+    _lastOffset = offset;
+    final target = 1.0 - (1.0 - minScale) * (_speed / vRef).clamp(0.0, 1.0);
+    // 量化到 0.05 档：MiFilterCache 以 σ 为键，连续值会让每帧新建 native
+    // filter（快速滑动丢帧主因）。
+    final snapped = (target * 20).roundToDouble() / 20;
+    if (snapped != value) value = snapped;
+    // 值量化只护 filter 缓存；**通知仍逐滚动事件** —— 亮边（rimProgress）
+    // 这类滚动位置派生量要逐帧刷新。若只在换档时通知，极快滑动时 σ 饱和
+    // 在同一档不再换档 → 亮边冻在旧值（实机反馈：快滑不暗、轻碰才变）。
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onScroll);
+    super.dispose();
+  }
+}
+
 /// 首页（参考页形态）：**悬浮头部 + 顶部横幅 + 区块列表**。
 ///
 /// 结构照亮/暗两张完整截图（881×1920）：
@@ -799,8 +867,8 @@ class _GradientCard extends StatelessWidget {
 ///    （含状态栏后面）铺到度量 ~186dp；
 ///  * 搜索栏 + 胶囊标签行**悬浮**在横幅上（[MiTopBar] 头部区形态，由顶栏
 ///    自己产出两个组件），页面只给数据；
-///  * 列表**上内边距为 0** —— 横幅与下方区块一起从头部后方滚过，那条恒定 σ
-///    的整栏磨砂才有东西可糊（这正是本页要演示的效果）；
+///  * 列表**上内边距为 0** —— 横幅与下方区块一起从头部后方滚过，那条渐进
+///    磨砂（顶强底弱、羽化收尾）才有东西可糊（这正是本页要演示的效果）；
 ///  * 参考页这一形态**没有顶栏压色**（整条栏都能看见被模糊的背景）→
 ///    `showSurface: false`。
 ///
@@ -824,37 +892,18 @@ class _HomePageState extends State<_HomePage> {
   /// 列表滚动控制器：宽屏给可见滚动条（见 build 里的 `Scrollbar`）。
   final ScrollController _scroll = ScrollController();
 
-  /// 是否正在滚动（驱动顶栏「滚动降 σ」）。
-  ///
-  /// 滚动中 backdrop 每帧重算 —— 把磨砂 σ 压到 0.6，停下 120ms 后恢复度量
-  /// 材质。σ 与高斯成本近似线性，运动掩蔽下视觉几乎无差，GPU 省近半。
-  bool _scrolling = false;
-  Timer? _scrollSettle;
-
-  /// 滚动中的 σ 缩放（**推导值**：0.6 —— 再低就能看出「糊变轻」了）。
-  static const double _scrollingSigmaScale = 0.6;
-
-  /// 停止滚动后多久恢复度量 σ（比一帧长、比「人眼觉得停了」短）。
-  static const Duration _settleDelay = Duration(milliseconds: 120);
-
-  void _onScroll() {
-    if (!_scrolling) setState(() => _scrolling = true);
-    _scrollSettle?.cancel();
-    _scrollSettle = Timer(_settleDelay, () {
-      if (mounted && _scrolling) setState(() => _scrolling = false);
-    });
-  }
+  /// 「滚动降 σ」实时驱动器（σ 缩放随速度连续变化，见 [_ScrollSigma]）。
+  final _ScrollSigma _sigma = _ScrollSigma();
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
+    _sigma.attach(_scroll);
   }
 
   @override
   void dispose() {
-    _scrollSettle?.cancel();
-    _scroll.removeListener(_onScroll);
+    _sigma.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -879,10 +928,15 @@ class _HomePageState extends State<_HomePage> {
     // 同量级，与分类页一致）；宽屏舞台下收到 32。
     final inset = _pageInset(context, 11.9);
     // 头部区形态：搜索栏 + 胶囊行由顶栏内部产出（自带状态栏让位、间距、
-    // 页边距），磨砂是**恒定 σ 的整条栏**（参考素材度量，见 MiTopBar 文档）。
+    // 页边距），磨砂是**渐进磨砂的整条栏**（顶部最糊、向下衰减、胶囊行底
+    // 羽化收尾；1220×2656 明暗双素材实测，见 MiHeaderBlurProfile）。
     // `overContent: true` —— 横幅从 y=0 起铺、从头部下方滚过，搜索栏与未选
     // 胶囊要铺那层玻璃膜才读得出来（参考素材度量，见 MiTransparencyTokens）。
-    final bar = MiTopBar(
+    //
+    // σ 缩放随滚动速度实时渐变（[_ScrollSigma]）：只重建顶栏这一棵子树。
+    final bar = ValueListenableBuilder<double>(
+      valueListenable: _sigma,
+      builder: (context, sigmaScale, _) => MiTopBar(
       themeMode: widget.themeMode,
       headerInset: inset,
       // 宽屏收敛（手机 / 平板传默认值 → 逐像素不变）：
@@ -908,13 +962,16 @@ class _HomePageState extends State<_HomePage> {
       ]),
       searchHint: '搜索主题 / 壁纸 / 图标',
       onSearchTap: _openSearch,
-      // 滚动降 σ：滚动中磨砂压到 0.6，停下 120ms 恢复度量材质（见 _onScroll）。
-      sigmaScale: _scrolling ? _scrollingSigmaScale : 1.0,
+      // 滚动降 σ：随速度实时渐变（0.6…1.0，见 _ScrollSigma）。
+      sigmaScale: sigmaScale,
+      // 滚动偏移驱动内缘亮边的渐亮（rimProgress，见 MiTopBarMetrics）。
+      scrollOffset: _scroll.hasClients ? _scroll.offset : 0,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
       showSurface: false,
       overContent: true,
+      ),
     );
     return _keyboardScope(
       context,
@@ -1426,33 +1483,20 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   /// 网格滚动控制器：宽屏要给可见滚动条（见 build 里的 `Scrollbar`）。
   final ScrollController _scroll = ScrollController();
 
-  /// 是否正在滚动（驱动顶栏「滚动降 σ」，同首页 [_HomePageState._onScroll]）。
-  bool _scrolling = false;
-  Timer? _scrollSettle;
-
-  void _onScroll() {
-    if (!_scrolling) setState(() => _scrolling = true);
-    _scrollSettle?.cancel();
-    _scrollSettle = Timer(
-      const Duration(milliseconds: 120),
-      () {
-        if (mounted && _scrolling) setState(() => _scrolling = false);
-      },
-    );
-  }
+  /// 「滚动降 σ」实时驱动器（同首页 [_ScrollSigma]）。
+  final _ScrollSigma _sigma = _ScrollSigma();
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
+    _sigma.attach(_scroll);
   }
 
   @override
   void dispose() {
     // 页面被换掉（切 tab）时若还在搜索态，要让外壳把底栏装回来。
     if (_searching) widget.onSearchActiveChanged?.call(false);
-    _scrollSettle?.cancel();
-    _scroll.removeListener(_onScroll);
+    _sigma.dispose();
     _searchController.dispose();
     _searchFocus.dispose();
     _scroll.dispose();
@@ -1513,9 +1557,10 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     //
     // 材质**开着**（默认 showSurface: true）：搜索栏与胶囊行既然在顶栏内，
     // 就该共用顶栏那条渐进磨砂 —— 网格从后面滚过时，整条头部区（含两者之间
-    // 的间隙与四周）一起被磨砂盖住、越往上越糊，到栏底渐隐；零件自身不再
-    // 各绘一层 backdrop（顶栏会把内置组件的 `frosted` 关掉），所以只糊一次。
-    final bar = MiTopBar(
+    // 的间隙与四周）一起被磨砂盖住、越往上越糊，到栏底渐隐；零件自身另有
+    // 一层玻璃磨砂（自己的「透明模糊属性」+ 内缘亮边），与背景磨砂叠加。
+    // σ 缩放随滚动速度实时渐变（[_ScrollSigma]），只重建顶栏子树。
+    MiTopBar makeBar(double sigmaScale) => MiTopBar(
       themeMode: widget.themeMode,
       headerInset: inset,
       // 宽屏收敛：同首页（顶部让位 24 / 搜索限宽 520 / 右侧动作区）。
@@ -1534,8 +1579,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       onSearchCancel: _closeSearch,
       searchController: _searchController,
       searchFocusNode: _searchFocus,
-      // 滚动降 σ：同首页（滚动中 0.6，停下 120ms 恢复度量材质）。
-      sigmaScale: _scrolling ? 0.6 : 1.0,
+      // 滚动降 σ：随速度实时渐变（0.6…1.0，同首页 _ScrollSigma）。
+      sigmaScale: sigmaScale,
       tabs: _tabs,
       selectedTab: _tab,
       onTabChanged: (i) => setState(() => _tab = i),
@@ -1547,6 +1592,12 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       // 胶囊行后方）→ 搜索栏与未选胶囊同样要那层玻璃膜，否则色块直接透上来、
       // 边界只能靠文字认。膜垫在同色页底上等于没垫，静止态观感不变。
       overContent: true,
+      // 滚动偏移驱动内缘亮边的渐亮（rimProgress，见 MiTopBarMetrics）。
+      scrollOffset: _scroll.hasClients ? _scroll.offset : 0,
+    );
+    final bar = ValueListenableBuilder<double>(
+      valueListenable: _sigma,
+      builder: (context, sigmaScale, _) => makeBar(sigmaScale),
     );
     return _keyboardScope(
       context,
@@ -1570,7 +1621,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                 controller: _scroll,
                 padding: EdgeInsets.fromLTRB(
                   inset,
-                  bar.occupiedHeight(context) + MiTopBarMetrics.headerContentGap,
+                  makeBar(1.0).occupiedHeight(context) +
+                      MiTopBarMetrics.headerContentGap,
                   inset,
                   0,
                 ),

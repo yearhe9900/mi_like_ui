@@ -116,31 +116,49 @@ void main() {
         );
       });
 
-      test('MiTopBar.uniformBlurBands：σ 也等比缩放', () {
-        final base = MiTopBar.uniformBlurBands(
+      test('MiTopBar.headerBlurBands：σ 量化 0.05 档 + 快速运动合并 3 段', () {
+        final base = MiTopBar.headerBlurBands(
           MiTopBarPalette.dark,
           extent: 156,
+          underSurface: false,
         );
-        final scaled = MiTopBar.uniformBlurBands(
+        expect(base, hasLength(MiHeaderBlurProfile.bands.length));
+
+        // 快速运动（scale ≤ 0.8）：9 段合并成 3 段（省帧），σ 等比缩放后
+        // 单调递减、无缝铺满
+        final fast = MiTopBar.headerBlurBands(
           MiTopBarPalette.dark,
           extent: 156,
+          underSurface: false,
           sigmaScale: 0.6,
         );
-        expect(scaled, hasLength(1));
-        expect(base, hasLength(1));
+        expect(fast, hasLength(3), reason: '运动中合并 3 段，全宽高斯 9 趟 → 3 趟');
+        expect(fast.first.top, 0);
+        expect(fast.last.bottom, closeTo(156.0, 0.01));
+        for (var i = 1; i < fast.length; i++) {
+          expect(fast[i].top, closeTo(fast[i - 1].bottom, 1e-9));
+          expect(fast[i].sigma < fast[i - 1].sigma, isTrue);
+        }
+        // 合并 σ = 段高加权均值 × scale（首组 = 平台两段 8.5/7.98，h 35/15）
         expect(
-          scaled.single.sigma,
-          moreOrLessEquals(base.single.sigma * 0.6, epsilon: 1e-9),
+          fast.first.sigma,
+          moreOrLessEquals((8.5 * 35 + 7.98 * 15) / 50 * 0.6, epsilon: 1e-9),
         );
-        // 段位 / 段高不变
-        expect(scaled.single.top, base.single.top);
-        expect(scaled.single.height, base.single.height);
+
+        // 量化：0.62 → 0.6 档（同档拿到同一组 σ → MiFilterCache 命中）
+        final quantized = MiTopBar.headerBlurBands(
+          MiTopBarPalette.dark,
+          extent: 156,
+          underSurface: false,
+          sigmaScale: 0.62,
+        );
+        expect(quantized.first.sigma, fast.first.sigma);
       });
 
-      test('σScale 太小时恒定段整段剔除（返回空）', () {
-        // 28 × 0.01 = 0.28 < 0.5 → 剔除
+      test('σScale 太小时渐进段整段剔除（返回空）', () {
+        // 8.5 × 0.01 → 量化后 ≈0 → 全部剔除
         expect(
-          MiTopBar.uniformBlurBands(
+          MiTopBar.headerBlurBands(
             MiTopBarPalette.dark,
             extent: 156,
             sigmaScale: 0.01,

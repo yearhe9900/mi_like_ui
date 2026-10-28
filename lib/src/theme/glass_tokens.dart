@@ -5,11 +5,12 @@ import 'transparency_tokens.dart';
 
 /// 磨砂玻璃材质配方令牌（所有玻璃类组件共用）。
 ///
-/// 深色透射模型：遮罩 `scrim` 满足 out = 0.37·in + 12.6；选中胶囊为
-/// 「透镜」（遮罩开洞 + 暗化 + 白茶色调），非纯色块。
+/// 深色透射模型：遮罩 `scrim` 满足 out ≈ 15 + 0.24·in；选中胶囊为**高磨砂
+/// 块**（暗化 + 白茶色调，**不开洞**，实测 (c,t)≈(84,0.05)）。
 ///
 /// 浅色同为半透明真实玻璃：遮罩带垂直渐变（上透下实），背后内容色彩
-/// 透出；选中胶囊为独立暖灰玻璃体。明暗两套配方见 [MiGlassPalette]。
+/// 透出；选中胶囊为独立暖灰玻璃体（亮色实测为**开洞**玻璃体，见
+/// [MiGlassPalette.lensCutsScrim]）。明暗两套配方见 [MiGlassPalette]。
 ///
 /// **alpha / σ 均为引用**（[MiTransparencyTokens]），本层只决定
 /// 「哪一层用哪档」与色相。
@@ -26,11 +27,11 @@ class MiGlassTokens {
   static const Color scrim = Color.fromRGBO(
       20, 20, 20, MiTransparencyTokens.glassScrimAlpha);
 
-  /// 透镜暗化层（~60% 内容透射）。
+  /// 选中块暗化层（压在未开洞的栏体玻璃上；暗色实测 t≈0.05 的高磨砂块）。
   static const Color lensShade = Color.fromRGBO(
       0, 0, 0, MiTransparencyTokens.glassLensShadeAlpha);
 
-  /// 透镜白茶色调。
+  /// 选中块白茶色调。
   static const Color lensTint = Color.fromRGBO(
       255, 255, 255, MiTransparencyTokens.glassLensTintAlpha);
 
@@ -55,26 +56,35 @@ class MiGlassPalette {
     required this.rim,
     this.scrimGradient,
     this.lensTintGradient,
+    this.lensCutsScrim = false,
     this.elevationShadow = const [],
   });
 
-  /// 玻璃体遮罩（在透镜处开洞）；[scrimGradient] 非空时改按渐变绘制。
+  /// 选中块是否在栏体遮罩上**开洞**（「透镜」形态）。
+  ///
+  /// 亮色实测：选中胶囊是开洞的独立暖灰玻璃体（透射 t≈0.20，比栏体略实）
+  /// → `true`；暗色实测：选中块是**高磨砂块**（(c,t)≈(84,0.05)，内容几乎
+  /// 不透出）→ `false`（暗化 + 白茶色调压在未开洞的栏体玻璃之上）。
+  final bool lensCutsScrim;
+
+  /// 玻璃体遮罩（[lensCutsScrim] 为真时在选中块处开洞）；
+  /// [scrimGradient] 非空时改按渐变绘制。
   final Color scrim;
 
   /// 玻璃体遮罩垂直渐变（可空 = 纯色 [scrim]；亮色度量上透下实）。
   final Gradient? scrimGradient;
 
-  /// 透镜暗化层（贴在开洞处的最底层）。
+  /// 选中块暗化层（[lensCutsScrim] 为假时贴在栏体玻璃上；为真时贴在开洞处）。
   final Color lensShade;
 
-  /// 透镜色调（叠在暗化层上，构成透镜玻璃体）；
+  /// 选中块色调（叠在暗化层上）；
   /// [lensTintGradient] 非空时改按渐变绘制。
   final Color lensTint;
 
-  /// 透镜色调垂直渐变（可空 = 纯色 [lensTint]）。
+  /// 选中块色调垂直渐变（可空 = 纯色 [lensTint]）。
   final Gradient? lensTintGradient;
 
-  /// 透镜内描边（深色 0.08 度量；浅色真值为无描边=透明，见 [MiGlassPalette.light]）。
+  /// 选中块内描边（深色 0.08 度量；浅色真值为无描边=透明，见 [MiGlassPalette.light]）。
   final Color lensStroke;
 
   /// 玻璃体外缘高光。
@@ -105,6 +115,7 @@ class MiGlassPalette {
   ///  * 外缘纯白 #FFFFFF 高光（度量峰值 255）；
   ///  * 投影：下缘近处约 -8 级、~50px 内衰减完。
   static const MiGlassPalette light = MiGlassPalette(
+    lensCutsScrim: true,
     scrim: Color.fromRGBO(
         251, 251, 251, MiTransparencyTokens.glassScrimLightAlphaMid),
     scrimGradient: LinearGradient(

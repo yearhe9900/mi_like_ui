@@ -44,17 +44,19 @@ class GlassBarPainter extends CustomPainter {
       Radius.circular(pillHeight / 2),
     );
 
-    // 1) scrim with a hole where the pill sits (the pill is a lens
-    //    through the scrim, which is why it brightens with the content)
-    final scrim = Path.combine(
-      PathOperation.difference,
-      Path()..addRRect(barR),
-      Path()..addRRect(pillR),
-    );
+    // 1) scrim；选中块处按配方决定是否开洞（亮色 = 透镜体，暗色 = 高磨砂块
+    //    压在完整遮罩之上，见 MiGlassPalette.lensCutsScrim）
+    final scrim = palette.lensCutsScrim
+        ? Path.combine(
+            PathOperation.difference,
+            Path()..addRRect(barR),
+            Path()..addRRect(pillR),
+          )
+        : (Path()..addRRect(barR));
     canvas.drawPath(scrim, _layerPaint(palette.scrimGradient, palette.scrim, size));
 
-    // 2) pill lens: shade + tint over the hole (dark: ~60% content
-    //    transmission, light: gradient warm-gray glass body with no shade)
+    // 2) 选中块：暗化 + 色调叠在开洞处（亮）或栏体玻璃上（暗）
+    //    —— 暗色实测是 (c,t)≈(84,0.05) 的高磨砂块，不是透明窗口
     canvas.drawRRect(pillR, Paint()..color = palette.lensShade);
     canvas.drawRRect(
       pillR,
