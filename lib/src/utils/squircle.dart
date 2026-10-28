@@ -17,22 +17,39 @@ class MiSquircle {
   MiSquircle._();
 
   /// 瓦片倍率：1.0 = 普通圆弧，1.1 = 连续圆角（曲率提前 ~10% 开始过渡）。
+  /// 可调范围 [minExtension]…[maxExtension]（夹位见 [addRect]）。
   static const double extension = 1.1;
+
+  /// [extension] 下限（1.0 = 普通圆弧，不许更小 —— 那会把角画成凹陷）。
+  static const double minExtension = 1.0;
+
+  /// [extension] 上限（再大角会「方」到接近直角，失去圆角语义）。
+  static const double maxExtension = 2.0;
 
   /// 贝塞尔控制点比例（源端 SDF 预烘焙值，勿调）。
   static const double control = 0.643;
 
   /// [rect] 的连续圆角轮廓；[radius] 夹到短边一半（stadium 端头自动成立）。
-  static Path pathOf(Rect rect, double radius) {
+  static Path pathOf(
+    Rect rect,
+    double radius, {
+    double extension = MiSquircle.extension,
+  }) {
     final path = Path();
-    addRect(path, rect, radius);
+    addRect(path, rect, radius, extension: extension);
     return path;
   }
 
   /// 向 [path] 追加 [rect] 的连续圆角轮廓（多胶囊条等复用同一 path）。
-  static void addRect(Path path, Rect rect, double radius) {
+  static void addRect(
+    Path path,
+    Rect rect,
+    double radius, {
+    double extension = MiSquircle.extension,
+  }) {
     if (rect.width <= 0 || rect.height <= 0) return;
-    final tile = (radius * extension).clamp(
+    final ext = extension.clamp(minExtension, maxExtension);
+    final tile = (radius * ext).clamp(
       0.0,
       math.min(rect.width, rect.height) * 0.5,
     );
@@ -59,33 +76,49 @@ class MiSquircle {
 
 /// [ClipPath] 用的连续圆角裁形器（`ClipRRect` 的 squircle 版）。
 class MiSquircleClipper extends CustomClipper<Path> {
-  const MiSquircleClipper(this.radius);
+  const MiSquircleClipper(
+    this.radius, {
+    this.extension = MiSquircle.extension,
+  });
 
   /// 名义圆角半径（夹位逻辑见 [MiSquircle.pathOf]）。
   final double radius;
 
+  /// 瓦片倍率（见 [MiSquircle.extension]）。
+  final double extension;
+
   @override
-  Path getClip(Size size) => MiSquircle.pathOf(Offset.zero & size, radius);
+  Path getClip(Size size) => MiSquircle.pathOf(
+        Offset.zero & size,
+        radius,
+        extension: extension,
+      );
 
   @override
   bool shouldReclip(MiSquircleClipper oldClipper) =>
-      oldClipper.radius != radius;
+      oldClipper.radius != radius || oldClipper.extension != extension;
 }
 
 /// [ShapeDecoration] / [PhysicalShape] 用的连续圆角形状
 ///（`BoxDecoration.borderRadius` 的 squircle 版）。
 class MiSquircleBorder extends ShapeBorder {
-  const MiSquircleBorder(this.cornerRadius);
+  const MiSquircleBorder(
+    this.cornerRadius, {
+    this.extension = MiSquircle.extension,
+  });
 
   /// 名义圆角半径。
   final double cornerRadius;
+
+  /// 瓦片倍率（见 [MiSquircle.extension]）。
+  final double extension;
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
-      MiSquircle.pathOf(rect, cornerRadius);
+      MiSquircle.pathOf(rect, cornerRadius, extension: extension);
 
   /// 内轮廓未做等距内缩（与描边内缩场景无关 —— 本库只用它做填充与裁形）。
   @override
@@ -93,7 +126,8 @@ class MiSquircleBorder extends ShapeBorder {
       Path()..addRect(rect);
 
   @override
-  ShapeBorder scale(double t) => MiSquircleBorder(cornerRadius * t);
+  ShapeBorder scale(double t) =>
+      MiSquircleBorder(cornerRadius * t, extension: extension);
 
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
@@ -101,10 +135,12 @@ class MiSquircleBorder extends ShapeBorder {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is MiSquircleBorder && other.cornerRadius == cornerRadius);
+      (other is MiSquircleBorder &&
+          other.cornerRadius == cornerRadius &&
+          other.extension == extension);
 
   @override
-  int get hashCode => cornerRadius.hashCode;
+  int get hashCode => Object.hash(cornerRadius, extension);
 }
 
 /// 连续圆角投影画笔（`BoxShadow` 的 squircle 版）：`ShapeDecoration` 不带

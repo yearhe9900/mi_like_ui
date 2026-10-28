@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
-import '../../../theme/dimens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
@@ -17,7 +16,7 @@ import 'theme_card_metrics.dart';
 ///  * [preview] 按 [previewAspectRatio]（默认
 ///    [MiThemeCardMetrics.imageAspectRatio]，259:472）定比铺满图区 ——
 ///    宽随父级（需置于 `Expanded` / `SizedBox` 等有界容器，两侧皆无界会抛
-///    AspectRatio 约束错误），圆角 [MiDimens.radiusLg]；
+///    AspectRatio 约束错误），圆角 [MiThemeCardMetrics.previewRadius]；
 ///  * 标题单行省略，相对图左缘内缩 [MiThemeCardMetrics.titleIndent]
 ///    （与区块标题同列起排），与图间距 [MiThemeCardMetrics.titleTopGap]；
 ///  * 标题墨色经 `MiColors.foregroundFor` 取框架前景色。
@@ -95,7 +94,8 @@ class _MiThemeCardState extends State<MiThemeCard> {
     Widget previewArea = AspectRatio(
       aspectRatio: widget.previewAspectRatio,
       child: ClipPath(
-        clipper: const MiSquircleClipper(MiDimens.radiusLg),
+        clipper:
+            const MiSquircleClipper(MiThemeCardMetrics.previewRadius),
         child: hasActions
             ? Stack(
                 fit: StackFit.expand,
@@ -161,7 +161,8 @@ class _MiThemeCardState extends State<MiThemeCard> {
       // 与按压反馈的覆盖范围一致：整卡可点，就给整卡反馈。
       child: MiHoverFeedback(
         mode: mode,
-        borderRadius: BorderRadius.circular(MiDimens.radiusLg),
+        borderRadius:
+            BorderRadius.circular(MiThemeCardMetrics.previewRadius),
         // 悬停态同时驱动操作条（回调里 setState；结构恒定，只改 offset）。
         onHoverChanged: hasActions
             ? (hovered) {
