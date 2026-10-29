@@ -71,11 +71,14 @@ MiGlassNavBar(
 | `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp） |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
+| `MiSnackbar` | 轻量消息条（自动收起、同类替换、可带动作钮；几何全推导） |
+| `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何与交互全推导：弹簧吸附 / 坐标换算取值 / 设置行） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
 | `MiFocusRing` | 键盘焦点环 + Enter / Space 激活（桌面可达性） |
 | `MiPressable` | 统一反馈包装件：按压状态机 + 悬停叠色 + 焦点环（可点元素统一入口） |
+| `MiPopupHost` / `MiPopup` | 弹层单点渲染层：注册序即 z 序，不扰动页面栈；无宿主时就地渲染（兼容） |
 
 ## 组件
 
@@ -408,6 +411,41 @@ MiPullUpPanel(
 
 <img src="doc/preview/panel_dark.png" width="200" alt="深色弹出面板" /> <img src="doc/preview/panel_light.png" width="200" alt="浅色弹出面板" />
 
+### 弹层与轻提示（MiPopupHost / MiSnackbar）
+
+弹层走**单点渲染层**：`MiPopupHost` 包住页面（demo 包在路由内容外），
+`MiPopup` / `MiDialog` / `MiSnackbar` 向最近宿主注册 —— 弹层间 z 序 =
+注册序（后开在上）、不扰动页面栈（Stack 中插会让后续子树重建、滚动位置
+归零）。**无宿主时就地渲染**（既有用法与黄金图零变化）。`MiPullUpPanel`
+刻意不入宿主 —— 它的绘制位契约是「导航栏之下」（圆钮要压在面板角上）。
+
+```dart
+// 应用根：MiPopupHost(child: 路由内容)
+// 任意页内：
+MiSnackbar.show(context, message: '已添加到收藏', actionLabel: '撤销',
+    onAction: () { /* … */ });   // 2.5s 自动收起；新消息顶旧条
+```
+
+`MiSnackbar` 几何与时序全为推导值（`MiSnackbarMetrics` 注明口径），
+配色不新造色值（表面 = 弹出面板同值、墨色 = 弹框标题墨色、动作 = 强调色）。
+
+### 表单控件（推导档：MiSwitch / MiSlider / MiPreferenceTile）
+
+触屏素材无开关 / 滑条 / 设置行样张 —— 三件的几何与交互**全为推导**
+（`*_metrics.dart` 注明每项口径：Material 3 同档尺寸 + Folme 弹簧 +
+本库 token 配色），素材到位后复核：
+
+- **`MiSwitch`**：52×32 轨道 + ⌀26 白钮，切换 = 临界阻尼吸附弹簧
+  （`miSpring(1.0, 0.35)`，无过冲）；`onChanged(null)` = 禁用（降 0.38 透明）。
+- **`MiSlider`**：4dp 轨道 + ⌀20 拇指，受控 `value/onChanged`；拖拽用
+  **`globalToLocal` 坐标换算**取值（不用 `details.delta` 累加 —— 拖出
+  边界会漂，flutter_miuix 同款回归教训）；键盘 ← / → 一格（全程 / 20），
+  `divisions` 分档吸附。
+- **`MiPreferenceTile`**：设置行 = 前导图标 + 标题 / 副标题 + 尾随控件
+  （放 `MiSwitch` / 箭头），行高与弹框列表行同源、按压同弹框 state layer。
+
+三件都经 `MiPressable`：点按 / Enter / Space、悬停、Tab 焦点环齐备。
+
 ### 页面推入转场（MiCardPageRoute）
 
 自右缘推入新页、前缘带大圆角，下层页同时左移视差并压暗 —— 用于「搜索页 /
@@ -599,8 +637,11 @@ Navigator.of(context).push(MiCardPageRoute<void>(
   + 焦点环，一次包装齐备；禁用（`onPressed == null`）三态全关、手势层吸收
   命中不响应。按压**视觉**经 `pressBuilder` 留在组件层 —— 时序与颜色是各
   组件度量（弹框 150ms 换压色、返回钮 / 取消钮 420/300ms 圆盘淡入出），
-  包装件只提供 `pressed` 状态。已接入 `MiButton` 与上述四处站点（后四处
-  的悬停 / 焦点为推导补齐，静止态零像素）。
+  包装件只提供 `pressed` 状态。已接入 `MiButton`、主题卡、胶囊行与上述
+  四处站点（后四处的悬停 / 焦点为推导补齐，静止态零像素）；
+  `MiSearchBar` **刻意不做** Tab 停靠 —— 点按进搜索态时点击会把焦点给到
+  包装层（`Focus.hasFocus` 含后代聚合），与可编辑态的 autoFocus 互相干扰
+  （预览实测暗色描边常驻），搜索的键盘可达性走 ⌘K / 宿主路径。
 - **`MiSearchShortcuts`**（示例层）—— ⌘ / Ctrl + K 聚焦搜索、Esc 退出当前
   浮层 / 搜索态（`onEscape: null` 时不注册 Esc、继续冒泡给系统）。
   快捷键沿焦点链冒泡，所以搜索框获得焦点后 ⌘K 仍被这一层接住。
@@ -668,10 +709,11 @@ lib/
     ├── components/          # 组件层（类别 / 组件名 / 两级目录）
     │   ├── navigation/      #   glass_nav_bar · glass_side_nav_bar · pill_tab_bar · top_bar · card_page_route
     │   ├── buttons/         #   button
-    │   ├── inputs/          #   search_bar（含取消钮）
+    │   ├── inputs/          #   search_bar（含取消钮）· switch · slider · preference_tile
     │   ├── cards/           #   theme_card
-    │   ├── feedback/        #   dialog
+    │   ├── feedback/        #   dialog · snackbar
     │   └── effects/         #   gradient_blur
+    ├── overlay/             # 弹层基建（MiPopupHost 单点渲染层）
     ├── icons/               # 图标 painter 合集
     └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滤镜缓存）
 
@@ -682,6 +724,7 @@ test/                        # 单元 / 交互 / 视觉回归测试
 |---|---|
 | 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
+| 弹层基建 `src/overlay/` | 弹层单点渲染（注册序即 z 序；`MiDialog` / `MiSnackbar` 经它注册，`MiPullUpPanel` 因绘制位契约刻意不入） |
 | 主题层 `src/theme/` | 跨组件样式令牌；透明 / 磨砂参数统一在 `transparency_tokens.dart`，动效规格统一在 `motion_tokens.dart` |
 | 图标 `src/icons/` | 导航图标 painter 合集（`*IconPainter`） |
 | 工具层 `src/utils/` | 基础件与纯函数（响应式 / 悬停 / 按压 / 焦点 / squircle / 滤镜缓存） |
