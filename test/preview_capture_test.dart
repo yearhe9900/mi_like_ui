@@ -232,11 +232,12 @@ void main() {
       String file, {
       bool showcase = false,
       bool light = false,
+      DemoDevice? device,
     }) async {
       // 每次换窗口尺寸都重建 App，避免复用上一档的 State（_index / _tab）。
       tester.view.devicePixelRatio = 2.0;
       tester.view.physicalSize = logical * 2;
-      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpWidget(DemoApp(key: UniqueKey(), device: device));
       await tester.pumpAndSettle();
       if (showcase) {
         await tester.tap(find.text('分类').last);
@@ -260,23 +261,29 @@ void main() {
       '../doc/preview/adaptive_small_window.png',
     );
     // medium：平板竖屏（实机 1536×2560 @2x → 768×1280），画面铺成内容舞台
-    await capture(const Size(768, 1280), '../doc/preview/adaptive_tablet.png');
-    // expanded：桌面，画面加宽成内容舞台（主题卡 6 列）
+    //（真平板 = handheld 铺满；PC 同窗口套平板壳，见 responsive_test）
+    await capture(const Size(768, 1280), '../doc/preview/adaptive_tablet.png',
+        device: DemoDevice.handheld);
+    // expanded：铺满语境大屏（画面加宽成内容舞台，主题卡 6 列；PC 语境
+    // 同窗口套平板壳，本图固定铺满语境保持与既有预览一致）
     await capture(
       const Size(1366, 768),
       '../doc/preview/adaptive_desktop.png',
+      device: DemoDevice.handheld,
     );
     // expanded：展示位网格 8 列
     await capture(
       const Size(1366, 768),
       '../doc/preview/adaptive_desktop_showcase.png',
       showcase: true,
+      device: DemoDevice.handheld,
     );
     // expanded + 浅色：侧栏在浅底上的玻璃体 / 投影（验证无拼接缝）
     await capture(
       const Size(1366, 768),
       '../doc/preview/adaptive_desktop_light.png',
       light: true,
+      device: DemoDevice.handheld,
     );
   });
 

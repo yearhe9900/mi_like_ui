@@ -197,17 +197,38 @@ void main() {
     });
   });
 
-  group('DemoStage 外壳三档', () {
-    test('compact 手机全屏 = 1:1，小窗等比缩小且不溢出', () {
-      // 参考机全屏：完全 1:1（不留边距）
-      var frame = DemoStage.sizeFor(const Size(393, 856));
+  group('DemoStage 外壳形态解算（设备语境 × 窗口）', () {
+    test('移动端（handheld）：任何窗口都铺满全屏，1:1 不缩放', () {
+      for (final window in const [
+        Size(393, 856), // 参考机
+        Size(800, 1000), // 平板竖屏
+        Size(1366, 768), // 桌面
+        Size(1400, 420), // 宽而极矮：画面就是窗口，内容自己滚动
+      ]) {
+        final mode = DemoStage.modeFor(window, device: DemoDevice.handheld);
+        expect(mode, DemoShellMode.fullscreen, reason: '$window');
+        final frame = DemoStage.sizeFor(window, mode: mode);
+        expect(frame.logical, window, reason: '$window');
+        expect(frame.rendered, window, reason: '$window');
+        expect(frame.isScaled, isFalse, reason: '$window');
+      }
+    });
+
+    test('PC 窄窗（< 600dp）：手机壳 393×856，小窗等比缩小且不溢出', () {
+      // 参考机窗口：壳 1:1（不留边距）
+      var mode =
+          DemoStage.modeFor(const Size(393, 856), device: DemoDevice.desktop);
+      expect(mode, DemoShellMode.phone);
+      var frame = DemoStage.sizeFor(const Size(393, 856), mode: mode);
       expect(frame.logical, DemoStage.designCanvas);
       expect(frame.rendered, DemoStage.designCanvas);
       expect(frame.isScaled, isFalse);
       expect(frame.scale, 1.0);
 
       // 桌面小窗：整机缩进去，宽高比不变
-      frame = DemoStage.sizeFor(const Size(260, 470));
+      mode = DemoStage.modeFor(const Size(260, 470), device: DemoDevice.desktop);
+      expect(mode, DemoShellMode.phone);
+      frame = DemoStage.sizeFor(const Size(260, 470), mode: mode);
       expect(frame.rendered.width, lessThanOrEqualTo(260.001));
       expect(frame.rendered.height, lessThanOrEqualTo(470.001));
       expect(frame.rendered.width / frame.rendered.height,
@@ -215,45 +236,127 @@ void main() {
       expect(frame.isScaled, isTrue);
 
       // 极小窗：继续缩，仍不溢出
-      frame = DemoStage.sizeFor(const Size(120, 300));
+      mode = DemoStage.modeFor(const Size(120, 300), device: DemoDevice.desktop);
+      frame = DemoStage.sizeFor(const Size(120, 300), mode: mode);
       expect(frame.rendered.width, lessThanOrEqualTo(120.001));
       expect(frame.rendered.height, lessThanOrEqualTo(300.001));
       expect(frame.rendered.width / frame.rendered.height,
           closeTo(393 / 856, 1e-9));
     });
 
-    test('medium 平板：铺满窗口（不再有小手机框 / 外围卡片）', () {
-      // 800×1000 平板竖屏：画面 = 窗口
-      final frame = DemoStage.sizeFor(const Size(800, 1000));
-      expect(frame.logical, const Size(800, 1000));
-      expect(frame.rendered, frame.logical);
-      expect(frame.isScaled, isFalse);
+    test('PC 宽窗（≥ 600dp）：平板壳，横 / 竖机身择优、只缩不放', () {
+      // 横窗 1366×768：横版机身 1180×820，缩到 768 高
+      var mode =
+          DemoStage.modeFor(const Size(1366, 768), device: DemoDevice.desktop);
+      expect(mode, DemoShellMode.tablet);
+      var frame = DemoStage.sizeFor(const Size(1366, 768), mode: mode);
+      expect(frame.logical, const Size(1180, 820));
+      expect(frame.rendered.height, closeTo(768, 0.01));
+      expect(frame.rendered.width, lessThanOrEqualTo(1366.001));
+      expect(frame.isScaled, isTrue);
 
-      // 实机尺寸（2026-10-18 平板截图 1536×2560 @2x → 768×1280 逻辑）：
-      // 画面 = 768×1280（此前是居中的 720×1232 卡片）
-      final pad = DemoStage.sizeFor(const Size(768, 1280));
-      expect(pad.logical, const Size(768, 1280));
-      expect(pad.rendered, pad.logical);
-      expect(pad.isScaled, isFalse);
+      // 竖窗 800×1200：竖版机身 820×1180
+      mode = DemoStage.modeFor(const Size(800, 1200), device: DemoDevice.desktop);
+      frame = DemoStage.sizeFor(const Size(800, 1200), mode: mode);
+      expect(frame.logical, const Size(820, 1180));
+      expect(frame.rendered.width, closeTo(800, 0.01));
+
+      // 窄高窗 600×900：刚过断点就是平板壳（竖版摆得下）
+      mode = DemoStage.modeFor(const Size(600, 900), device: DemoDevice.desktop);
+      expect(mode, DemoShellMode.tablet);
+
+      // 只缩不放：大窗里壳不超过设计画布
+      frame =
+          DemoStage.sizeFor(const Size(1366, 768), mode: DemoShellMode.tablet);
+      expect(frame.rendered.width, lessThanOrEqualTo(1180.001));
     });
 
-    test('expanded 桌面：铺满窗口且不超出', () {
-      final wide = DemoStage.sizeFor(const Size(1366, 768));
-      expect(wide.logical, const Size(1366, 768));
-      expect(wide.rendered, wide.logical); // 1x，不缩放
-      expect(wide.rendered.width, lessThanOrEqualTo(1366.001));
-      expect(wide.rendered.height, lessThanOrEqualTo(768.001));
+    test('断点口径：600 是窄 / 宽分界；device 省略 = 自动探测', () {
+      expect(
+        DemoStage.modeFor(const Size(599, 900), device: DemoDevice.desktop),
+        DemoShellMode.phone,
+      );
+      expect(
+        DemoStage.modeFor(const Size(600, 900), device: DemoDevice.desktop),
+        DemoShellMode.tablet,
+      );
+      // 测试宿主是桌面 OS → 自动探测得桌面语境（窄窗手机壳）
+      expect(DemoStage.modeFor(const Size(393, 856)), DemoShellMode.phone);
+    });
+  });
 
-      // 刚好过断点：同样铺满
-      final edge = DemoStage.sizeFor(const Size(1024, 768));
-      expect(edge.logical, const Size(1024, 768));
+  group('PC 机身壳（桌面语境）', () {
+    /// 设定窗口逻辑尺寸（dpr = 1 → physicalSize 即逻辑尺寸）。
+    void setWindow(WidgetTester tester, Size size) {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = size;
+    }
 
-      // 宽而极矮：不再有"最小舞台高"，画面就是窗口，内容自己滚动
-      final squat = DemoStage.sizeFor(const Size(1400, 420));
-      expect(squat.logical, const Size(1400, 420));
-      expect(squat.rendered, squat.logical);
-      expect(squat.rendered.height, lessThanOrEqualTo(420.001));
-      expect(squat.rendered.width, lessThanOrEqualTo(1400.001));
+    /// 外壳装饰（DemoStage 画布外层：机身壳或铺满容器）。
+    BoxDecoration canvasDecoration(WidgetTester tester) {
+      final box = tester.widget<Container>(
+        find
+            .ancestor(of: find.byType(MockPage), matching: find.byType(Container))
+            .last,
+      );
+      return box.decoration! as BoxDecoration;
+    }
+
+    testWidgets('窄窗：手机壳（圆角机身 44 + 投影），画面 393×856',
+        (tester) async {
+      setWindow(tester, const Size(393, 856));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.desktop));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final decoration = canvasDecoration(tester);
+      expect(decoration.borderRadius, BorderRadius.circular(44));
+      expect(decoration.boxShadow, isNotEmpty);
+
+      // 画面 = 设计画布 393×856、1:1 贴满窗口；窄画布 → 底部导航栏
+      final page = tester.getRect(find.byType(MockPage));
+      expect(page.width, closeTo(393, 0.01));
+      expect(page.height, closeTo(856, 0.01));
+      expect(find.byType(MiGlassNavBar), findsOneWidget);
+    });
+
+    testWidgets('宽窗：平板壳（圆角机身 32 + 投影），横版机身居中',
+        (tester) async {
+      const window = Size(1366, 768);
+      setWindow(tester, window);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.desktop));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+
+      final decoration = canvasDecoration(tester);
+      expect(decoration.borderRadius, BorderRadius.circular(32));
+      expect(decoration.boxShadow, isNotEmpty);
+
+      // 横版机身 1180×820 等比缩到 768 高、水平居中
+      final canvas = tester.getRect(find
+          .ancestor(of: find.byType(MockPage), matching: find.byType(Container))
+          .last);
+      expect(canvas.height, closeTo(768, 0.01));
+      expect(canvas.width, closeTo(1180 * 768 / 820, 0.5));
+      expect(canvas.left, closeTo((window.width - canvas.width) / 2, 0.5));
+      // 宽画布 → 侧栏（1180 ≥ 1024：展开栏）
+      expect(find.byType(MiGlassSideNavBar), findsOneWidget);
+    });
+
+    testWidgets('移动端：铺满全屏，无圆角、无投影', (tester) async {
+      setWindow(tester, const Size(393, 856));
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
+      await tester.pumpAndSettle();
+
+      final decoration = canvasDecoration(tester);
+      expect(decoration.borderRadius, BorderRadius.zero);
+      expect(decoration.boxShadow ?? const [], isEmpty);
     });
   });
 
@@ -301,7 +404,8 @@ void main() {
       setWindow(tester, const Size(768, 1280));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      // 铺满语境（真平板 = handheld）：PC 语境同窗口套平板壳
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
@@ -324,7 +428,8 @@ void main() {
       setWindow(tester, const Size(393, 856));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      // 铺满语境：几何按「画面 = 窗口」断言
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(tester.getRect(find.byType(MockPage)).width, closeTo(393, 0.01));
 
@@ -345,8 +450,12 @@ void main() {
         closeTo(inset + (area - column) / 2, 0.01),
       );
 
-      // 桌面 → 小窗：又缩回等比 contain
+      // 桌面 → 小窗：PC 语境缩回手机壳、整机等比 contain（contain 是壳的
+      // 几何；铺满语境下小窗就是铺满）—— 重新 pump 切语境，重排连续性
+      // 由上面两步保证。
       setWindow(tester, const Size(240, 400));
+      await tester.pumpWidget(
+          const DemoApp(device: DemoDevice.desktop));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       final small = tester.getRect(find.byType(MockPage));

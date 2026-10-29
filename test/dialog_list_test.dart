@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // 框架 API 走公共 barrel。
@@ -466,6 +467,33 @@ void main() {
       cancelButton,
       closeTo(cardTop + card.height - 24.1 - 49.9, 0.05),
     );
+  });
+
+  testWidgets('列表行桌面语义（推导）：聚焦出环、Enter 激活', (tester) async {
+    _useReferenceCanvas(tester);
+    var tapped = 0;
+    await tester.pumpWidget(_harness(items: _items(onOne: () => tapped++)));
+    await tester.pump();
+
+    // 行被 MiPressable 包裹（焦点环在行边界外侧）
+    final row = find.byType(MiPressable).first;
+    tester
+        .widget<Focus>(
+          find.descendant(of: row, matching: find.byType(Focus)),
+        )
+        .focusNode!
+        .requestFocus();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+    final ring = tester.widget<AnimatedContainer>(
+      find.descendant(of: row, matching: find.byKey(MiFocusRing.ringKey)),
+    );
+    expect(
+      (ring.decoration! as BoxDecoration).border!.top.color,
+      isNot(Colors.transparent),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(tapped, 1, reason: 'Enter 应激活聚焦行的 onPressed');
   });
 }
 

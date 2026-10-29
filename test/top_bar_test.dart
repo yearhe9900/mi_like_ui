@@ -1,6 +1,8 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // 框架 API 走公共 barrel；若导出缺失会在这里暴露。
@@ -707,6 +709,50 @@ void main() {
         of: find.byType(MiTopBar),
         matching: find.byType(Text),
       ), findsNothing);
+    });
+
+    testWidgets('返回钮桌面语义（推导）：悬停叠色 + 聚焦环 + Enter 返回', (tester) async {
+      _size(tester);
+      var backs = 0;
+      await tester.pumpWidget(harness(onBack: () => backs++));
+      await tester.pumpAndSettle();
+
+      // 返回钮是顶栏内唯一的 MiPressable
+      final back = find.byType(MiPressable);
+      expect(back, findsOneWidget);
+
+      // 悬停（鼠标进入圆钮）→ 叠色 = 按压高光的 60%（桌面推导语义）
+      final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await hover.addPointer(location: tester.getCenter(back));
+      await tester.pump();
+      final overlay = tester.widget<AnimatedContainer>(
+        find.descendant(of: back, matching: find.byKey(MiHoverFeedback.overlayKey)),
+      );
+      expect(
+        (overlay.decoration! as BoxDecoration).color,
+        MiTransparencyTokens.hoverOverlayFor(MiThemeMode.dark),
+      );
+      await hover.removePointer();
+      await tester.pumpAndSettle();
+
+      // 聚焦（等价 Tab 走到）→ 环；Enter 激活 → onBack
+      tester
+          .widget<Focus>(
+            find.descendant(of: back, matching: find.byType(Focus)),
+          )
+          .focusNode!
+          .requestFocus();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      final ring = tester.widget<AnimatedContainer>(
+        find.descendant(of: back, matching: find.byKey(MiFocusRing.ringKey)),
+      );
+      expect(
+        (ring.decoration! as BoxDecoration).border!.top.color,
+        isNot(Colors.transparent),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      expect(backs, 1);
     });
 
     testWidgets('无标题也可显示返回圆钮（材质 + 圆钮的次级页形态）', (tester) async {

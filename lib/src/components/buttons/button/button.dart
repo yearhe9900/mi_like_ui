@@ -4,8 +4,7 @@ import '../../../theme/button_tokens.dart';
 import '../../../theme/dimens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/focus_ring.dart';
-import '../../../utils/hover_feedback.dart';
+import '../../../utils/pressable.dart';
 import '../../../utils/squircle.dart';
 import 'button_metrics.dart';
 
@@ -60,45 +59,37 @@ class MiButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      // 键盘可达性：Tab 聚焦时在胶囊外侧画强调描边，Enter / Space 激活
-      // （描边实色、不引 saveLayer，见 MiFocusRing 文档）。
-      child: MiFocusRing(
-        enabled: enabled,
+      // 三态反馈（悬停叠色 + 手型光标、Tab 焦点环 + Enter / Space 激活、
+      // 按压状态机）收编自 MiPressable（描边与叠色实色、不引 saveLayer，
+      // 见各基础件文档）。按钮素材无按压帧 —— 不发明按压视觉
+      //（pressBuilder 缺省）；悬停 / 焦点只给可点态（禁用态不该有
+      //「可点」暗示），由 MiPressable 按 enabled 门控。
+      child: MiPressable(
+        onPressed: onPressed,
         mode: themeMode,
-        onActivate: onPressed,
         borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onPressed,
-          // 悬停只给可点态（禁用态不该有「可点」暗示）。
-          child: MiHoverFeedback(
-            mode: themeMode,
-            enabled: enabled,
-            borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-            child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: MiButtonMetrics.pressDurationMs,
-              ),
-              curve: Curves.easeOut,
-              height: MiButtonMetrics.height,
-              padding: const EdgeInsets.symmetric(
-                horizontal: MiButtonMetrics.horizontalPadding,
-              ),
-              decoration: ShapeDecoration(
-                color: fill,
-                shape: const MiSquircleBorder(MiDimens.radiusPill),
-              ),
-              // 宽度随内容收缩：Center 带 widthFactor 才不会在有界父级
-              //（Center/Column）里被拉满宽 —— 度量按钮是内容自适应的胶囊。
-              child: Center(
-                widthFactor: 1.0,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MiTypography.buttonLabel.copyWith(color: labelColor),
-                ),
-              ),
+        child: AnimatedContainer(
+          duration: const Duration(
+            milliseconds: MiButtonMetrics.pressDurationMs,
+          ),
+          curve: Curves.easeOut,
+          height: MiButtonMetrics.height,
+          padding: const EdgeInsets.symmetric(
+            horizontal: MiButtonMetrics.horizontalPadding,
+          ),
+          decoration: ShapeDecoration(
+            color: fill,
+            shape: const MiSquircleBorder(MiDimens.radiusPill),
+          ),
+          // 宽度随内容收缩：Center 带 widthFactor 才不会在有界父级
+          //（Center/Column）里被拉满宽 —— 度量按钮是内容自适应的胶囊。
+          child: Center(
+            widthFactor: 1.0,
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MiTypography.buttonLabel.copyWith(color: labelColor),
             ),
           ),
         ),

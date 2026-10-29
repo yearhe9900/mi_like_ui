@@ -46,7 +46,9 @@ void main() {
   }) async {
     tester.view.devicePixelRatio = 2.0;
     tester.view.physicalSize = window * 2;
-    await tester.pumpWidget(DemoApp(key: UniqueKey()));
+    // 铺满语境：预算按「画面 = 窗口」量（壳体缩放会改写覆盖面积口径）。
+    await tester.pumpWidget(
+        DemoApp(key: UniqueKey(), device: DemoDevice.handheld));
     await tester.pumpAndSettle();
     if (tab != '首页') {
       await tester.tap(find.text(tab).last);

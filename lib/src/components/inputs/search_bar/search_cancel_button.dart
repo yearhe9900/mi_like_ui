@@ -6,6 +6,7 @@ import '../../../theme/search_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/pressable.dart';
 import 'search_cancel_metrics.dart';
 
 /// 搜索态取消钮：⌀44.1 圆盘 + 叉号，点按退出搜索态。
@@ -25,7 +26,7 @@ import 'search_cancel_metrics.dart';
 /// 与搜索栏同规则：[frosted] 置于自带材质的顶栏内时传 `false`（整条栏
 /// 只糊一次）；[overContent] 在填充之下加垫玻璃膜
 /// （[MiTransparencyTokens.veiledFill]），平坦页面上观感不变。
-class MiSearchCancelButton extends StatefulWidget {
+class MiSearchCancelButton extends StatelessWidget {
   const MiSearchCancelButton({
     super.key,
     required this.onTap,
@@ -62,28 +63,17 @@ class MiSearchCancelButton extends StatefulWidget {
   final double fade;
 
   @override
-  State<MiSearchCancelButton> createState() => _MiSearchCancelButtonState();
-}
-
-class _MiSearchCancelButtonState extends State<MiSearchCancelButton> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed != value) setState(() => _pressed = value);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final mode = widget.themeMode ??
+    final mode = themeMode ??
         (Theme.of(context).brightness == Brightness.light
             ? MiThemeMode.light
             : MiThemeMode.dark);
     final palette = MiSearchBarPalette.of(mode);
     // 淡入 / 淡出：alpha 乘进各层颜色（不做离屏合成，见 [fade]）。
-    final f = widget.fade;
+    final f = fade;
     Color faded(Color c) => f >= 1 ? c : c.withValues(alpha: c.a * f);
     // 圆盘填充 = 搜索栏填充（度量同色）；压在内容上时同款玻璃膜。
-    final fill = faded(widget.overContent
+    final fill = faded(overContent
         ? MiTransparencyTokens.veiledFill(palette.fill, mode)
         : palette.fill);
     final pressHighlight = faded(mode == MiThemeMode.dark
@@ -91,58 +81,65 @@ class _MiSearchCancelButtonState extends State<MiSearchCancelButton> {
         : MiTransparencyTokens.pressHighlightLight);
     final ink = faded(palette.cancelInk);
 
-    Widget content = SizedBox(
-      width: widget.diameter,
-      height: widget.diameter,
-      child: ClipOval(
-        child: widget.frosted && f > 0
-            ? BackdropFilter(
-                filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
-                child: _disc(fill, pressHighlight, ink),
-              )
-            : _disc(fill, pressHighlight, ink),
+    // 叉号：圆盘内容的最内层。
+    final glyph = Center(
+      child: CustomPaint(
+        painter: SearchCancelGlyphPainter(ink),
+        size: const Size.square(MiSearchCancelMetrics.glyphSize),
       ),
     );
 
-    final onTap = widget.onTap;
-    if (onTap == null) return IgnorePointer(child: content);
-    content = GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      onTap: onTap,
-      child: content,
-    );
-    return content;
-  }
-
-  /// 圆盘本体：填充 → 按压反馈圆盘 → 叉号。
-  Widget _disc(Color fill, Color pressHighlight, Color ink) {
-    return ColoredBox(
-      color: fill,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedOpacity(
-              opacity: _pressed ? 1 : 0,
-              duration: Duration(
-                milliseconds: _pressed
-                    ? MiSearchCancelMetrics.pressFadeInMs
-                    : MiSearchCancelMetrics.pressFadeOutMs,
+    // 填充层：填充 → 按压反馈圆盘 → 内容（叉号）。
+    Widget fillLayer({required bool pressed, required Widget child}) =>
+        ColoredBox(
+          color: fill,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedOpacity(
+                  opacity: pressed ? 1 : 0,
+                  duration: Duration(
+                    milliseconds: pressed
+                        ? MiSearchCancelMetrics.pressFadeInMs
+                        : MiSearchCancelMetrics.pressFadeOutMs,
+                  ),
+                  curve: Curves.easeOut,
+                  child: ColoredBox(color: pressHighlight),
+                ),
               ),
-              curve: Curves.easeOut,
-              child: ColoredBox(color: pressHighlight),
-            ),
+              child,
+            ],
           ),
-          Center(
-            child: CustomPaint(
-              painter: SearchCancelGlyphPainter(ink),
-              size: const Size.square(MiSearchCancelMetrics.glyphSize),
-            ),
+        );
+
+    // 圆盘盒：裁形（+ 可选自绘磨砂）→ 填充层。层级与迁移前逐层等价
+    //（手势层在盒外，由 MiPressable 提供）。
+    Widget disc({required bool pressed, required Widget child}) => SizedBox(
+          width: diameter,
+          height: diameter,
+          child: ClipOval(
+            child: frosted && f > 0
+                ? BackdropFilter(
+                    filter: MiFilterCache.blur(MiTransparencyTokens.blurSigma),
+                    child: fillLayer(pressed: pressed, child: child),
+                  )
+                : fillLayer(pressed: pressed, child: child),
           ),
-        ],
-      ),
+        );
+
+    // 禁用（onTap == null）：只展示、穿透命中（站点保留的早退契约）。
+    if (onTap == null) {
+      return IgnorePointer(child: disc(pressed: false, child: glyph));
+    }
+    // 按压状态机收编自 MiPressable；hover / focus 为**推导**的桌面语义
+    //（触屏素材无此样张），圆钮为正圆，静止 / 未悬停时零像素。
+    return MiPressable(
+      onPressed: onTap,
+      mode: mode,
+      borderRadius: BorderRadius.circular(diameter / 2),
+      pressBuilder: (context, pressed, child) =>
+          disc(pressed: pressed, child: child),
+      child: glyph,
     );
   }
 }

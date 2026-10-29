@@ -6,6 +6,7 @@ import '../../../theme/dialog_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
+import '../../../utils/pressable.dart';
 import '../../../utils/squircle.dart';
 import 'dialog_list_metrics.dart';
 import 'dialog_metrics.dart';
@@ -624,7 +625,7 @@ class MiDialog extends StatelessWidget {
 ///
 /// 按压态整行叠按压色（压在卡片填充上，与按钮同一套 state layer 语言），
 /// 150ms easeOutQuad，文案与几何不变；`onPressed` 为 `null` 时无按压反馈。
-class _MiDialogListRow extends StatefulWidget {
+class _MiDialogListRow extends StatelessWidget {
   const _MiDialogListRow({
     required this.item,
     required this.palette,
@@ -640,109 +641,95 @@ class _MiDialogListRow extends StatefulWidget {
   final bool reserveIconColumn;
 
   @override
-  State<_MiDialogListRow> createState() => _MiDialogListRowState();
-}
-
-class _MiDialogListRowState extends State<_MiDialogListRow> {
-  bool _pressed = false;
-
-  bool get _enabled => widget.item.onPressed != null;
-
-  void _setPressed(bool value) {
-    if (!_enabled || _pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final item = widget.item;
-    final palette = widget.palette;
     final labelColor = item.destructive
         ? palette.destructiveActionLabel
         : palette.title;
     final subtitleColor = item.destructive
         ? palette.destructiveActionLabel
         : palette.secondaryText;
-    final textLeft = widget.reserveIconColumn
+    final textLeft = reserveIconColumn
         ? MiDialogListMetrics.rowInsetX +
             MiDialogListMetrics.rowIconSize +
             MiDialogListMetrics.rowGap
         : MiDialogListMetrics.rowInsetX;
+    // 按压状态机收编自 MiPressable（按下 / 抬起 / 取消 + 禁用门控）；
+    // 按压视觉（整行换压色）留在此处 —— 几何与时序是本组件度量，
+    // 叠色配方见 [MiTransparencyTokens.dialogPressedFill]。
+    // 悬停 / 焦点为**推导**的桌面语义（整行矩形，无圆角）。
     return Semantics(
       button: true,
-      enabled: _enabled,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: item.onPressed,
-        onTapDown: (_) => _setPressed(true),
-        onTapUp: (_) => _setPressed(false),
-        onTapCancel: () => _setPressed(false),
-        child: AnimatedContainer(
+      enabled: item.onPressed != null,
+      child: MiPressable(
+        onPressed: item.onPressed,
+        mode: themeMode,
+        pressBuilder: (context, pressed, child) => AnimatedContainer(
           duration:
               const Duration(milliseconds: MiDialogMetrics.pressDurationMs),
           curve: Curves.easeOutQuad,
           height: MiDialogListMetrics.rowHeight(
             hasSubtitle: item.subtitle != null,
           ),
-          color: _pressed
+          color: pressed
               ? MiTransparencyTokens.dialogPressedFill(
                   palette.surface,
-                  widget.themeMode,
+                  themeMode,
                 )
               : palette.surface,
-          child: Stack(
-            children: [
-              if (item.icon != null)
-                Positioned(
-                  left: MiDialogListMetrics.rowInsetX,
-                  top: MiDialogListMetrics.iconTopY,
-                  width: MiDialogListMetrics.rowIconSize,
-                  height: MiDialogListMetrics.rowIconSize,
-                  // 图标色走 IconTheme（随行墨色 / 危险色），调用方只传形状。
-                  child: IconTheme(
-                    data: IconThemeData(color: labelColor),
-                    child: item.icon!,
+          child: child,
+        ),
+        child: Stack(
+          children: [
+            if (item.icon != null)
+              Positioned(
+                left: MiDialogListMetrics.rowInsetX,
+                top: MiDialogListMetrics.iconTopY,
+                width: MiDialogListMetrics.rowIconSize,
+                height: MiDialogListMetrics.rowIconSize,
+                // 图标色走 IconTheme（随行墨色 / 危险色），调用方只传形状。
+                child: IconTheme(
+                  data: IconThemeData(color: labelColor),
+                  child: item.icon!,
+                ),
+              ),
+            Positioned(
+              top: 0,
+              left: textLeft,
+              right: MiDialogListMetrics.rowInsetX,
+              child: Baseline(
+                baseline: MiDialogListMetrics.labelBaseline,
+                baselineType: TextBaseline.alphabetic,
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.start,
+                  style: MiTypography.dialogAction.copyWith(
+                    color: labelColor,
                   ),
                 ),
+              ),
+            ),
+            if (item.subtitle != null)
               Positioned(
                 top: 0,
                 left: textLeft,
                 right: MiDialogListMetrics.rowInsetX,
                 child: Baseline(
-                  baseline: MiDialogListMetrics.labelBaseline,
+                  baseline: MiDialogListMetrics.subtitleBaseline,
                   baselineType: TextBaseline.alphabetic,
                   child: Text(
-                    item.label,
+                    item.subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.start,
-                    style: MiTypography.dialogAction.copyWith(
-                      color: labelColor,
+                    style: MiTypography.dialogItemSubtitle.copyWith(
+                      color: subtitleColor,
                     ),
                   ),
                 ),
               ),
-              if (item.subtitle != null)
-                Positioned(
-                  top: 0,
-                  left: textLeft,
-                  right: MiDialogListMetrics.rowInsetX,
-                  child: Baseline(
-                    baseline: MiDialogListMetrics.subtitleBaseline,
-                    baselineType: TextBaseline.alphabetic,
-                    child: Text(
-                      item.subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.start,
-                      style: MiTypography.dialogItemSubtitle.copyWith(
-                        color: subtitleColor,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );
@@ -753,7 +740,7 @@ class _MiDialogListRowState extends State<_MiDialogListRow> {
 ///
 /// 按压态将填充过渡至压色（[MiTransparencyTokens.dialogPressedFill]，
 /// 150ms easeOutQuad），标签与几何不变。
-class _MiDialogActionButton extends StatefulWidget {
+class _MiDialogActionButton extends StatelessWidget {
   const _MiDialogActionButton({
     required this.action,
     required this.palette,
@@ -765,23 +752,7 @@ class _MiDialogActionButton extends StatefulWidget {
   final MiThemeMode themeMode;
 
   @override
-  State<_MiDialogActionButton> createState() => _MiDialogActionButtonState();
-}
-
-class _MiDialogActionButtonState extends State<_MiDialogActionButton> {
-  bool _pressed = false;
-
-  bool get _enabled => widget.action.onPressed != null;
-
-  void _setPressed(bool value) {
-    if (!_enabled || _pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final action = widget.action;
-    final palette = widget.palette;
     final (fill, labelColor) = switch (action.style) {
       MiDialogActionStyle.neutral =>
         (palette.neutralActionFill, palette.secondaryText),
@@ -790,38 +761,39 @@ class _MiDialogActionButtonState extends State<_MiDialogActionButton> {
       MiDialogActionStyle.destructive =>
         (palette.neutralActionFill, palette.destructiveActionLabel),
     };
+    // 按压状态机收编自 MiPressable；按压视觉（填充换压色）留在此处 ——
+    // 叠色配方与时序见 [MiTransparencyTokens.dialogPressedFill] 与
+    // [MiDialogMetrics.pressDurationMs]（转发 [MiMotionTokens.pressMs]）。
+    // 悬停 / 焦点为**推导**的桌面语义（触屏素材无此样张，同悬停体系
+    // 惯例）：静止 / 未悬停时叠色全透明，黄金图零变化。
     return Semantics(
       button: true,
-      enabled: _enabled,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: action.onPressed,
-        onTapDown: (_) => _setPressed(true),
-        onTapUp: (_) => _setPressed(false),
-        onTapCancel: () => _setPressed(false),
-        child: AnimatedContainer(
+      enabled: action.onPressed != null,
+      child: MiPressable(
+        onPressed: action.onPressed,
+        mode: themeMode,
+        borderRadius: BorderRadius.circular(MiDialogMetrics.actionRadius),
+        pressBuilder: (context, pressed, child) => AnimatedContainer(
           duration:
               const Duration(milliseconds: MiDialogMetrics.pressDurationMs),
           curve: Curves.easeOutQuad,
           decoration: ShapeDecoration(
-            color: _pressed
-                ? MiTransparencyTokens.dialogPressedFill(
-                    fill,
-                    widget.themeMode,
-                  )
+            color: pressed
+                ? MiTransparencyTokens.dialogPressedFill(fill, themeMode)
                 : fill,
             shape: const MiSquircleBorder(MiDialogMetrics.actionRadius),
           ),
-          child: Baseline(
-            baseline: MiDialogMetrics.actionLabelBaseline,
-            baselineType: TextBaseline.alphabetic,
-            child: Center(
-              child: Text(
-                action.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: MiTypography.dialogAction.copyWith(color: labelColor),
-              ),
+          child: child,
+        ),
+        child: Baseline(
+          baseline: MiDialogMetrics.actionLabelBaseline,
+          baselineType: TextBaseline.alphabetic,
+          child: Center(
+            child: Text(
+              action.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: MiTypography.dialogAction.copyWith(color: labelColor),
             ),
           ),
         ),

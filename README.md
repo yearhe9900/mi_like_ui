@@ -31,6 +31,10 @@
 flutter run
 ```
 
+演示外壳按**设备语境**自适应（web 按 user-agent 判定）：PC 端窄窗套手机壳、
+宽窗套平板壳（模拟机身 + 外圈底色 + 投影）；移动端铺满全屏。Web 演示：
+<https://yearhe9900.github.io/mi_like_ui/>
+
 在应用中使用：
 
 ```dart
@@ -71,6 +75,7 @@ MiGlassNavBar(
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
 | `MiFocusRing` | 键盘焦点环 + Enter / Space 激活（桌面可达性） |
+| `MiPressable` | 统一反馈包装件：按压状态机 + 悬停叠色 + 焦点环（可点元素统一入口） |
 
 ## 组件
 
@@ -564,7 +569,9 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 参考素材来自触屏手机，悬停语义是**推导**的：叠色 = 按压高光的 60%
 （白/黑 @5.6%，`MiTransparencyTokens.hoverOverlayFor`）+ 手型光标，150ms
 淡入淡出。已覆盖主题卡、胶囊标签、按钮、搜索栏（可点形态）、底部 / 侧边
-导航条目；禁用态不给悬停暗示。
+导航条目，以及弹框按钮与列表行、顶栏返回钮、搜索取消钮（后四者为推导
+补齐）；禁用态不给悬停暗示。新组件的悬停请走统一入口 `MiPressable`
+（内部即复用本件，见「键盘可达性」）。
 
 实现上刻意用**实色 `AnimatedContainer`**：`Opacity` / `FadeTransition` 会
 引入 `saveLayer`，本库磨砂子树里一旦出现 saveLayer，下层 `BackdropFilter`
@@ -585,7 +592,15 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 - **`MiFocusRing`** —— Tab 聚焦可点元素时，在其**边界外侧**画 2dp 强调描边
   （亮 = 强调蓝 / 暗 = 白，推导值），Enter / Space 触发 `onActivate`。
   描边是**实色 `AnimatedContainer`**：未聚焦时全透明、结构恒定 → 黄金图零变化；
-  `enabled: false` 时连 `Focus` 都不挂（不参与 Tab 遍历）。已接入 `MiButton`。
+  `enabled: false` 时连 `Focus` 都不挂（不参与 Tab 遍历）。经统一入口
+  `MiPressable` 接入 `MiButton`。
+- **`MiPressable`**（统一入口）—— 可点元素的三态反馈包装件：按压状态机
+  （收编弹框按钮 / 弹框列表行 / 返回钮 / 取消钮的四处重复实现）+ 悬停叠色
+  + 焦点环，一次包装齐备；禁用（`onPressed == null`）三态全关、手势层吸收
+  命中不响应。按压**视觉**经 `pressBuilder` 留在组件层 —— 时序与颜色是各
+  组件度量（弹框 150ms 换压色、返回钮 / 取消钮 420/300ms 圆盘淡入出），
+  包装件只提供 `pressed` 状态。已接入 `MiButton` 与上述四处站点（后四处
+  的悬停 / 焦点为推导补齐，静止态零像素）。
 - **`MiSearchShortcuts`**（示例层）—— ⌘ / Ctrl + K 聚焦搜索、Esc 退出当前
   浮层 / 搜索态（`onEscape: null` 时不注册 Esc、继续冒泡给系统）。
   快捷键沿焦点链冒泡，所以搜索框获得焦点后 ⌘K 仍被这一层接住。
@@ -658,7 +673,7 @@ lib/
     │   ├── feedback/        #   dialog
     │   └── effects/         #   gradient_blur
     ├── icons/               # 图标 painter 合集
-    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 滤镜缓存）
+    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滤镜缓存）
 
 test/                        # 单元 / 交互 / 视觉回归测试
 ```
@@ -669,7 +684,7 @@ test/                        # 单元 / 交互 / 视觉回归测试
 | 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
 | 主题层 `src/theme/` | 跨组件样式令牌；透明 / 磨砂参数统一在 `transparency_tokens.dart`，动效规格统一在 `motion_tokens.dart` |
 | 图标 `src/icons/` | 导航图标 painter 合集（`*IconPainter`） |
-| 工具层 `src/utils/` | 无状态纯函数 |
+| 工具层 `src/utils/` | 基础件与纯函数（响应式 / 悬停 / 按压 / 焦点 / squircle / 滤镜缓存） |
 | 示例层 `lib/demo/` | 演示应用，模拟真实使用方 |
 
 ## 开发与贡献

@@ -591,7 +591,9 @@ void main() {
       setWindow(tester, const Size(768, 1280));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      // 铺满语境（handheld）：几何按「画面 = 窗口」断言（PC 语境窄窗套壳，
+      // 见 responsive_test 的机身壳用例）。
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
@@ -626,7 +628,7 @@ void main() {
           )
           .value;
 
-      await tester.pumpWidget(const DemoApp());
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       // 深色：透明状态栏 + 浅色图标
       expect(overlay().statusBarColor, Colors.transparent);
@@ -649,7 +651,8 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       tester.view.physicalSize = const Size(768, 1280);
       tester.view.padding = FakeViewPadding(top: 40);
-      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpWidget(
+          DemoApp(key: UniqueKey(), device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(
         tester.getRect(find.byType(MiGlassSideNavBar)).top,
@@ -660,7 +663,8 @@ void main() {
       // 系统手势条就落在这 24.2 之内；叠加会顶到 45dp、手势条悬在空档里）
       tester.view.physicalSize = const Size(393, 856);
       tester.view.padding = FakeViewPadding(bottom: 20);
-      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpWidget(
+          DemoApp(key: UniqueKey(), device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(
         tester.getRect(find.byType(MiGlassNavBar)).bottom,
@@ -681,7 +685,8 @@ void main() {
 
       // 三键导航（48dp 安全区比 24.2 还大）：栏抬到按键上方，不压按键
       tester.view.padding = FakeViewPadding(bottom: 48);
-      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpWidget(
+          DemoApp(key: UniqueKey(), device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(
         tester.getRect(find.byType(MiGlassNavBar)).bottom,
@@ -694,10 +699,13 @@ void main() {
     /// 在给定窗口尺寸下渲染示例，返回该窗口下画面的**容器宽**。
     Future<double> frameWidth(WidgetTester tester, Size window) async {
       setWindow(tester, window);
-      await tester.pumpWidget(DemoApp(key: UniqueKey()));
+      await tester.pumpWidget(
+          DemoApp(key: UniqueKey(), device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: '$window');
-      return DemoStage.sizeFor(window).logical.width;
+      return DemoStage.sizeFor(window, mode: DemoShellMode.fullscreen)
+          .logical
+          .width;
     }
 
     testWidgets('手机 / 窄窗（画面 ≤ 600）：仍是底部导航栏', (tester) async {
@@ -761,7 +769,7 @@ void main() {
       setWindow(tester, window);
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -832,7 +840,7 @@ void main() {
       setWindow(tester, const Size(1366, 768));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
 
       final rail = find.byType(MiGlassSideNavBar);
@@ -863,7 +871,7 @@ void main() {
       setWindow(tester, const Size(1366, 768));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
@@ -919,7 +927,7 @@ void main() {
       setWindow(tester, const Size(1366, 768));
       addTearDown(tester.view.reset);
 
-      await tester.pumpWidget(const DemoApp());
+      await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
       await tester.pumpAndSettle();
       expect(find.byType(MiGlassSideNavBar), findsOneWidget);
 
@@ -969,7 +977,7 @@ void main() {
     setWindow(tester, const Size(1366, 768));
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const DemoApp());
+    await tester.pumpWidget(const DemoApp(device: DemoDevice.handheld));
     await tester.pumpAndSettle();
     // 进「我的」（侧栏档）：设置页风格分组卡片
     final rail = find.byType(MiGlassSideNavBar);

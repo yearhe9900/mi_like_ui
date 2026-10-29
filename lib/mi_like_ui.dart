@@ -64,5 +64,6 @@ export 'src/utils/cell_grid.dart';
 export 'src/utils/focus_ring.dart';
 export 'src/utils/glass_rim.dart';
 export 'src/utils/hover_feedback.dart';
+export 'src/utils/pressable.dart';
 export 'src/utils/responsive.dart';
 export 'src/utils/squircle.dart';

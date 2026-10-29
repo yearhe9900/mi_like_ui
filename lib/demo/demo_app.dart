@@ -4,14 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
+import 'host_device.dart';
 import 'mock_pages.dart';
+
+export 'host_device.dart' show DemoDevice, demoHostDevice;
 
 /// 演示应用（示例层，不属于框架公共 API）。
 ///
 /// 深/浅色模式切换入口放在「我的」页顶部；模式驱动手机框、mock 页、
 /// 导航栏玻璃配方与墨色整体切换。
 class DemoApp extends StatefulWidget {
-  const DemoApp({super.key});
+  const DemoApp({super.key, this.device});
+
+  /// 设备语境（null = 自动探测，见 [demoHostDevice]）：决定演示外壳
+  /// 「PC 套机身壳 / 移动端铺满全屏」，见 [DemoStage]。
+  final DemoDevice? device;
 
   @override
   State<DemoApp> createState() => _DemoAppState();
@@ -35,6 +42,7 @@ class _DemoAppState extends State<DemoApp> {
         settings: settings,
         builder: (_) => DemoHome(
           themeMode: _mode,
+          device: widget.device,
           onThemeModeChanged: (m) => setState(() => _mode = m),
         ),
       ),
@@ -66,25 +74,52 @@ class DemoStageSize {
       'DemoStageSize(logical: $logical, rendered: $rendered, scale: ${scale.toStringAsFixed(3)})';
 }
 
-/// 示例舞台：把「画面」摆进任意窗口的自适应外壳。
+/// 演示外壳形态（见 [DemoStage] 类注释的形态表）。
+enum DemoShellMode {
+  /// 铺满全屏（移动端）：无机身壳、无圆角、无投影。
+  fullscreen,
+
+  /// 手机壳（PC 窄窗）：393×856 设计画布 + 圆角机身 44。
+  phone,
+
+  /// 平板壳（PC 宽窗）：820×1180 画布（横 / 竖择优）+ 圆角机身 32。
+  tablet,
+}
+
+/// 外壳形态作用域：[DemoStage] 解算后下发，[DemoHome] 据此画机身装饰。
+class DemoShellScope extends InheritedWidget {
+  const DemoShellScope({super.key, required this.mode, required super.child});
+
+  final DemoShellMode mode;
+
+  static DemoShellMode of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DemoShellScope>()!.mode;
+
+  @override
+  bool updateShouldNotify(DemoShellScope oldWidget) => oldWidget.mode != mode;
+}
+
+/// 示例舞台：把「画面」摆进任意窗口的演示外壳。
 ///
 /// ## 覆盖的布局区域
 ///
-/// 只负责**外壳**这一层（画面的外部几何与缩放），不介入画面内部的组件
-/// 几何 —— 内部由各页面的局部断点负责（见 [MockPage]）。
+/// 只负责**外壳**这一层（画面的外部几何、缩放与机身装饰语境），不介入
+/// 画面内部的组件几何 —— 内部由各页面的局部断点负责（见 [MockPage]）。
 ///
-/// ## 断点与缩放策略（按**窗口**逻辑宽判档，见 [MiBreakpoints]）
+/// ## 外壳形态（按**设备语境 × 窗口**判档，见 [DemoDevice] / [modeFor]）
 ///
-/// | 档位 | 窗口宽 | 策略 |
-/// |------|--------|------|
-/// | compact | < 600dp | **物理手机画布** 393×856，等比缩到放得下（手机全屏时恰好 1:1、零留白） |
-/// | medium | 600…1023dp | **铺满窗口**（edge-to-edge）：画面 = 可用尺寸，不再有外边距 / 圆角卡片 —— 平板就是一个真实平板 App 的样子 |
-/// | expanded | ≥ 1024dp | 同上，铺满窗口 |
+/// | 语境 | 形态 | 画面 |
+/// |------|------|------|
+/// | 移动端（handheld） | **铺满全屏**：无机身壳 / 圆角 / 投影 | = 窗口 |
+/// | PC 窄窗（< 600dp） | **手机壳**：圆角机身 44 + 外圈底色 + 投影 | 393×856 设计画布 |
+/// | PC 宽窗（≥ 600dp） | **平板壳**：圆角机身 32 + 外圈底色 + 投影 | 820×1180（横 / 竖择优） |
 ///
-/// **为什么大屏不再做「背景 + 圆角卡片」**：那是模拟手机外壳的产物。真机上
-/// 平板/桌面本来就是整个窗口的 App，卡片外那圈底色 + 圆角既不是 UI 的一部分，
-/// 还会让内容（以及状态栏后面那一条）与页面底色对不上 —— 平板 / 桌面
-/// 铺满窗口、不加外围卡片。
+/// Web 演示按 `user-agent` 判设备（移动 UA 铺满、桌面 UA 套壳），原生按
+/// 运行平台；窄 / 宽断点复用 [MiBreakpoints.navRail]（600dp）语义。
+///
+/// **为什么 PC 要套壳、真机不套**：PC 浏览器是「展台」，套上模拟机身才
+/// 表达得出这是手机 / 平板 UI；真机自己就是机身，铺满即可 —— 套壳会出现
+/// 「手机里再套一台手机」。
 ///
 /// 各档都过同一道兜底：[DemoStageSize.rendered] 由
 /// `min(1, 可用宽/逻辑宽, 可用高/逻辑高)` 得出 ——
@@ -93,19 +128,43 @@ class DemoStageSize {
 ///  * **实时响应**：`LayoutBuilder` 随窗口/分屏/浏览器缩放自动重排，
 ///    无需 `setState` 或监听。
 ///
-/// 缩放只发生在 compact 档（窗口比设计画布还小）；大屏 `scale == 1`，
-/// **不加任何变换层**，视觉回归逐像素稳定。
+/// 缩放只缩不放（`scale ≤ 1`）；铺满档 `scale == 1`，**不加任何变换层**，
+/// 视觉回归逐像素稳定。
 class DemoStage extends StatelessWidget {
-  const DemoStage({super.key, required this.child});
+  const DemoStage({super.key, required this.child, this.device});
 
   /// 参考机设计画布：1220×2656 素材 @ 393dp 设计宽（393:856 ≈ 0.459）。
   static const Size designCanvas = Size(393, 856);
 
+  /// 平板壳设计画布（iPad Air 档 820×1180；横 / 竖两副机身按窗口择优）。
+  static const Size tabletCanvas = Size(820, 1180);
+
+  /// 机身圆角：手机壳 44（沿用原手机框规格）、平板壳 32（机身大一圈、
+  /// 圆角小一号）。
+  static const double phoneShellRadius = 44;
+  static const double tabletShellRadius = 32;
+
   /// 画面内容：拿到 [DemoStageSize.logical] 的 **tight** 约束。
   final Widget child;
 
-  /// 纯函数解算（可直接单测，不需要 widget 树）。
-  static DemoStageSize sizeFor(Size available) {
+  /// 设备语境（null = 自动探测，见 [demoHostDevice]）。
+  final DemoDevice? device;
+
+  /// 解算外壳形态（纯函数，可直接单测）。
+  ///
+  /// 移动端恒为 [DemoShellMode.fullscreen]；PC 按窗口宽判档：
+  /// `< 600dp` 手机壳、`≥ 600dp` 平板壳（横 / 竖机身择优）。
+  static DemoShellMode modeFor(Size available, {DemoDevice? device}) {
+    if ((device ?? demoHostDevice()) == DemoDevice.handheld) {
+      return DemoShellMode.fullscreen;
+    }
+    return available.width < MiBreakpoints.navRail
+        ? DemoShellMode.phone
+        : DemoShellMode.tablet;
+  }
+
+  /// 纯函数解算各形态下的舞台几何（可直接单测，不需要 widget 树）。
+  static DemoStageSize sizeFor(Size available, {required DemoShellMode mode}) {
     final available0 = Size(
       math.max(0.0, available.width),
       math.max(0.0, available.height),
@@ -114,9 +173,12 @@ class DemoStage extends StatelessWidget {
       return const DemoStageSize(logical: Size.zero, rendered: Size.zero);
     }
 
-    final sizeClass = MiBreakpoints.ofWidth(available0.width);
-    // compact：物理手机画布（只缩不放）；medium / expanded：画面 = 窗口。
-    final logical = sizeClass.isCompact ? designCanvas : available0;
+    // fullscreen：画面 = 窗口；phone / tablet：设计画布等比缩到放得下。
+    final logical = switch (mode) {
+      DemoShellMode.fullscreen => available0,
+      DemoShellMode.phone => designCanvas,
+      DemoShellMode.tablet => _tabletCanvasFor(available0),
+    };
 
     final scale = math.min(
       1.0,
@@ -128,17 +190,37 @@ class DemoStage extends StatelessWidget {
     );
   }
 
+  /// 平板壳机身横 / 竖择优：哪副在窗口里摆得下（缩放比大）用哪副。
+  static Size _tabletCanvasFor(Size available) {
+    final landscape = Size(tabletCanvas.height, tabletCanvas.width);
+    return _fitScale(available, landscape) > _fitScale(available, tabletCanvas)
+        ? landscape
+        : tabletCanvas;
+  }
+
+  static double _fitScale(Size available, Size canvas) => math.min(
+        1.0,
+        math.min(available.width / canvas.width, available.height / canvas.height),
+      );
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final stage = sizeFor(Size(constraints.maxWidth, constraints.maxHeight));
+        final available = Size(constraints.maxWidth, constraints.maxHeight);
+        final mode = modeFor(available, device: device);
+        final stage = sizeFor(available, mode: mode);
         final frame = SizedBox.fromSize(size: stage.logical, child: child);
         final scaled = stage.isScaled
             ? FittedBox(fit: BoxFit.fill, child: frame)
             : frame;
         return Center(
-          child: SizedBox.fromSize(size: stage.rendered, child: scaled),
+          child: SizedBox.fromSize(
+            size: stage.rendered,
+            // 形态随窗口 / 设备变化只改**值**、不改结构：画面子树的
+            // Element 不重建（跨壳切换滚动位置保留）。
+            child: DemoShellScope(mode: mode, child: scaled),
+          ),
         );
       },
     );
@@ -146,10 +228,18 @@ class DemoStage extends StatelessWidget {
 }
 
 class DemoHome extends StatefulWidget {
-  const DemoHome({super.key, required this.themeMode, required this.onThemeModeChanged});
+  const DemoHome({
+    super.key,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+    this.device,
+  });
 
   final MiThemeMode themeMode;
   final ValueChanged<MiThemeMode> onThemeModeChanged;
+
+  /// 设备语境（透传给 [DemoStage]，null = 自动探测）。
+  final DemoDevice? device;
 
   @override
   State<DemoHome> createState() => _DemoHomeState();
@@ -242,10 +332,9 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
       MiGlassNavItem(label: '分类', painter: GridSparkleIconPainter(ink)),
       MiGlassNavItem(label: '我的', painter: SmileyBeretIconPainter(ink)),
     ];
-    // 只有 **compact（手机档）** 是"物理手机"：给圆角 + 投影，模拟设备外观。
-    // 平板 / 桌面铺满窗口，不加任何外围卡片效果（见 [DemoStage] 类注释）。
-    final viewport = MiViewport.of(context);
-    final framed = viewport.isCompact;
+    // 外壳形态（PC 窄窗手机壳 / 宽窗平板壳、移动端铺满）由 [DemoStage]
+    // 按「窗口 × 设备语境」解算后经 [DemoShellScope] 下发，在下方
+    // LayoutBuilder 里取用（见 [DemoStage] 类注释）。
     // 页底色（侧栏那一列与页面同底，避免宽屏上出现一道拼接缝）。
     final pageBg = light ? const Color(0xFFF3F3F3) : const Color(0xFF000000);
     // 预留空位圆钮：两种导航形态**共用同一份声明**（仅「首页」选中时展示、
@@ -319,6 +408,7 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
         // 的输入行本就在屏幕顶端，下方那块是空的，被盖住正好。
         resizeToAvoidBottomInset: false,
         body: DemoStage(
+          device: widget.device,
           // 导航形态按**画面自己的容器宽**判（`LayoutBuilder` 的
           // `constraints.maxWidth`），不读窗口宽 —— 与 MReader 主壳层
           // （`lib/ui/home_shell.dart`：`LayoutBuilder` + `maxWidth > 600`）
@@ -332,21 +422,30 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
               // 展开栏 + 留白（201.5）会吃掉 26% 画布，桌面让出后仍剩 ≥822dp。
               final expandedRail =
                   sideNav && MiBreakpoints.usesExpandedRail(constraints.maxWidth);
+              // 外壳形态（[DemoStage.modeFor] 解算、[DemoShellScope] 下发）：
+              // 壳体画圆角机身 + 投影，铺满档不画。
+              final shell = DemoShellScope.of(context);
+              final framed = shell != DemoShellMode.fullscreen;
               return Container(
-                // `clipBehavior` 恒为 antiAlias：切换 framed 若增删裁剪层，
-                // `Container` 内部的 widget 结构会变，页面 Element 被重建
-                // → 跨断点时滚动位置会丢。（机身圆弧已去除，恒为直角。）
+                // `clipBehavior` 恒为 antiAlias（圆角只改数值、不增删裁剪层）：
+                // 切换 framed 若增删裁剪层，`Container` 内部的 widget 结构会变，
+                // 页面 Element 被重建 → 跨断点 / 跨壳切换时滚动位置会丢。
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
-                  // 手机档用设备底色；铺满窗口时用**页底色**（页面只占右侧
+                  // 壳体用设备底色；铺满全屏时用**页底色**（页面只占右侧
                   // 内容列，侧栏那一列若不是页底色，深色下会与页面之间出现
                   // 一道竖缝）。
                   color: framed
                       ? (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11))
                       : pageBg,
-                  // 圆角恒为 zero（机身圆弧已去除）：显式声明而非省略字段，
-                  // 与「铺满时无外围卡片」的测试契约一致。
-                  borderRadius: BorderRadius.zero,
+                  // 机身圆角：手机壳 44 / 平板壳 32；铺满（移动端）恒为
+                  // [BorderRadius.zero] —— 显式声明而非省略字段，与
+                  // 「铺满时无外围卡片」的测试契约一致。
+                  borderRadius: framed
+                      ? BorderRadius.circular(shell == DemoShellMode.phone
+                          ? DemoStage.phoneShellRadius
+                          : DemoStage.tabletShellRadius)
+                      : BorderRadius.zero,
                   boxShadow: framed
                       ? const [
                           BoxShadow(

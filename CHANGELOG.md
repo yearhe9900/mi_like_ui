@@ -8,9 +8,13 @@
 
 ### Changed（demo）
 
-- **演示画布去除机身圆弧**：compact（手机档）下画布外壳不再加 44dp 圆角，
-  四角改为直角（`DemoStage` 的 `borderRadius` 删除，投影保留）；铺满窗口
-  时本就直角，行为统一。仅 demo 展示层，不影响组件库。
+- **演示外壳按设备语境划分（web 按 user-agent）**：PC 端窄窗（< 600dp）
+  套**手机壳**（393×856 设计画布、圆角机身 44 + 外圈底色 + 投影）、宽窗
+  （≥ 600dp）套**平板壳**（820×1180 画布横 / 竖择优、圆角机身 32）；
+  移动端（移动 UA / 手机平板实机）**铺满全屏**、无圆角无投影 —— 此前
+  不分设备一律套壳，手机浏览器里出现「手机套手机」。形态解算下沉为纯
+  函数 `DemoStage.modeFor` / `sizeFor(…, mode)`（可单测），
+  `DemoApp(device:)` 可显式指定语境。
 
 ### Changed（动效 / 性能）
 
@@ -42,6 +46,25 @@
   - golden 16/17 重拍 + README 预览 47 张重生成，全量 281 测试通过；
     Widget 测试查找器同步迁移（BoxDecoration→ShapeDecoration、
     ClipRRect→ClipPath）
+
+### Added（基础件）
+
+- **`MiPressable` —— 统一反馈包装件**（按压状态机 + 悬停叠色 + 键盘焦点环）：
+  - 收编此前散在四处、逐站手写的按压状态机（弹框按钮、弹框列表行、
+    顶栏返回钮、搜索取消钮 —— 按下 / 抬起 / 取消 + 禁用门控，逻辑同构），
+    两处弹框 widget 与返回钮 / 取消钮随之去 State 化；
+  - 内部复用 `MiHoverFeedback`（悬停叠色 + 手型光标）与 `MiFocusRing`
+    （2dp 焦点环 + Enter / Space 激活），嵌套顺序与 `MiButton` 迁移前的
+    手写三层逐层等价；barrel 新导出；
+  - 按压**视觉**留在组件层（`pressBuilder`）：时序与颜色是各组件度量
+    （弹框 150ms 填充换压色、返回钮 / 取消钮 420/300ms 圆盘淡入出），
+    包装件只提供 `pressed` 状态，取值继续引用 `MiMotionTokens` /
+    `MiTransparencyTokens` 与各 `*_metrics.dart`；
+  - 零行为变化迁移 + 桌面语义补齐：四处站点迁移时黄金图零重拍；随后按
+    「触屏素材无样张 → 通行桌面惯例推导并标注」惯例，为弹框按钮 / 列表行、
+    返回钮、取消钮补齐悬停叠色与 Tab 焦点环（静止态零像素，黄金图仍零
+    重拍），四处各补一条接线测试；新增 `test/pressable_test.dart`
+    （7 项契约测试）。
 
 ### Added（动效）
 

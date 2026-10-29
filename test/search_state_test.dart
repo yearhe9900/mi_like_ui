@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mi_like_ui/demo/demo_app.dart';
@@ -445,5 +447,52 @@ void main() {
         reason: '画面被键盘挤小 → 等比缩放会把整块画布缩水（真机反馈）',
       );
     });
+  });
+
+  testWidgets('取消钮桌面语义（推导）：悬停叠色 + 聚焦环 + Enter 退出搜索', (tester) async {
+    var cancelled = 0;
+    final host = await _pump(
+      tester,
+      mode: MiThemeMode.dark,
+      onCancel: () => cancelled++,
+    );
+    host.openSearch();
+    await tester.pumpAndSettle();
+
+    final cancel = find.byType(MiSearchCancelButton);
+    expect(cancel, findsOneWidget);
+
+    // 悬停（鼠标进入圆钮）→ 叠色 = 按压高光的 60%（桌面推导语义）
+    final hover = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await hover.addPointer(location: tester.getCenter(cancel));
+    await tester.pump();
+    final overlay = tester.widget<AnimatedContainer>(
+      find.descendant(of: cancel, matching: find.byKey(MiHoverFeedback.overlayKey)),
+    );
+    expect(
+      (overlay.decoration! as BoxDecoration).color,
+      MiTransparencyTokens.hoverOverlayFor(MiThemeMode.dark),
+    );
+    await hover.removePointer();
+    await tester.pumpAndSettle();
+
+    // 聚焦（等价 Tab 走到）→ 环；Enter 激活 → onCancel
+    tester
+        .widget<Focus>(
+          find.descendant(of: cancel, matching: find.byType(Focus)),
+        )
+        .focusNode!
+        .requestFocus();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+    final ring = tester.widget<AnimatedContainer>(
+      find.descendant(of: cancel, matching: find.byKey(MiFocusRing.ringKey)),
+    );
+    expect(
+      (ring.decoration! as BoxDecoration).border!.top.color,
+      isNot(Colors.transparent),
+    );
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect(cancelled, 1);
   });
 }

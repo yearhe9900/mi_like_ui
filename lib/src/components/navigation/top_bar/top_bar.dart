@@ -5,6 +5,7 @@ import '../../../theme/top_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
+import '../../../utils/pressable.dart';
 import '../../effects/gradient_blur/gradient_blur.dart';
 import '../../inputs/search_bar/search_bar.dart';
 import '../../inputs/search_bar/search_cancel_button.dart';
@@ -884,6 +885,7 @@ class MiTopBar extends StatefulWidget {
                             MiTopBarMetrics.backDiameter / 2,
                         child: _MiTopBarBackButton(
                           palette: palette,
+                          mode: mode,
                           onTap: onBack,
                         ),
                       ),
@@ -1135,74 +1137,83 @@ void _ignoreTabTap(int _) {}
 ///
 /// 箭头墨心相对圆钮中心左偏 [MiTopBarMetrics.chevronCenterDx]（度量光学
 /// 偏置，非居中）。
-class _MiTopBarBackButton extends StatefulWidget {
-  const _MiTopBarBackButton({required this.palette, required this.onTap});
+class _MiTopBarBackButton extends StatelessWidget {
+  const _MiTopBarBackButton({
+    required this.palette,
+    required this.mode,
+    required this.onTap,
+  });
 
   final MiTopBarPalette palette;
+
+  /// 明暗模式（驱动悬停叠色与焦点环，与 palette 同源）。
+  final MiThemeMode mode;
+
   final VoidCallback? onTap;
 
-  @override
-  State<_MiTopBarBackButton> createState() => _MiTopBarBackButtonState();
-}
-
-class _MiTopBarBackButtonState extends State<_MiTopBarBackButton> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed != value) setState(() => _pressed = value);
-  }
+  /// 圆钮盒：按压反馈圆盘（度量平坦填充、无描边）+ 箭头。
+  ///
+  /// [pressed] 驱动圆盘淡入 / 淡出（420 / 300ms easeOut，时长见
+  /// [MiTopBarMetrics.pressFadeInMs] / [pressFadeOutMs]，转发
+  /// [MiMotionTokens]）；层级与迁移前逐层等价（手势层在盒外，由
+  /// MiPressable 提供）。
+  Widget _button({required bool pressed, required Widget child}) => SizedBox(
+        width: MiTopBarMetrics.backDiameter,
+        height: MiTopBarMetrics.backDiameter,
+        child: Stack(
+          children: [
+            // 按压反馈圆盘（度量平坦填充、无描边）
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: pressed ? 1 : 0,
+                duration: Duration(
+                  milliseconds: pressed
+                      ? MiTopBarMetrics.pressFadeInMs
+                      : MiTopBarMetrics.pressFadeOutMs,
+                ),
+                curve: Curves.easeOut,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: palette.pressHighlight,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ),
+            child,
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
-    final content = SizedBox(
-      width: MiTopBarMetrics.backDiameter,
-      height: MiTopBarMetrics.backDiameter,
-      child: Stack(
-        children: [
-          // 按压反馈圆盘（度量平坦填充、无描边）
-          Positioned.fill(
-            child: AnimatedOpacity(
-              opacity: _pressed ? 1 : 0,
-              duration: Duration(
-                milliseconds: _pressed
-                    ? MiTopBarMetrics.pressFadeInMs
-                    : MiTopBarMetrics.pressFadeOutMs,
-              ),
-              curve: Curves.easeOut,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: widget.palette.pressHighlight,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+    // 箭头：墨盒铺满，中心再按度量偏置平移。
+    final chevron = Center(
+      child: Transform.translate(
+        offset: const Offset(MiTopBarMetrics.chevronCenterDx, 0),
+        child: CustomPaint(
+          painter: BackChevronIconPainter(palette.ink),
+          size: const Size(
+            MiTopBarMetrics.chevronWidth,
+            MiTopBarMetrics.chevronHeight,
           ),
-          // 箭头：墨盒铺满，中心再按度量偏置平移
-          Center(
-            child: Transform.translate(
-              offset: const Offset(MiTopBarMetrics.chevronCenterDx, 0),
-              child: CustomPaint(
-                painter: BackChevronIconPainter(widget.palette.ink),
-                size: const Size(
-                  MiTopBarMetrics.chevronWidth,
-                  MiTopBarMetrics.chevronHeight,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
 
-    final onTap = widget.onTap;
-    if (onTap == null) return IgnorePointer(child: content);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
-      onTap: onTap,
-      child: content,
+    // 禁用（onTap == null）：只展示、穿透命中（站点保留的早退契约）。
+    if (onTap == null) {
+      return IgnorePointer(child: _button(pressed: false, child: chevron));
+    }
+    // 按压状态机收编自 MiPressable；视觉（圆盘淡入）留在此处。
+    // 悬停 / 焦点为**推导**的桌面语义（触屏素材无此样张），圆钮为正圆。
+    return MiPressable(
+      onPressed: onTap,
+      mode: mode,
+      borderRadius: BorderRadius.circular(MiTopBarMetrics.backDiameter / 2),
+      pressBuilder: (context, pressed, child) =>
+          _button(pressed: pressed, child: child),
+      child: chevron,
     );
   }
 }
