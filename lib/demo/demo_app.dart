@@ -333,9 +333,9 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
               final expandedRail =
                   sideNav && MiBreakpoints.usesExpandedRail(constraints.maxWidth);
               return Container(
-                // `clipBehavior` 恒为 antiAlias（圆角在铺满时给 `zero`）：
-                // 切换 framed 若增删裁剪层，`Container` 内部的 widget 结构会变，
-                // 页面 Element 被重建 → 跨断点时滚动位置会丢。
+                // `clipBehavior` 恒为 antiAlias：切换 framed 若增删裁剪层，
+                // `Container` 内部的 widget 结构会变，页面 Element 被重建
+                // → 跨断点时滚动位置会丢。（机身圆弧已去除，恒为直角。）
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   // 手机档用设备底色；铺满窗口时用**页底色**（页面只占右侧
@@ -344,8 +344,9 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
                   color: framed
                       ? (light ? const Color(0xFFF7F7F7) : const Color(0xFF0E0E11))
                       : pageBg,
-                  borderRadius:
-                      framed ? BorderRadius.circular(44) : BorderRadius.zero,
+                  // 圆角恒为 zero（机身圆弧已去除）：显式声明而非省略字段，
+                  // 与「铺满时无外围卡片」的测试契约一致。
+                  borderRadius: BorderRadius.zero,
                   boxShadow: framed
                       ? const [
                           BoxShadow(

@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Changed（demo）
+
+- **演示画布去除机身圆弧**：compact（手机档）下画布外壳不再加 44dp 圆角，
+  四角改为直角（`DemoStage` 的 `borderRadius` 删除，投影保留）；铺满窗口
+  时本就直角，行为统一。仅 demo 展示层，不影响组件库。
+
 ### Changed（动效 / 性能）
 
 - **搜索转场提速去丢帧**：`MiTopBar.searchTransitionMs` 480 → 220ms、
