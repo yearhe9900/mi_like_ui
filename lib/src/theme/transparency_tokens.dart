@@ -104,6 +104,22 @@ class MiTransparencyTokens {
     0.72, // 尾段 142…158（羽化收尾）
   ];
 
+  // ══ 一·二、磨砂饱和度 ════
+
+  /// 磨砂**后**的饱和度控制预留 token（**恒等 1.0**，黄金图零变化）。
+  ///
+  /// HyperOS `textureBlur` 的色控语言是「模糊 → 饱和 / 亮度调整」两段式；
+  /// 本库磨砂走 `BackdropFilter` 路线，当前 SDK（3.47）无色控组合入口
+  ///（无 `ImageFilter.colorFilter` 工厂，`ImageFilter.matrix` 是几何变换）
+  /// —— 本 token 现阶段**无消费方**，仅作单一来源预留（SDK 能力审计见
+  /// `MiFilterCache` 文档）。两条合法接入路径：SDK 补上色控工厂后在
+  /// `MiFilterCache.blur` 组合；或纹理玻璃路线（快照 + `ColorFilter.matrix`）
+  /// 落地时直用。
+  ///
+  /// 不要在这里发明非 1.0 的值：既无 SDK 入口，也没有饱和度实机样张
+  ///（透明体系度量只反解了 σ 与叠色） —— 两头都缺真值。
+  static const double blurSaturation = 1.0;
+
   // ══ 二、表面填充 alpha（0-255 字节）══════════════════════════════════════
 
   /// 表面填充 alpha（未选中/低调表面）：onSurface @15/255 ≈ 6%，
@@ -468,4 +484,16 @@ class MiTransparencyTokens {
         0,
         (pushDimAlphaMax * progress.clamp(0.0, 1.0)),
       );
+
+  // ══ 八、开关（`MiSwitch`）════════════════════════════════════════════
+
+  /// 开关**关闭档**轨道填充 alpha（**推导值**：onSurface @31/255 ≈ 12%，
+  /// Material 3 off-track 同档；与「表面填充 onSurface @6%」同族、高一档
+  /// 对比 —— 触屏素材无开关样张，按通行 state layer 档位推导）。
+  static const double switchTrackOffAlpha = 31 / 255;
+
+  /// 开关关闭档轨道色（亮 = 黑 @12% / 暗 = 白 @12%，state layer 同语言）。
+  static Color switchTrackOffFor(MiThemeMode mode) => mode == MiThemeMode.dark
+      ? Color.fromRGBO(255, 255, 255, switchTrackOffAlpha)
+      : Color.fromRGBO(0, 0, 0, switchTrackOffAlpha);
 }

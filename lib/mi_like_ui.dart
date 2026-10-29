@@ -26,6 +26,8 @@ export 'src/theme/top_bar_tokens.dart';
 export 'src/theme/gradient_blur_tokens.dart';
 export 'src/theme/dialog_tokens.dart';
 export 'src/theme/pull_up_panel_tokens.dart';
+export 'src/theme/snackbar_tokens.dart';
+export 'src/theme/switch_tokens.dart';
 export 'src/theme/motion_tokens.dart';
 
 // ── 组件层 ────────────────────────────────────────────────────────────────
@@ -45,6 +47,12 @@ export 'src/components/inputs/search_bar/search_bar.dart';
 export 'src/components/inputs/search_bar/search_bar_metrics.dart';
 export 'src/components/inputs/search_bar/search_cancel_button.dart';
 export 'src/components/inputs/search_bar/search_cancel_metrics.dart';
+export 'src/components/inputs/switch_control/switch.dart';
+export 'src/components/inputs/switch_control/switch_metrics.dart';
+export 'src/components/inputs/preference_tile/preference_tile.dart';
+export 'src/components/inputs/preference_tile/preference_tile_metrics.dart';
+export 'src/components/inputs/slider/slider.dart';
+export 'src/components/inputs/slider/slider_metrics.dart';
 export 'src/components/cards/theme_card/theme_card.dart';
 export 'src/components/cards/theme_card/theme_card_metrics.dart';
 export 'src/components/feedback/dialog/dialog.dart';
@@ -52,6 +60,11 @@ export 'src/components/feedback/dialog/dialog_metrics.dart';
 export 'src/components/feedback/dialog/dialog_list_metrics.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel_metrics.dart';
+export 'src/components/feedback/snackbar/snackbar.dart';
+export 'src/components/feedback/snackbar/snackbar_metrics.dart';
+
+// ── 弹层基建（单点渲染层） ─────────────────────────────────────────────────
+export 'src/overlay/mi_popup_host.dart';
 
 // ── 效果层（不依赖具体页面形态） ──────────────────────────────────────────
 export 'src/components/effects/gradient_blur/gradient_blur.dart';

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../overlay/mi_popup_host.dart';
 import '../../../theme/dialog_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
@@ -309,7 +310,15 @@ class MiDialog extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => MiPopup(
+        show: true,
+        builder: _body,
+      );
+
+  /// 弹层本体：经 [MiPopup] 注册 —— 有宿主时在 [MiPopupHost] 层区渲染
+  ///（弹层间 z 序 = 注册序，后开在上）；无宿主时就地渲染（既有用法
+  /// 与黄金图零变化）。
+  Widget _body(BuildContext context) {
     final mode = _modeOf(context);
     final palette = MiDialogPalette.of(mode);
     final safeTop = MediaQuery.paddingOf(context).top;

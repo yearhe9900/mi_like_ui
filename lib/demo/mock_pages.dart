@@ -93,12 +93,19 @@ class _TopBarAction extends StatelessWidget {
 }
 
 /// 弹一条演示用提示（动作按钮 / 圆钮的统一反馈）。
-void _demoSnack(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(message),
-      duration: const Duration(milliseconds: 800),
-    ),
+/// 示例层的轻量消息条：投放到 demo 根部的 `MiPopupHost`（同类替换、
+/// 不扰动页面栈；`ScaffoldMessenger` 的 Material 视觉与本库不一致）。
+void _demoSnack(
+  BuildContext context,
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
+  MiSnackbar.show(
+    context,
+    message: message,
+    actionLabel: actionLabel,
+    onAction: onAction,
   );
 }
 
@@ -1570,7 +1577,12 @@ class _ShowcasePageState extends State<_ShowcasePage> {
         _TopBarAction(
           themeMode: widget.themeMode,
           icon: CardsStarIconPainter(MiColors.foregroundFor(widget.themeMode)),
-          onTap: () => _demoSnack(context, '收藏按钮被点击'),
+          onTap: () => _demoSnack(
+            context,
+            '已添加到收藏',
+            actionLabel: '撤销',
+            onAction: () => _demoSnack(context, '已撤销'),
+          ),
         ),
       ]),
       searchHint: '搜索主题 / 壁纸 / 图标',

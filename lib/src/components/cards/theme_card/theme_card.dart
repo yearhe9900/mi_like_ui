@@ -4,7 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/hover_feedback.dart';
+import '../../../utils/pressable.dart';
 import '../../../utils/squircle.dart';
 import 'theme_card_metrics.dart';
 
@@ -154,23 +154,20 @@ class _MiThemeCardState extends State<MiThemeCard> {
       ],
     );
     if (widget.onTap == null) return card;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      // 悬停叠色铺在**整张卡**上（含标题行），圆角只作用于图区 ——
-      // 与按压反馈的覆盖范围一致：整卡可点，就给整卡反馈。
-      child: MiHoverFeedback(
-        mode: mode,
-        borderRadius:
-            BorderRadius.circular(MiThemeCardMetrics.previewRadius),
-        // 悬停态同时驱动操作条（回调里 setState；结构恒定，只改 offset）。
-        onHoverChanged: hasActions
-            ? (hovered) {
-                if (hovered != _hovered) setState(() => _hovered = hovered);
-              }
-            : null,
-        child: card,
-      ),
+    // 三态反馈统一入口：悬停叠色（兼驱动快捷条）+ Tab 焦点环 + Enter /
+    // Space 激活 —— 焦点为**推导**的桌面语义，静止态零像素（环与叠色
+    // 未激活时全透明，黄金图零变化）。
+    return MiPressable(
+      onPressed: widget.onTap,
+      mode: mode,
+      borderRadius: BorderRadius.circular(MiThemeCardMetrics.previewRadius),
+      // 悬停态同时驱动操作条（回调里 setState；结构恒定，只改 offset）。
+      onHoverChanged: hasActions
+          ? (hovered) {
+              if (hovered != _hovered) setState(() => _hovered = hovered);
+            }
+          : null,
+      child: card,
     );
   }
 }

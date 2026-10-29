@@ -32,6 +32,13 @@ import '../../../utils/filter_cache.dart';
 ///
 /// Flutter 不提供位置相关模糊；对模糊层施加半透明遮罩会破坏其 backdrop，
 /// 分段并列是等效近似（段高 ≤ 17dp、相邻 σ 比 ≤ 1.5，视觉无台阶）。
+///
+/// **边缘完整性（3σ 邻域审计）**：本库磨砂全部走 `BackdropFilter`（吃实时
+/// backdrop），Skia / Impeller 在裁剪区之外仍按高斯半径取样真实邻域内容
+/// —— 不存在「快照纹理」路线（先把背景拍成 Image 再糊）的「取样区外
+/// 为透明 → 边缘变暗」坑。那条路线的 3σ margin + 绘制区裁剪技巧
+/// （思路源自 flutter_miuix `texture_blur.dart`）留待未来纹理玻璃专题
+/// 引入，本实现无需也不应添加。
 class MiGradientBlur extends StatelessWidget {
   const MiGradientBlur({
     super.key,
