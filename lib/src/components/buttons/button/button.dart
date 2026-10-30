@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/button_tokens.dart';
 import '../../../theme/dimens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/pressable.dart';
@@ -31,7 +32,7 @@ class MiButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.variant = MiButtonVariant.filled,
-    this.themeMode = MiThemeMode.dark,
+    this.themeMode,
   });
 
   /// 按钮文案。
@@ -43,12 +44,21 @@ class MiButton extends StatelessWidget {
   /// 按钮形态（主 / 次级）。
   final MiButtonVariant variant;
 
-  /// 明暗模式，驱动配色配方。
-  final MiThemeMode themeMode;
+  /// 明暗模式，驱动配色配方；null = 跟随 [MiTheme]，未声明时默认深色
+  /// （行为与旧版一致）。
+  final MiThemeMode? themeMode;
 
   @override
   Widget build(BuildContext context) {
-    final palette = MiButtonPalette.of(themeMode);
+    final mode = MiTheme.modeOfOr(
+      context,
+      explicit: themeMode,
+      fallback: MiThemeMode.dark,
+    );
+    final palette = MiButtonPalette.of(
+      mode,
+      accent: MiTheme.maybeOf(context)?.accent,
+    );
     final enabled = onPressed != null;
     final (fill, labelColor) = !enabled
         ? (palette.disabledFill, palette.disabledLabel)
@@ -66,7 +76,7 @@ class MiButton extends StatelessWidget {
       //「可点」暗示），由 MiPressable 按 enabled 门控。
       child: MiPressable(
         onPressed: onPressed,
-        mode: themeMode,
+        mode: mode,
         borderRadius: BorderRadius.circular(MiDimens.radiusPill),
         child: AnimatedContainer(
           duration: const Duration(

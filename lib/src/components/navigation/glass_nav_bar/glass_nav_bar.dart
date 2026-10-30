@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../utils/squircle.dart';
@@ -69,7 +70,7 @@ class MiGlassNavBar extends StatefulWidget {
     required this.selectedIndex,
     required this.onTap,
     this.fab,
-    this.themeMode = MiThemeMode.dark,
+    this.themeMode,
   });
   // items 数量、fab 适配与 fab.tabIndex 范围校验均在 initState：const 构造
   // 断言不支持 .length / 参数字段求值（放构造器会封死 const 构造）
@@ -81,8 +82,9 @@ class MiGlassNavBar extends StatefulWidget {
   /// 预留空位圆形按钮；null = 不启用。
   final MiGlassNavFab? fab;
 
-  /// 明暗模式：决定玻璃材质配方与标签墨色（默认深色）。
-  final MiThemeMode themeMode;
+  /// 明暗模式：决定玻璃材质配方与标签墨色；null = 跟随 [MiTheme]，
+  /// 未声明时默认深色（行为与旧版一致）。
+  final MiThemeMode? themeMode;
 
   @override
   State<MiGlassNavBar> createState() => _MiGlassNavBarState();
@@ -305,8 +307,13 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final palette = MiGlassPalette.of(widget.themeMode);
-    final labelStyle = MiTypography.navLabelFor(widget.themeMode);
+    final mode = MiTheme.modeOfOr(
+      context,
+      explicit: widget.themeMode,
+      fallback: MiThemeMode.dark,
+    );
+    final palette = MiGlassPalette.of(mode);
+    final labelStyle = MiTypography.navLabelFor(mode);
     return SizedBox(
       height: MiGlassNavMetrics.barHeight,
       child: LayoutBuilder(
@@ -425,7 +432,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                                   // 没有底色，叠一层 5.6% 实色的圆角块即可
                                   //（实色叠色，不是 Opacity，磨砂不受影响）。
                                   child: MiHoverFeedback(
-                                    mode: widget.themeMode,
+                                    mode: mode,
                                     borderRadius: BorderRadius.circular(
                                       MiGlassNavMetrics.itemHoverRadius,
                                     ),
@@ -550,7 +557,7 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: fab.color ??
-                                      MiColors.fabGreenFor(widget.themeMode),
+                                      MiColors.fabGreenFor(mode),
                                   shape: BoxShape.circle,
                                 ),
                                 alignment: Alignment.center,

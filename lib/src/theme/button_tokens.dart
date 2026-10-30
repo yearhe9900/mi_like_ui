@@ -69,7 +69,29 @@ class MiButtonPalette {
         MiTransparencyTokens.disabledLabelAlpha, 0x05, 0x05, 0x05), // @38%
   );
 
-  /// 按明暗模式取配方。
-  static MiButtonPalette of(MiThemeMode mode) =>
-      mode == MiThemeMode.dark ? dark : light;
+  /// 按明暗模式取配方；[accent] 非空且非默认强调色时，主按钮填充替换为
+  /// 品牌色（其余槽位不变；默认色仍走 const 配方，零额外分配）。
+  static MiButtonPalette of(MiThemeMode mode, {Color? accent}) {
+    final base = mode == MiThemeMode.dark ? dark : light;
+    if (accent == null || accent == MiColors.accent) return base;
+    return base.copyWith(filledFill: accent);
+  }
+
+  /// 换个别槽位取新配方（品牌色注入用）。
+  MiButtonPalette copyWith({
+    Color? filledFill,
+    Color? filledLabel,
+    Color? tonalFill,
+    Color? tonalLabel,
+    Color? disabledFill,
+    Color? disabledLabel,
+  }) =>
+      MiButtonPalette(
+        filledFill: filledFill ?? this.filledFill,
+        filledLabel: filledLabel ?? this.filledLabel,
+        tonalFill: tonalFill ?? this.tonalFill,
+        tonalLabel: tonalLabel ?? this.tonalLabel,
+        disabledFill: disabledFill ?? this.disabledFill,
+        disabledLabel: disabledLabel ?? this.disabledLabel,
+      );
 }

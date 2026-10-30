@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../utils/squircle.dart';
@@ -58,7 +59,7 @@ class MiGlassSideNavBar extends StatefulWidget {
     required this.selectedIndex,
     required this.onTap,
     this.fab,
-    this.themeMode = MiThemeMode.dark,
+    this.themeMode,
     this.expanded = false,
   });
   // items 数量、fab 适配与 fab.tabIndex 范围校验均在 initState：const 构造
@@ -80,8 +81,9 @@ class MiGlassSideNavBar extends StatefulWidget {
   /// 切走收起；显隐动画曲线与时长与底部栏逐帧同源。
   final MiGlassNavFab? fab;
 
-  /// 明暗模式：决定玻璃材质配方与标签墨色（默认深色）。
-  final MiThemeMode themeMode;
+  /// 明暗模式：决定玻璃材质配方与标签墨色；null = 跟随 [MiTheme]，
+  /// 未声明时默认深色（行为与旧版一致）。
+  final MiThemeMode? themeMode;
 
   /// 是否**展开**（带文字标签的常驻侧栏，桌面档）。
   ///
@@ -309,8 +311,13 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
 
   @override
   Widget build(BuildContext context) {
-    final palette = MiGlassPalette.of(widget.themeMode);
-    final labelStyle = MiTypography.navLabelFor(widget.themeMode);
+    final mode = MiTheme.modeOfOr(
+      context,
+      explicit: widget.themeMode,
+      fallback: MiThemeMode.dark,
+    );
+    final palette = MiGlassPalette.of(mode);
+    final labelStyle = MiTypography.navLabelFor(mode);
     final n = widget.items.length;
     final h = _railHeight;
     final expanded = widget.expanded;
@@ -411,7 +418,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                         // 悬停：与底栏同款小块圆角高亮（实色叠色，不用
                         // Opacity —— 磨砂子树上不许出现 saveLayer）。
                         child: MiHoverFeedback(
-                          mode: widget.themeMode,
+                          mode: mode,
                           borderRadius: BorderRadius.circular(
                             MiGlassNavMetrics.itemHoverRadius,
                           ),
@@ -566,7 +573,7 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                         scale: t,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: fab.color ?? MiColors.fabGreenFor(widget.themeMode),
+                            color: fab.color ?? MiColors.fabGreenFor(mode),
                             shape: BoxShape.circle,
                           ),
                           alignment: Alignment.center,

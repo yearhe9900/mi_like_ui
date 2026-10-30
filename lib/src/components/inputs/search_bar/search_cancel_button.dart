@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../theme/mi_theme.dart';
 import '../../../theme/search_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
@@ -64,11 +65,11 @@ class MiSearchCancelButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mode = themeMode ??
-        (Theme.of(context).brightness == Brightness.light
-            ? MiThemeMode.light
-            : MiThemeMode.dark);
-    final palette = MiSearchBarPalette.of(mode);
+    final mode = MiTheme.modeOf(context, explicit: themeMode);
+    final palette = MiSearchBarPalette.of(
+      mode,
+      accent: MiTheme.maybeOf(context)?.accent,
+    );
     // 淡入 / 淡出：alpha 乘进各层颜色（不做离屏合成，见 [fade]）。
     final f = fade;
     Color faded(Color c) => f >= 1 ? c : c.withValues(alpha: c.a * f);

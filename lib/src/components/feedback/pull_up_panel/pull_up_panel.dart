@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import '../../../theme/mi_theme.dart';
 import '../../../theme/motion_tokens.dart';
 import '../../../theme/pull_up_panel_tokens.dart';
 import '../../../theme/theme_mode.dart';
@@ -184,10 +185,7 @@ class _MiPullUpPanelState extends State<MiPullUpPanel>
   }
 
   MiThemeMode _modeOf(BuildContext context) =>
-      widget.themeMode ??
-      (Theme.of(context).brightness == Brightness.dark
-          ? MiThemeMode.dark
-          : MiThemeMode.light);
+      MiTheme.modeOf(context, explicit: widget.themeMode);
 
   @override
   Widget build(BuildContext context) {

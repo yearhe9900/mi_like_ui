@@ -72,7 +72,27 @@ class MiSearchBarPalette {
     cancelInk: MiColors.foregroundLight,
   );
 
-  /// 按明暗模式取配方。
-  static MiSearchBarPalette of(MiThemeMode mode) =>
-      mode == MiThemeMode.dark ? dark : light;
+  /// 按明暗模式取配方；[accent] 非空且非默认强调色时，输入光标替换为
+  /// 品牌色（其余槽位不变；默认色仍走 const 配方）。
+  static MiSearchBarPalette of(MiThemeMode mode, {Color? accent}) {
+    final base = mode == MiThemeMode.dark ? dark : light;
+    if (accent == null || accent == MiColors.accent) return base;
+    return base.copyWith(caret: accent);
+  }
+
+  /// 换个别槽位取新配方（品牌色注入用）。
+  MiSearchBarPalette copyWith({
+    Color? fill,
+    Color? hint,
+    Color? icon,
+    Color? caret,
+    Color? cancelInk,
+  }) =>
+      MiSearchBarPalette(
+        fill: fill ?? this.fill,
+        hint: hint ?? this.hint,
+        icon: icon ?? this.icon,
+        caret: caret ?? this.caret,
+        cancelInk: cancelInk ?? this.cancelInk,
+      );
 }

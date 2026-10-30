@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/dimens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/pill_tab_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
@@ -46,7 +47,7 @@ class MiPillTabBar extends StatelessWidget {
     this.minItemWidth = MiPillTabMetrics.itemWidth,
     this.maxItemWidth = MiPillTabMetrics.adaptiveMaxWidth,
     this.textInset = MiPillTabMetrics.adaptiveTextInset,
-    this.themeMode = MiThemeMode.dark,
+    this.themeMode,
     this.frosted = true,
     this.overContent = false,
     this.rimProgress = 1.0,
@@ -84,8 +85,9 @@ class MiPillTabBar extends StatelessWidget {
   /// 自适应档标签两侧内缩（默认 16）。
   final double textInset;
 
-  /// 明暗模式，驱动配色配方。
-  final MiThemeMode themeMode;
+  /// 明暗模式，驱动配色配方；null = 跟随 [MiTheme]，未声明时默认深色
+  /// （行为与旧版一致）。
+  final MiThemeMode? themeMode;
 
   /// 是否自绘 backdrop 磨砂（默认 true）。
   ///
@@ -151,7 +153,12 @@ class MiPillTabBar extends StatelessWidget {
       selectedIndex >= 0 && selectedIndex < labels.length,
       'selectedIndex 必须落在 labels 范围内',
     );
-    final palette = MiPillTabPalette.of(themeMode);
+    final mode = MiTheme.modeOfOr(
+      context,
+      explicit: themeMode,
+      fallback: MiThemeMode.dark,
+    );
+    final palette = MiPillTabPalette.of(mode);
     // 淡出（[fade] < 1）：把系数乘进各处颜色的 alpha，行结构与绘制层次不变。
     final f = fade;
     Color faded(Color c) => f >= 1 ? c : c.withValues(alpha: c.a * f);
@@ -180,7 +187,7 @@ class MiPillTabBar extends StatelessWidget {
           // 变化，反而糊住选中态（叠色是 5.6% 的实色，不是 Opacity —— 不给
           // 磨砂子树引入 saveLayer）。
           child: MiHoverFeedback(
-            mode: themeMode,
+            mode: mode,
             enabled: !selected,
             borderRadius: BorderRadius.circular(MiDimens.radiusPill),
             child: AnimatedContainer(
@@ -264,10 +271,10 @@ class MiPillTabBar extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            faded(MiTransparencyTokens.veilFeatherFor(themeMode)),
-                            faded(MiTransparencyTokens.veilFor(themeMode)),
-                            faded(MiTransparencyTokens.veilFor(themeMode)),
-                            faded(MiTransparencyTokens.veilFeatherFor(themeMode)),
+                            faded(MiTransparencyTokens.veilFeatherFor(mode)),
+                            faded(MiTransparencyTokens.veilFor(mode)),
+                            faded(MiTransparencyTokens.veilFor(mode)),
+                            faded(MiTransparencyTokens.veilFeatherFor(mode)),
                           ],
                           stops: const [
                             0.0,
@@ -295,7 +302,7 @@ class MiPillTabBar extends StatelessWidget {
                     widths: widths,
                     gap: MiPillTabMetrics.gap,
                     height: MiPillTabMetrics.pillHeight,
-                    color: faded(MiTransparencyTokens.surfaceRimFor(themeMode,
+                    color: faded(MiTransparencyTokens.surfaceRimFor(mode,
                         progress: rimProgress)),
                     skipIndex: selectedIndex,
                   ),

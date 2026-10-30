@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/mi_theme.dart';
 import '../theme/theme_mode.dart';
 import '../theme/transparency_tokens.dart';
 
@@ -63,10 +64,7 @@ class _MiHoverFeedbackState extends State<MiHoverFeedback> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    final mode = widget.mode ??
-        (Theme.of(context).brightness == Brightness.light
-            ? MiThemeMode.light
-            : MiThemeMode.dark);
+    final mode = MiTheme.modeOf(context, explicit: widget.mode);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) {

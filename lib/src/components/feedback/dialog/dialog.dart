@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../theme/dialog_tokens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
@@ -295,10 +296,7 @@ class MiDialog extends StatelessWidget {
       );
 
   MiThemeMode _modeOf(BuildContext context) =>
-      themeMode ??
-      (Theme.of(context).brightness == Brightness.dark
-          ? MiThemeMode.dark
-          : MiThemeMode.light);
+      MiTheme.modeOf(context, explicit: themeMode);
 
   TextStyle _messageStyle(MiDialogPalette palette) => MiTypography.dialogMessage
       .copyWith(

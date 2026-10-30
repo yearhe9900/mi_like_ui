@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../theme/colors.dart';
+import '../theme/mi_theme.dart';
 import '../theme/theme_mode.dart';
 
 /// 键盘焦点环（桌面可达性）。
@@ -97,14 +97,11 @@ class _MiFocusRingState extends State<MiFocusRing> {
   @override
   Widget build(BuildContext context) {
     if (!widget.enabled) return widget.child;
-    final mode = widget.mode ??
-        (Theme.of(context).brightness == Brightness.light
-            ? MiThemeMode.light
-            : MiThemeMode.dark);
+    final mode = MiTheme.modeOf(context, explicit: widget.mode);
     // 描边颜色：亮 = 强调蓝（在浅底上读得出），暗 = 白（同按压高光方向）。
     // 强调蓝是不透明实色（不是 alpha 层）——描边是一圈实线，不涉及透明度。
     final ringColor =
-        mode == MiThemeMode.dark ? Colors.white : MiColors.accent;
+        mode == MiThemeMode.dark ? Colors.white : MiTheme.accentOf(context);
     // 外扩量 = 间隙 + 描边宽：描边画在子级边界之外，不遮内容。
     const outset = MiFocusRing.ringGap + MiFocusRing.ringWidth;
     return Focus(

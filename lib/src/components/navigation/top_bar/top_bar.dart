@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../icons/nav_icons.dart';
 import '../../../theme/top_bar_tokens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
@@ -656,10 +657,7 @@ class MiTopBar extends StatefulWidget {
   /// 曲线（取消钮的淡入落在中段，与位移进度并不同步）。
   Widget _buildBar(BuildContext context, double progress) {
     final t = MiTopBarMetrics.searchMotion.transform(progress).clamp(0.0, 1.0);
-    final mode = themeMode ??
-        (Theme.of(context).brightness == Brightness.light
-            ? MiThemeMode.light
-            : MiThemeMode.dark);
+    final mode = MiTheme.modeOf(context, explicit: themeMode);
     final palette = this.palette ?? MiTopBarPalette.of(mode);
     final title = this.title;
     // 搜索态下标题整体淡出（参考素材那页的大标题在转场中消失）。
