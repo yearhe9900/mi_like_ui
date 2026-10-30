@@ -425,42 +425,47 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                           children: [
                             for (var i = 0; i < widget.items.length; i++)
                               Expanded(
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => widget.onTap(i),
-                                  // 悬停：桌面上「能点」必须有暗示 —— 条目本身
-                                  // 没有底色，叠一层 5.6% 实色的圆角块即可
-                                  //（实色叠色，不是 Opacity，磨砂不受影响）。
-                                  child: MiHoverFeedback(
-                                    mode: mode,
-                                    borderRadius: BorderRadius.circular(
-                                      MiGlassNavMetrics.itemHoverRadius,
-                                    ),
-                                    child: Opacity(
-                                      // pressed tab content dims (measured ~55%)
-                                      opacity: _pressedIndex == i
-                                          ? MiGlassNavMetrics.pressDimOpacity
-                                          : 1.0,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          CustomPaint(
-                                            painter: widget.items[i].painter,
-                                            size: const Size(
-                                              24,
-                                              MiGlassNavMetrics.iconHeight,
+                                child: Semantics(
+                                  button: true,
+                                  selected: widget.selectedIndex == i,
+                                  label: widget.items[i].label,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => widget.onTap(i),
+                                    // 悬停：桌面上「能点」必须有暗示 —— 条目本身
+                                    // 没有底色，叠一层 5.6% 实色的圆角块即可
+                                    //（实色叠色，不是 Opacity，磨砂不受影响）。
+                                    child: MiHoverFeedback(
+                                      mode: mode,
+                                      borderRadius: BorderRadius.circular(
+                                        MiGlassNavMetrics.itemHoverRadius,
+                                      ),
+                                      child: Opacity(
+                                        // pressed tab content dims (measured ~55%)
+                                        opacity: _pressedIndex == i
+                                            ? MiGlassNavMetrics.pressDimOpacity
+                                            : 1.0,
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            CustomPaint(
+                                              painter: widget.items[i].painter,
+                                              size: const Size(
+                                                24,
+                                                MiGlassNavMetrics.iconHeight,
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(
-                                            height:
-                                                MiGlassNavMetrics.iconLabelGap,
-                                          ),
-                                          Text(
-                                            widget.items[i].label,
-                                            style: labelStyle,
-                                          ),
-                                        ],
+                                            const SizedBox(
+                                              height: MiGlassNavMetrics
+                                                  .iconLabelGap,
+                                            ),
+                                            Text(
+                                              widget.items[i].label,
+                                              style: labelStyle,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),

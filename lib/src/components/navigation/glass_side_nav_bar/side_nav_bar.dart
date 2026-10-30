@@ -412,39 +412,62 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                       const SizedBox(height: MiGlassSideNavMetrics.itemGap),
                     SizedBox(
                       height: MiGlassSideNavMetrics.itemHeight,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => widget.onTap(i),
-                        // 悬停：与底栏同款小块圆角高亮（实色叠色，不用
-                        // Opacity —— 磨砂子树上不许出现 saveLayer）。
-                        child: MiHoverFeedback(
-                          mode: mode,
-                          borderRadius: BorderRadius.circular(
-                            MiGlassNavMetrics.itemHoverRadius,
-                          ),
-                          child: Opacity(
-                            // 按下条目内容变暗（度量 ~55%）
-                            opacity: _pressedIndex == i
-                                ? MiGlassNavMetrics.pressDimOpacity
-                                : 1.0,
-                            // 两种形态只差内容排布：窄栏 = 图标在上小字在下
-                            // （底部栏纵向换轴）；展开栏 = 图标在左、标签在右，
-                            // 整条目一个胶囊（桌面常驻侧栏形态）。
-                            child: expanded
-                                ? SizedBox(
-                                    // 钉到胶囊宽：外层 Column 是居中对齐，不给
-                                    // 定宽的话 Row 会按「图标+标签」自然宽居中，
-                                    // 内缩就不是从胶囊左缘量起了。
-                                    width: MiGlassSideNavMetrics
-                                        .expandedItemWidth,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.start,
+                      child: Semantics(
+                        button: true,
+                        selected: widget.selectedIndex == i,
+                        label: widget.items[i].label,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => widget.onTap(i),
+                          // 悬停：与底栏同款小块圆角高亮（实色叠色，不用
+                          // Opacity —— 磨砂子树上不许出现 saveLayer）。
+                          child: MiHoverFeedback(
+                            mode: mode,
+                            borderRadius: BorderRadius.circular(
+                              MiGlassNavMetrics.itemHoverRadius,
+                            ),
+                            child: Opacity(
+                              // 按下条目内容变暗（度量 ~55%）
+                              opacity: _pressedIndex == i
+                                  ? MiGlassNavMetrics.pressDimOpacity
+                                  : 1.0,
+                              // 两种形态只差内容排布：窄栏 = 图标在上小字在下
+                              // （底部栏纵向换轴）；展开栏 = 图标在左、标签在右，
+                              // 整条目一个胶囊（桌面常驻侧栏形态）。
+                              child: expanded
+                                  ? SizedBox(
+                                      // 钉到胶囊宽：外层 Column 是居中对齐，不给
+                                      // 定宽的话 Row 会按「图标+标签」自然宽居中，
+                                      // 内缩就不是从胶囊左缘量起了。
+                                      width: MiGlassSideNavMetrics
+                                          .expandedItemWidth,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(
+                                            width: MiGlassSideNavMetrics
+                                                .expandedItemInset,
+                                          ),
+                                          CustomPaint(
+                                            painter: widget.items[i].painter,
+                                            size: const Size(
+                                              MiGlassSideNavMetrics.iconSize,
+                                              MiGlassSideNavMetrics.iconHeight,
+                                            ),
+                                          ),
+                                          const SizedBox(
+                                            width: MiGlassSideNavMetrics
+                                                .expandedIconLabelGap,
+                                          ),
+                                          Text(widget.items[i].label,
+                                              style: labelStyle),
+                                        ],
+                                      ),
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const SizedBox(
-                                          width: MiGlassSideNavMetrics
-                                              .expandedItemInset,
-                                        ),
                                         CustomPaint(
                                           painter: widget.items[i].painter,
                                           size: const Size(
@@ -453,32 +476,14 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
                                           ),
                                         ),
                                         const SizedBox(
-                                          width: MiGlassSideNavMetrics
-                                              .expandedIconLabelGap,
+                                          height:
+                                              MiGlassSideNavMetrics.iconLabelGap,
                                         ),
                                         Text(widget.items[i].label,
                                             style: labelStyle),
                                       ],
                                     ),
-                                  )
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CustomPaint(
-                                        painter: widget.items[i].painter,
-                                        size: const Size(
-                                          MiGlassSideNavMetrics.iconSize,
-                                          MiGlassSideNavMetrics.iconHeight,
-                                        ),
-                                      ),
-                                      const SizedBox(
-                                        height:
-                                            MiGlassSideNavMetrics.iconLabelGap,
-                                      ),
-                                      Text(widget.items[i].label,
-                                          style: labelStyle),
-                                    ],
-                                  ),
+                            ),
                           ),
                         ),
                       ),
