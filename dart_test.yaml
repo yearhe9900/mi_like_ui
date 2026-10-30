@@ -1,0 +1,5 @@
+# 测试标签声明（flutter test 按标签筛选用例时需要先在此登记，否则告警）。
+tags:
+  # 预览图生成：依赖 Windows 中文字体（simhei.ttf），无字体环境（Linux CI）
+  # 退化为方框标签、与已入库预览图不符 —— CI 以 --exclude-tags preview 排除。
+  preview:

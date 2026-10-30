@@ -1,3 +1,9 @@
+/// 预览图生成用例打 tag：依赖 Windows 中文字体（simhei.ttf）与真实图标
+/// 字体，无字体环境（如 Linux CI）下会退化为方框标签、与已入库的预览
+/// 图必然不符 —— CI 以 `--exclude-tags preview` 排除，本机跑全量不受影响。
+@Tags(['preview'])
+library;
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';

@@ -16,7 +16,26 @@ permissions:
   id-token: write
 
 jobs:
+  # 部署前先过测试关：全绿才构建发布物（preview 标签用例依赖 Windows
+  # 字体，CI 无字体环境排除；详见 test/preview_capture_test.dart）。
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test --exclude-tags preview
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

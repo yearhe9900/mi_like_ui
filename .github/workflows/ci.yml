@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 全量测试含 18 张视觉回归 golden：钉住 Flutter 版本（与 .metadata 的
+# stable 版本一致），升级 Flutter 时先在本机重拍 golden 再改这里的版本号。
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        # preview 标签的用例依赖 Windows 中文字体，CI 无字体环境跑必然
+        # 失败（详见 test/preview_capture_test.dart 的 tag 注释）；其余
+        # golden 用默认 Ahem 字体渲染，跨平台确定。
+        run: flutter test --exclude-tags preview
