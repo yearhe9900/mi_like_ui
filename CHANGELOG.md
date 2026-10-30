@@ -6,6 +6,32 @@
 
 ## [Unreleased]
 
+### Added（主题）
+
+- **`MiTheme` —— App 级主题注入点**（一处声明，全库生效）：
+  - `MiThemeData` 四个注入维度：`mode`（明暗）/ `accent`（品牌强调色，
+    注入点 = 主按钮填充、搜索输入光标、浅色焦点环）/ `pageBackgroundLight|
+    Dark`（页底色，注入点含推入转场幕布）；全空 = 库默认度量值；
+  - 明暗解析口径收编为两个静态入口：`MiTheme.modeOf`（环境跟随型：显式
+    参数 > MiTheme > `Theme` 亮度）与 `MiTheme.modeOfOr`（库默认深色型：
+    显式参数 > MiTheme > 原默认 dark）—— 此前 8 处逐站手写的 `_modeOf` /
+    内联三元全部收敛；
+  - 组件 `themeMode` 参数降级为可空覆盖（null = 跟随 MiTheme）；
+    **不包 MiTheme 时全库行为与旧版逐像素一致**（golden 仅 demo 设置行
+    迁移导致 3 张重拍）；
+  - `MiButtonPalette.of(mode, accent:)` / `MiSearchBarPalette.of(mode,
+    accent:)` 品牌色注入；默认强调色仍走 const 配方（identical，零分配）。
+
+### Added（组件）
+
+- **设置行组收编为库组件**（原 demo 私有实现）：`MiSettingsCard` /
+  `MiSettingsRow` / `MiSettingsTile` —— 分组卡片（squircle 裁形）+ 行
+  （前导图标块 + 主 / 副文案 + 值文 / 尾部 + chevron，整行满铺按压带
+  120ms easeOut）；按压状态机 / 悬停 / 焦点三态走 `MiPressable`（行内
+  不再手写 `_pressed`），明暗与配色走 `MiTheme` + `MiSettingsPalette`；
+  度量与配方在 `MiSettingsMetrics` / `MiSettingsPalette`（当前为推导值，
+  升级为度量后原位替换）。demo 设置页已迁移，7 例交互 / 几何测试锁定。
+
 ### Changed（demo）
 
 - **演示外壳按设备语境划分（web 按 user-agent）**：PC 端窄窗（< 600dp）

@@ -256,11 +256,11 @@ class MockPage extends StatelessWidget {
             const SizedBox(height: 16),
             // 外观模式（demo 功能行：右侧开关，无 chevron）
             if (onThemeModeChanged != null) ...[
-              _SettingsCard(children: [
-                _SettingsRow(
+              MiSettingsCard(children: [
+                MiSettingsRow(
                   label: '外观模式',
                   value: themeMode == MiThemeMode.light ? '浅色' : '深色',
-                  leading: const _SettingsTile(Icons.light_mode_outlined, Color(0xFF7A5CFA)),
+                  leading: const MiSettingsTile(Icons.light_mode_outlined, Color(0xFF7A5CFA)),
                   chevron: false,
                   trailing: Switch(
                     value: themeMode != MiThemeMode.light,
@@ -279,86 +279,86 @@ class MockPage extends StatelessWidget {
             ],
             // 弹框演示（demo 功能行）
             if (onShowDialog != null) ...[
-              _SettingsCard(children: [
-                _SettingsRow(
+              MiSettingsCard(children: [
+                MiSettingsRow(
                   label: '底部弹框（默认）',
-                  leading: const _SettingsTile(Icons.arrow_downward_rounded, Color(0xFF2F9BFF)),
+                  leading: const MiSettingsTile(Icons.arrow_downward_rounded, Color(0xFF2F9BFF)),
                   onTap: () => onShowDialog!(MiDialogPosition.bottom),
                 ),
-                _SettingsRow(
+                MiSettingsRow(
                   label: '顶部弹框',
-                  leading: const _SettingsTile(Icons.arrow_upward_rounded, Color(0xFF34C759)),
+                  leading: const MiSettingsTile(Icons.arrow_upward_rounded, Color(0xFF34C759)),
                   onTap: () => onShowDialog!(MiDialogPosition.top),
                 ),
-                _SettingsRow(
+                MiSettingsRow(
                   label: '居中弹框',
-                  leading: const _SettingsTile(Icons.crop_square_rounded, Color(0xFFFF9500)),
+                  leading: const MiSettingsTile(Icons.crop_square_rounded, Color(0xFFFF9500)),
                   onTap: () => onShowDialog!(MiDialogPosition.center),
                 ),
                 // 纵向操作列表形态（issue #1）：两行左对齐标题 + 图标 /
                 // 副标题 / 危险项红字（几何全为推导值）。
                 if (onShowListDialog != null)
-                  _SettingsRow(
+                  MiSettingsRow(
                     label: '操作列表弹框（纵向）',
-                    leading: const _SettingsTile(Icons.view_agenda_outlined, Color(0xFF7A5CFA)),
+                    leading: const MiSettingsTile(Icons.view_agenda_outlined, Color(0xFF7A5CFA)),
                     onTap: onShowListDialog,
                   ),
               ]),
               const SizedBox(height: 14),
             ],
             // 账号卡（参考素材：头像 + 名称 + 副标题）
-            _SettingsCard(children: [
-              _SettingsRow(
+            MiSettingsCard(children: [
+              MiSettingsRow(
                 label: 'LJ_li',
                 subtitle: '账号、云服务、会员权益等',
                 leading: const _SettingsAvatar(),
                 onTap: () => _mockTap(context, '账号中心'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '我的设备',
-                leading: const _SettingsTile(Icons.smartphone, Color(0xFF8E8E93)),
+                leading: const MiSettingsTile(Icons.smartphone, Color(0xFF8E8E93)),
                 onTap: () => _mockTap(context, '我的设备'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '妙享背屏',
-                leading: const _SettingsTile(Icons.picture_in_picture_alt, Color(0xFF7A5CFA)),
+                leading: const MiSettingsTile(Icons.picture_in_picture_alt, Color(0xFF7A5CFA)),
                 onTap: () => _mockTap(context, '妙享背屏'),
               ),
             ]),
             const SizedBox(height: 14),
             // 网络卡（参考素材：右侧状态文案 + chevron）
-            _SettingsCard(children: [
-              _SettingsRow(
+            MiSettingsCard(children: [
+              MiSettingsRow(
                 label: 'WLAN',
                 value: '已开启',
-                leading: const _SettingsTile(Icons.wifi, Color(0xFF2F9BFF)),
+                leading: const MiSettingsTile(Icons.wifi, Color(0xFF2F9BFF)),
                 onTap: () => _mockTap(context, 'WLAN'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '蓝牙',
                 value: '已开启',
-                leading: const _SettingsTile(Icons.bluetooth, Color(0xFF2F9BFF)),
+                leading: const MiSettingsTile(Icons.bluetooth, Color(0xFF2F9BFF)),
                 onTap: () => _mockTap(context, '蓝牙'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '移动网络',
-                leading: const _SettingsTile(Icons.signal_cellular_alt, Color(0xFF34C759)),
+                leading: const MiSettingsTile(Icons.signal_cellular_alt, Color(0xFF34C759)),
                 onTap: () => _mockTap(context, '移动网络'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '设备互联',
-                leading: const _SettingsTile(Icons.devices_other, Color(0xFF5AC8FA)),
+                leading: const MiSettingsTile(Icons.devices_other, Color(0xFF5AC8FA)),
                 onTap: () => _mockTap(context, '设备互联'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: '个人热点',
                 value: '已关闭',
-                leading: const _SettingsTile(Icons.wifi_tethering, Color(0xFF2F9BFF)),
+                leading: const MiSettingsTile(Icons.wifi_tethering, Color(0xFF2F9BFF)),
                 onTap: () => _mockTap(context, '个人热点'),
               ),
-              _SettingsRow(
+              MiSettingsRow(
                 label: 'VPN',
-                leading: const _SettingsTile(Icons.public, Color(0xFF0A84FF)),
+                leading: const MiSettingsTile(Icons.public, Color(0xFF0A84FF)),
                 onTap: () => _mockTap(context, 'VPN'),
               ),
             ]),
@@ -369,37 +369,9 @@ class MockPage extends StatelessWidget {
   }
 }
 
-/// 设置页风格 tokens（demo 层）。参考素材：系统设置页明暗截图（1220×2656）；
-/// 卡片/按压色与几何为**目测推导值**，页底与搜索栏填充沿用框架度量 token
-/// （`_MockPageShell` 页底、`MiSearchBar` 合成填充）。
-///
-/// **点击效果**（参考素材亮/暗两张按压态）：按压时**整行满铺**一条高亮带
-/// （方角、与卡片同宽、压在图标与文字之下、无缩放），松开渐隐；高亮色与
-/// 搜索框填充同语言 —— 亮 #E7E7E7 / 暗 #3A3A3A。
-class _SettingsStyle {
-  _SettingsStyle._();
-
-  /// 卡片圆角（目测 ≈20dp）。
-  static const double cardRadius = 20;
-
-  /// 卡片填充（亮 #FFFFFF / 暗 #1E1E1E，目测）。
-  static Color cardFor(bool light) =>
-      light ? const Color(0xFFFFFFFF) : const Color(0xFF1E1E1E);
-
-  /// 按压高亮带（亮 #E7E7E7 / 暗 #3A3A3A，目测；与搜索框填充同语言）。
-  static Color pressFor(bool light) =>
-      light ? const Color(0xFFE7E7E7) : const Color(0xFF3A3A3A);
-
-  /// 按压渐变时长（推导：MIUI 行按压为快闪档，~120ms）。
-  static const int pressDurationMs = 120;
-
-  /// 行高（副标题行随内容增高）。
-  static const double rowHeight = 56;
-
-  /// 图标块边长 / 圆角（目测 38 / 10）。
-  static const double tileSide = 38;
-  static const double tileRadius = 10;
-}
+/// 设置页风格 tokens 已收编为库组件（`MiSettingsCard` / `MiSettingsRow` /
+/// `MiSettingsTile`，度量与配方见 `MiSettingsMetrics` / `MiSettingsPalette`）；
+/// 此处只保留 demo 专属的头像块。
 
 /// 设置页风格行占位点按（demo 层）：与圆钮/返回钮同一套 SnackBar 反馈。
 void _mockTap(BuildContext context, String label) =>
@@ -410,168 +382,6 @@ void _mockTap(BuildContext context, String label) =>
       ),
     );
 
-/// 设置页风格分组卡片（demo 层）：圆角容器裁剪按压高亮带（方角带在圆角
-/// 处随卡片裁切，与素材一致）。
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final light = Theme.of(context).brightness == Brightness.light;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(_SettingsStyle.cardRadius),
-      child: ColoredBox(
-        color: _SettingsStyle.cardFor(light),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: children,
-        ),
-      ),
-    );
-  }
-}
-
-/// 设置页风格行（demo 层）：前导图标块/头像 + 主文案（+ 副标题）+ 可选
-/// 右侧状态文案 / 自定义尾部（如开关）+ chevron；**按压整行满铺高亮带**
-/// （见 [_SettingsStyle] 类注释）。
-class _SettingsRow extends StatefulWidget {
-  const _SettingsRow({
-    required this.label,
-    this.subtitle,
-    this.value,
-    this.leading,
-    this.trailing,
-    this.chevron = true,
-    this.onTap,
-  });
-
-  final String label;
-  final String? subtitle;
-  final String? value;
-  final Widget? leading;
-  final Widget? trailing;
-
-  /// 无 [trailing] 时是否显示 chevron（有 [onTap] 才显示）。
-  final bool chevron;
-
-  final VoidCallback? onTap;
-
-  @override
-  State<_SettingsRow> createState() => _SettingsRowState();
-}
-
-class _SettingsRowState extends State<_SettingsRow> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (widget.onTap == null || _pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final light = Theme.of(context).brightness == Brightness.light;
-    final fg = Theme.of(context).colorScheme.onSurface;
-    final sub = fg.withValues(alpha: 0.55);
-    final chevronColor = fg.withValues(alpha: 0.30);
-    return Semantics(
-      button: widget.onTap != null,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onTapDown: (_) => _setPressed(true),
-        onTapUp: (_) => _setPressed(false),
-        onTapCancel: () => _setPressed(false),
-        child: AnimatedContainer(
-          duration: const Duration(
-            milliseconds: _SettingsStyle.pressDurationMs,
-          ),
-          curve: Curves.easeOut,
-          color: _pressed ? _SettingsStyle.pressFor(light) : Colors.transparent,
-          constraints: const BoxConstraints(minHeight: _SettingsStyle.rowHeight),
-          padding: EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: widget.subtitle == null ? 0 : 10,
-          ),
-          child: Row(
-            children: [
-              if (widget.leading != null) ...[
-                widget.leading!,
-                const SizedBox(width: 14),
-              ],
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: fg,
-                      ),
-                    ),
-                    if (widget.subtitle != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        widget.subtitle!,
-                        style: TextStyle(fontSize: 13, color: sub),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (widget.value != null) ...[
-                const SizedBox(width: 8),
-                Text(widget.value!, style: TextStyle(fontSize: 14, color: sub)),
-              ],
-              if (widget.trailing != null) ...[
-                const SizedBox(width: 8),
-                widget.trailing!,
-              ] else if (widget.chevron && widget.onTap != null) ...[
-                const SizedBox(width: 10),
-                // chevron 墨盒 11.7×21.3（前进箭头 = 返回箭头的水平镜像）
-                SizedBox(
-                  width: 11.7,
-                  height: 21.3,
-                  child: CustomPaint(
-                    painter: ForwardChevronIconPainter(chevronColor),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 设置页风格前导图标块（demo 层）：38dp 彩色圆角方块 + 白色字形
-/// （目测推导，参考素材各彩色图标块）。
-class _SettingsTile extends StatelessWidget {
-  const _SettingsTile(this.icon, this.color);
-
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: _SettingsStyle.tileSide,
-      height: _SettingsStyle.tileSide,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(_SettingsStyle.tileRadius),
-      ),
-      child: Icon(icon, color: Colors.white, size: 22),
-    );
-  }
-}
 
 /// 设置页风格头像（demo 层）：圆形底 + 笑脸贝雷 logo（复用框架 painter）。
 class _SettingsAvatar extends StatelessWidget {
@@ -580,8 +390,8 @@ class _SettingsAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _SettingsStyle.tileSide,
-      height: _SettingsStyle.tileSide,
+      width: MiSettingsMetrics.tileSide,
+      height: MiSettingsMetrics.tileSide,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(

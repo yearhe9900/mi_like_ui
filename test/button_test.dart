@@ -122,7 +122,8 @@ void main() {
     const button = MiButton(label: '关注', onPressed: _noop);
     expect(button.label, '关注');
     expect(button.variant, MiButtonVariant.filled);
-    expect(button.themeMode, MiThemeMode.dark);
+    // null = 跟随 MiTheme；未声明 MiTheme 时默认深色（行为不变）。
+    expect(button.themeMode, isNull);
     expect(button.onPressed, isNotNull);
   });
 }

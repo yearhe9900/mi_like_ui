@@ -28,6 +28,7 @@ export 'src/theme/gradient_blur_tokens.dart';
 export 'src/theme/dialog_tokens.dart';
 export 'src/theme/pull_up_panel_tokens.dart';
 export 'src/theme/motion_tokens.dart';
+export 'src/theme/settings_tokens.dart';
 
 // ── 组件层 ────────────────────────────────────────────────────────────────
 export 'src/components/navigation/glass_nav_bar/glass_nav_bar.dart';
@@ -53,6 +54,8 @@ export 'src/components/feedback/dialog/dialog_metrics.dart';
 export 'src/components/feedback/dialog/dialog_list_metrics.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel_metrics.dart';
+export 'src/components/lists/settings_row/settings_row.dart';
+export 'src/components/lists/settings_row/settings_row_metrics.dart';
 
 // ── 效果层（不依赖具体页面形态） ──────────────────────────────────────────
 export 'src/components/effects/gradient_blur/gradient_blur.dart';

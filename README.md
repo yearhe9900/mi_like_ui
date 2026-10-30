@@ -69,6 +69,7 @@ MiGlassNavBar(
 | `MiTopBar` | 大标题折叠顶部导航栏（渐进磨砂材质、可内嵌搜索栏 / 标签行、搜索态） |
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
 | `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
+| `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` | 设置分组卡片与行（前导图标块 + 主 / 副文案 + 值文 / 尾部 + chevron，整行按压带，三态反馈走 `MiPressable`） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp） |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
@@ -76,6 +77,7 @@ MiGlassNavBar(
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
 | `MiFocusRing` | 键盘焦点环 + Enter / Space 激活（桌面可达性） |
 | `MiPressable` | 统一反馈包装件：按压状态机 + 悬停叠色 + 焦点环（可点元素统一入口） |
+| `MiTheme` / `MiThemeData` | App 级主题注入点：明暗模式一处声明，全库组件跟随；品牌强调色 / 页底色可注入（见「主题」） |
 
 ## 组件
 
@@ -280,6 +282,21 @@ filter）；快速运动（scale ≤ 0.8）时 9 段阶梯**合并成 3 段**（
 
 <img src="doc/preview/card_light.png" width="360" alt="浅色主题卡片" /> <img src="doc/preview/card_dark.png" width="360" alt="深色主题卡片" />
 
+### 设置行组（MiSettingsCard / MiSettingsRow / MiSettingsTile）
+
+设置页 / 书架信息行的成套零件：分组卡片（squircle 裁形的表面层）内铺
+若干行 —— 前导图标块（38dp 彩色圆角方块）+ 主文案（16dp）+ 可选副标题
+（13dp）+ 可选右侧值文 / 自定义尾部（如开关）+ chevron（11.7×21.3 墨盒，
+前进箭头 = 返回箭头水平镜像）。
+
+- **按压 = 整行满铺高亮带**（方角、随卡片圆角裁切，120ms easeOut 淡入出；
+  亮 #E7E7E7 / 暗 #3A3A3A）；按压状态机 / 悬停叠色 / 键盘焦点环三态由
+  `MiPressable` 统一提供，行内不手写按压逻辑；
+- **chevron 契约**：可点且无 `trailing` 时显示；`onTap == null` 为纯展示行
+  （无按压 / 悬停 / 焦点，无 chevron）；
+- 度量与配方在 `MiSettingsMetrics` / `MiSettingsPalette`（当前为推导值，
+  升级为度量后原位替换）；明暗走 `MiTheme`。
+
 ### 弹框（MiDialog）
 
 遮罩 + 卡片一体的模态弹框，明暗双模式；支持三档位置、两种形态（横排按钮 /
@@ -439,6 +456,37 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 在构造时定死、拿不到上下文里的窗口宽）。
 
 <img src="doc/preview/push_transition_light.png" width="180" alt="浅色推入转场中" /> <img src="doc/preview/push_transition_dark.png" width="180" alt="深色推入转场中" /> <img src="doc/preview/search_page_dark.png" width="180" alt="落定后的搜索页头部" />
+
+## 主题
+
+明暗模式与品牌色在 **App 根部声明一次**，子树内所有组件跟随：
+
+```dart
+MaterialApp(
+  home: MiTheme(
+    data: const MiThemeData(
+      mode: MiThemeMode.dark,          // 明暗（null = 跟随系统 Theme 亮度）
+      accent: Color(0xFFE94F37),       // 品牌强调色（null = 度量蓝 #4980F7）
+    ),
+    child: const ReadingApp(),
+  ),
+);
+```
+
+优先级：**组件显式参数 > `MiTheme` 声明 > 兜底**（环境跟随型组件兜底
+`Theme.of(context).brightness`，导航栏 / 胶囊行 / 按钮兜底深色 —— 即库
+原有默认）。不包 `MiTheme` 时全库行为与旧版逐像素一致。
+
+注入维度与影响面：
+
+| 维度 | 影响面 |
+|------|--------|
+| `mode` | 全库组件的明暗配方 |
+| `accent` | 主按钮填充、搜索输入光标、浅色模式焦点环 |
+| `pageBackgroundLight` / `pageBackgroundDark` | 页底色口径（含 `MiCardPageRoute` 转场幕布） |
+
+阅读器自身的主题维度（日间 / 夜间 / 羊皮纸 —— 独立于 App 明暗的第三
+维度）不在本库范围内，由使用方在自己的组件层叠加。
 
 ## 材质与透明体系
 
@@ -670,7 +718,8 @@ lib/
     │   ├── buttons/         #   button
     │   ├── inputs/          #   search_bar（含取消钮）
     │   ├── cards/           #   theme_card
-    │   ├── feedback/        #   dialog
+    │   ├── feedback/        #   dialog · pull_up_panel
+    │   ├── lists/           #   settings_row（设置分组卡片 / 行 / 图标块）
     │   └── effects/         #   gradient_blur
     ├── icons/               # 图标 painter 合集
     └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滤镜缓存）
@@ -741,9 +790,10 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiDialog` — 弹框（含纵向操作列表形态）
 - [x] `MiPullUpPanel` — 弹出面板（按钮弹起 / 弹簧动效）
 - [x] `MiCardPageRoute` — 页面推入转场
+- [x] `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` — 设置分组卡片与行
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`
+- [x] `MiTheme` — App 级主题注入点（模式一处声明 + 品牌色 / 页底色注入）
 - [ ] `MiForm` — 表单
-- [ ] `MiTheme` — 主题聚合
 
 ## 版本记录
 
