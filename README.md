@@ -76,6 +76,7 @@ MiGlassNavBar(
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
 | `MiFocusRing` | 键盘焦点环 + Enter / Space 激活（桌面可达性） |
+| `MiScrollBinder` | 滚动接线件：包住滚动体与消费者，位移经作用域广播（顶栏折叠免接线） |
 | `MiPressable` | 统一反馈包装件：按压状态机 + 悬停叠色 + 焦点环（可点元素统一入口） |
 | `MiTheme` / `MiThemeData` | App 级主题注入点：明暗模式一处声明，全库组件跟随；品牌强调色 / 页底色可注入（见「主题」） |
 
@@ -184,7 +185,9 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
 
 - **大标题折叠**：大标题随内容滚动上移并沿独立曲线淡出，紧凑标题在
   高度约 20dp 处淡入衔接，两段不重叠；标题基线以 `Baseline` 锚定，
-  垂直落点不随字体族漂移；
+  垂直落点不随字体族漂移；**滚动接线默认自动**：外层包
+  `MiScrollBinder` 后 `scrollOffset` 不用传（见「滚动接线」），显式
+  传值则压过作用域；
 - **头部区内嵌**（可选）：传 `searchHint` / `tabs` 等数据参数，顶栏内部
   产出 `MiSearchBar` / `MiPillTabBar` 并统一解析明暗配方；需要自定义时
   可用同名插槽 `searchBar` / `tabBar` / `header` 替换（与数据参数互斥，
@@ -539,6 +542,29 @@ MaterialApp(
   `MiTopBarMetrics.pressFadeInMs`）以**同源转发**保留，调用点零改动，
   新代码直接取 token。
 
+## 滚动接线
+
+`MiTopBar` 的折叠位移不再要求逐页手写接线：把滚动体与顶栏包进
+`MiScrollBinder`，顶栏不传 `scrollOffset` 即随滚动折叠 —— 位移经
+`ValueNotifier`（等值去重）+ 作用域广播，消费者只重建自己一层，与手写
+`ValueListenableBuilder` 等价：
+
+```dart
+MiScrollBinder(
+  child: Stack(children: [
+    Positioned.fill(child: ListView(...)),   // 滚动内容
+    Positioned(top: 0, child: MiTopBar(...)), // scrollOffset 不用传
+  ]),
+)
+```
+
+- **只认 depth == 0 且同方向的滚动**：嵌套滚动体（depth ≥ 1）与反方向
+  滚动体（横向胶囊行）不驱动竖向折叠；方向可用 `axis` 换；
+- **显式 `scrollOffset` 压过作用域**：从同一滚动量派生两个消费者
+  （如滚动降 σ 的 `sigmaScale`）时仍手写接线；
+- **不接管滚动体**：`Scrollbar` / `ScrollController` 仍由页面自持；
+  无滚动时位移恒 0，与旧默认行为逐像素一致。
+
 ## 搜索态
 
 搜索两条路径都支持，按页面结构选用：
@@ -722,7 +748,7 @@ lib/
     │   ├── lists/           #   settings_row（设置分组卡片 / 行 / 图标块）
     │   └── effects/         #   gradient_blur
     ├── icons/               # 图标 painter 合集
-    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滤镜缓存）
+    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滚动接线 / 滤镜缓存）
 
 test/                        # 单元 / 交互 / 视觉回归测试
 ```

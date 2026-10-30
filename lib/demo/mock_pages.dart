@@ -453,23 +453,12 @@ class _MockPageShellState extends State<_MockPageShell> {
   static const double _contentMaxWidth = 720;
 
   final ScrollController _controller = ScrollController();
-  final ValueNotifier<double> _offset = ValueNotifier<double>(0);
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_syncOffset);
-  }
 
   @override
   void dispose() {
-    _controller.removeListener(_syncOffset);
     _controller.dispose();
-    _offset.dispose();
     super.dispose();
   }
-
-  void _syncOffset() => _offset.value = _controller.offset;
 
   @override
   Widget build(BuildContext context) {
@@ -479,51 +468,52 @@ class _MockPageShellState extends State<_MockPageShell> {
     final showScrollbar = !MiViewport.of(context).isCompact;
     return ColoredBox(
       color: light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
-      child: Stack(
-        children: [
-          // Bottom padding stays small on purpose: the content must scroll
-          // BEHIND the glass bar (y ≈ 776..832 of the 856-tall frame) or the
-          // frosted transmission has nothing to show.
-          Positioned.fill(
-            child: Scrollbar(
-              controller: _controller,
-              thumbVisibility: showScrollbar,
-              child: ListView(
+      // 滚动接线：顶栏折叠位移由作用域自动供给（不再手写 ValueNotifier +
+      // listener 样板）；Scrollbar 仍自持 controller。
+      child: MiScrollBinder(
+        child: Stack(
+          children: [
+            // Bottom padding stays small on purpose: the content must scroll
+            // BEHIND the glass bar (y ≈ 776..832 of the 856-tall frame) or the
+            // frosted transmission has nothing to show.
+            Positioned.fill(
+              child: Scrollbar(
                 controller: _controller,
-                padding: widget.padding,
-                children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(maxWidth: _contentMaxWidth),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: widget.children,
+                thumbVisibility: showScrollbar,
+                child: ListView(
+                  controller: _controller,
+                  padding: widget.padding,
+                  children: [
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(maxWidth: _contentMaxWidth),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: widget.children,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          // 顶栏必须用 Positioned 钉在顶部：本 Stack 若留下**非定位子级**，
-          // 它会按该子级尺寸收缩（= 顶栏自身的 152.8dp 高）而不是撑满父级，
-          // 于是整页在 loose 约束的上级（AnimatedSwitcher 内部是
-          // `alignment: center` 的 Stack）里被垂直居中 —— 顶栏会跑到屏幕正中，
-          // 页底黑与 ListView 只剩 152.8dp 高、内容全被裁掉。
-          // 偏移量 =（856 − 152.8）/ 2 = 351.1dp。
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: ValueListenableBuilder<double>(
-              valueListenable: _offset,
-              builder: (context, offset, _) => MiTopBar(
+            // 顶栏必须用 Positioned 钉在顶部：本 Stack 若留下**非定位子级**，
+            // 它会按该子级尺寸收缩（= 顶栏自身的 152.8dp 高）而不是撑满父级，
+            // 于是整页在 loose 约束的上级（AnimatedSwitcher 内部是
+            // `alignment: center` 的 Stack）里被垂直居中 —— 顶栏会跑到屏幕正中，
+            // 页底黑与 ListView 只剩 152.8dp 高、内容全被裁掉。
+            // 偏移量 =（856 − 152.8）/ 2 = 351.1dp。
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: MiTopBar(
                 title: widget.title,
                 showBack: widget.showBack,
-                scrollOffset: offset,
+                // scrollOffset 不传：从 MiScrollBinder 作用域自动读取。
                 // 只有 showBack 为 true 时圆钮才存在，回调此时才可能被触发
                 onBack: () => ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -533,8 +523,8 @@ class _MockPageShellState extends State<_MockPageShell> {
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

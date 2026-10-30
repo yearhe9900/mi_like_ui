@@ -11,6 +11,7 @@ import '../../effects/gradient_blur/gradient_blur.dart';
 import '../../inputs/search_bar/search_bar.dart';
 import '../../inputs/search_bar/search_cancel_button.dart';
 import '../../inputs/search_bar/search_cancel_metrics.dart';
+import '../../../utils/scroll_binder.dart';
 import '../pill_tab_bar/pill_tab_bar.dart';
 import 'top_bar_metrics.dart';
 
@@ -103,15 +104,27 @@ import 'top_bar_metrics.dart';
 ///
 /// ## 用法 —— 大标题折叠
 ///
-/// 本组件不自带滚动，由宿主提供滚动位移（受控组件），叠在滚动内容之上：
+/// 本组件不自带滚动，位移由宿主提供（受控组件），叠在滚动内容之上。
+/// 常规接线用 [MiScrollBinder] 把滚动体与顶栏包在一起，`scrollOffset`
+/// 不用传（作用域自动供给）：
 ///
 /// ```dart
-/// Stack(children: [
-///   ListView(controller: _c, padding: const EdgeInsets.only(
-///     top: MiTopBarMetrics.contentTopInset), children: [...]),
-///   Positioned(top: 0, left: 0, right: 0,
-///     child: MiTopBar(title: '显示与亮度', scrollOffset: _offset, onBack: ...)),
-/// ])
+/// MiScrollBinder(
+///   child: Stack(children: [
+///     ListView(padding: const EdgeInsets.only(
+///       top: MiTopBarMetrics.contentTopInset), children: [...]),
+///     Positioned(top: 0, left: 0, right: 0,
+///       child: MiTopBar(title: '显示与亮度', onBack: ...)),
+///   ]),
+/// )
+/// ```
+///
+/// 需要手写位移的场景（如从同一滚动量派生滚动降 σ 后集中在顶栏）显式
+/// 传 `scrollOffset`，其优先级压过作用域：
+///
+/// ```dart
+/// Positioned(top: 0, left: 0, right: 0,
+///   child: MiTopBar(title: '显示与亮度', scrollOffset: _offset, onBack: ...)),
 /// ```
 ///
 /// 纯材质形态（不绘制标题，高度收到 [MiTopBarMetrics.scrimHeight]）：
@@ -168,7 +181,7 @@ class MiTopBar extends StatefulWidget {
     this.onBack,
     this.themeMode,
     this.palette,
-    this.scrollOffset = 0,
+    this.scrollOffset,
     this.searchBar,
     this.searchHint,
     this.onSearchTap,
@@ -195,7 +208,10 @@ class MiTopBar extends StatefulWidget {
     this.searchBarMaxWidth,
     this.actions,
     this.sigmaScale = 1.0,
-  })  : assert(scrollOffset >= 0, 'scrollOffset 不能为负（未滚动时传 0）'),
+  })  : assert(
+            scrollOffset == null || scrollOffset >= 0,
+            'scrollOffset 不能为负（未滚动时传 0 或留 null）',
+          ),
         assert(
             header == null ||
                 (searchBar == null &&
@@ -267,7 +283,11 @@ class MiTopBar extends StatefulWidget {
   final MiTopBarPalette? palette;
 
   /// 当前滚动位移（dp，非负）；驱动大标题上移 + 淡出、紧凑标题淡入。
-  final double scrollOffset;
+  ///
+  /// null（默认）= 从祖先 [MiScrollBinder] 自动读取（页面用它接线就不用
+  /// 再传）；无作用域时按 0（未滚动）。显式传值压过作用域 ——
+  /// 滚动降 σ 这类需要在同一点集中两个滚动量的页面仍手写接线。
+  final double? scrollOffset;
 
   // ── 头部区：声明式入参（顶栏内部产出组件） ──────────────────────────────
   /// 搜索栏的占位文案 —— 给了它，顶栏**自己在内部产出** `MiSearchBar`，
@@ -662,12 +682,14 @@ class MiTopBar extends StatefulWidget {
     final title = this.title;
     // 搜索态下标题整体淡出（参考素材那页的大标题在转场中消失）。
     final titleFade = 1 - progress;
-    // 位移兜底：NaN / 负数按未滚动处理，+∞ 饱和为折叠完成态（避免布局出现
+    // 位移解析：显式参数 > 祖先 [MiScrollBinder] 作用域 > 0（未滚动）；再做兜底：
+    // NaN / 负数按未滚动处理，+∞ 饱和为折叠完成态（避免布局出现
     // 无限坐标，同时语义上「滚过头」就是折叠态）。
-    final offset = scrollOffset.isNaN || scrollOffset <= 0
+    final rawOffset = scrollOffset ?? MiScrollBinder.offsetOf(context) ?? 0;
+    final offset = rawOffset.isNaN || rawOffset <= 0
         ? 0.0
-        : (scrollOffset.isFinite
-            ? scrollOffset
+        : (rawOffset.isFinite
+            ? rawOffset
             : MiTopBarMetrics.collapsedOffset);
     // 内缘亮边随内容接近渐亮（0…1，见 [MiTopBarMetrics.rimFadeDistance]）：
     // 静止时不亮、内容向栏靠近的过程中渐亮、进入栏区后保持 —— 不是常驻

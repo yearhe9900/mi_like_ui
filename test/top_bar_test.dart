@@ -1642,7 +1642,8 @@ void main() {
   test('const 构造保持可用', () {
     const bar = MiTopBar(title: kTitle);
     expect(bar.title, kTitle);
-    expect(bar.scrollOffset, 0);
+    // 默认 null：自动从 MiScrollBinder 作用域读取，无作用域按 0。
+    expect(bar.scrollOffset, isNull);
     expect(bar.themeMode, isNull);
     expect(bar.showBack, isFalse);
     expect(bar.onBack, isNull);

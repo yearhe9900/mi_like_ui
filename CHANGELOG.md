@@ -6,6 +6,36 @@
 
 ## [Unreleased]
 
+### Added（滚动接线）
+
+- **`MiScrollBinder` —— 滚动位移作用域**：包住滚动体与消费者，顶栏
+  折叠位移免逐页手写 `NotificationListener` / `ScrollController` +
+  `setState` 样板：
+  - `MiTopBar.scrollOffset` 变可空，null（默认）= 从祖先作用域自动
+    读取，显式传值压过作用域（滚动降 σ 需集中两个滚动量的页面仍手写）；
+  - 只认 depth == 0 且同方向的滚动通知（嵌套滚动体 depth ≥ 1 与横向
+    滚动体不驱动竖向折叠），位移经 `ValueNotifier` 等值去重广播；
+  - 无作用域且未传参 = 旧默认（未滚动，逐像素不变）；demo 设置页壳
+    已迁移（删掉 ValueNotifier + listener 样板），5 例测试锁定。
+
+### Added（无障碍）
+
+- **导航条目 / 胶囊标签补语义选中态**：`MiPillTabBar` /
+  `MiGlassNavBar` / `MiGlassSideNavBar` 条目包 `Semantics(button +
+  selected + label)`，读屏可感知当前选中项（此前裸 GestureDetector
+  在语义树上无选中信息）；
+- **`test/a11y_test.dart` 回归锁**：语义选中态 4 例 + 系统大字体
+  （TextScaler 1.5× / 2.0× 下胶囊行 / 设置行 / 按钮 / 玻璃栏不抛异常、
+  标签可见）4 例 —— 本库 `height: 1.0` + 基线锚定排版此前无大字体验证。
+
+### Added（CI）
+
+- **analyze + 测试进 CI**：push / PR 跑 `flutter analyze` +
+  `flutter test`（钉 Flutter 3.47.5，升级时先本机重拍 golden 再改版本）；
+  Pages 部署前加测试关（全绿才构建发布物）。预览图生成用例打 `preview`
+  tag（依赖 Windows 中文字体）以 `--exclude-tags preview` 排除，
+  其余 golden 用默认 Ahem 字体渲染、跨平台确定。
+
 ### Added（主题）
 
 - **`MiTheme` —— App 级主题注入点**（一处声明，全库生效）：

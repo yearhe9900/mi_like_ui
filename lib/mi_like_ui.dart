@@ -70,4 +70,5 @@ export 'src/utils/glass_rim.dart';
 export 'src/utils/hover_feedback.dart';
 export 'src/utils/pressable.dart';
 export 'src/utils/responsive.dart';
+export 'src/utils/scroll_binder.dart';
 export 'src/utils/squircle.dart';
