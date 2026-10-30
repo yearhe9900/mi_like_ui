@@ -52,6 +52,7 @@ export 'src/components/cards/theme_card/theme_card_metrics.dart';
 export 'src/components/feedback/dialog/dialog.dart';
 export 'src/components/feedback/dialog/dialog_metrics.dart';
 export 'src/components/feedback/dialog/dialog_list_metrics.dart';
+export 'src/components/feedback/dialog/show_mi_dialog.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel.dart';
 export 'src/components/feedback/pull_up_panel/pull_up_panel_metrics.dart';
 export 'src/components/lists/settings_row/settings_row.dart';

@@ -70,7 +70,7 @@ MiGlassNavBar(
 | `MiGradientBlur` | 内容顶部渐进模糊（可独立使用，不依赖顶栏） |
 | `MiThemeCard` | 预览卡片（竖向按度量比例，宽屏可换横版） |
 | `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` | 设置分组卡片与行（前导图标块 + 主 / 副文案 + 值文 / 尾部 + chevron，整行按压带，三态反馈走 `MiPressable`） |
-| `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp） |
+| `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp）；命令式 `showMiDialog` 返回被点下标 |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
@@ -337,6 +337,21 @@ MiDialog(
   决定收起；
 - **按压动效**：按下时填充叠按压色（亮色压暗 / 暗色提亮，@0.12），标签
   不变、不缩放，150ms `easeOutQuad` 过渡，松开回弹。
+
+**命令式用法**（免 Stack 挂浮层 + 显隐状态样板）：
+
+```dart
+final i = await showMiDialog(
+  context,
+  dialog: MiDialog(title: '删除联系人', message: '…', actions: [...]),
+);
+// i = 被点按钮（actions 下标）或列表项（items 下标）；
+// null = 点遮罩 / 系统返回键关闭。原 onPressed 回调仍会执行。
+```
+
+挂根导航器（`showDialog` 同口径）、零转场时长（`MiDialog` 自身无进场
+动画，与声明式出现方式一致）；声明式手挂 `MiDialog` 仍支持 —— 需要跨帧
+共享显隐状态或与页面同帧截图时用那种。
 
 **宽屏档**（容器宽 ≥ 1024，`MiDialogMetrics.isWide`）：卡片改为**居中窄卡** ——
 限宽 **440dp**、圆角 **16**、`position` 只在手机档生效。两者都是**推导值**
