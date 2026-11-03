@@ -6,6 +6,31 @@
 
 ## [Unreleased]
 
+### Changed（结构与文档）
+
+- **分层重整（行为零变化）**：浮层统一到 `src/overlays/`（原 `components/
+  feedback` + `components/overlays` + `src/overlay` 三处合并，宿主改名
+  `popup_host.dart`）；`src/utils/` 拆为 `src/foundations/`（squircle、三态
+  反馈、滤镜缓存、格位数学）与 `src/layout/`（响应式、滚动作用域）；
+  `preference_tile` 从 `inputs/` 归位到 `lists/`。
+- **消除一处逆向依赖**：`MiPreferenceTileMetrics` 原直接引浮层的
+  `MiDialogListMetrics.rowHeight`，行几何上提为 `theme/row_tokens.dart` 的
+  `MiRowMetrics`，dialog 侧改为同源转发（API 与数值均不变）。
+- **命名统一**：`glass_side_nav_bar/` 三个文件补 `glass_` 前缀；
+  `search_cancel_metrics.dart` → `search_cancel_button_metrics.dart`；
+  slider / switch / snackbar / preference_tile 的主题解析统一走
+  `MiTheme.modeOf`（原先各自手写同一段回落逻辑）。
+- **demo 拆分**：`mock_pages.dart` 2919 行按页面拆为 4 个 `part`（profile /
+  home / showcase / search），对外符号不变。
+- **新增 `test/architecture_test.dart`（8 例）**：分层依赖方向 + barrel 死链
+  与覆盖守门；动效 / 透明度字面量扫描范围补上 `lib/src/overlays`（浮层移出
+  `components/` 后不再被扫，规则会静默退化）。
+- **文档**：新增 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（分层 / 目录 /
+  token 三层 / 命名 / 扩展流程 / 质量门）、[docs/MODULES.md](docs/MODULES.md)
+  （六个分层下各模块用途与关键接口）、[docs/USAGE.md](docs/USAGE.md)
+  （引入 / 骨架 / 主题浮层响应式配置 / 测试 / 常见坑）；README 增文档索引并
+  对齐新结构。
+
 ### Changed（组件：开关）
 
 - **`MiSwitch` 补齐上游 flutter_miuix 的交互面**：

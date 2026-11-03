@@ -6,6 +6,15 @@
 组件视觉与动效规格取自设计度量（像素级测量），沉淀为分层清晰、可持续扩充的
 组件库；渲染行为由视觉回归测试锁定。
 
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 分层与依赖规则、目录地图、token 三层、命名规范、扩展流程、质量门 |
+| [docs/MODULES.md](docs/MODULES.md) | 六个分层下每个模块的用途与关键接口 |
+| [docs/USAGE.md](docs/USAGE.md) | 引入、最小骨架、主题 / 浮层 / 响应式配置、测试命令、常见坑 |
+| 本文件 | 组件逐个的设计度量与用法、视觉截图、性能与路线图 |
+
 ## 特性
 
 - **成套组件**：玻璃悬浮底部 / 侧边导航栏、胶囊标签行、胶囊按钮、搜索栏、
@@ -761,7 +770,7 @@ MiScrollBinder(
 
 ## 响应式
 
-框架层 `src/utils/responsive.dart` 提供断点判定与等比缩放画布，
+框架层 `src/layout/responsive.dart` 提供断点判定与等比缩放画布，
 示例层 `DemoStage` 据此把内容摆进任意窗口。三类断点各司其职：
 
 | 档位 | 窗口逻辑宽 | 内容列宽 | 网格列数（主题卡 / 展示位） | 导航形态 |
@@ -889,7 +898,7 @@ QUAD 高斯，滚动时随 backdrop 变化。为此将「单次构建的模糊�
    （`MiTopBar.visibleBlurBands`）；
 2. **胶囊行模糊合并**：全部胶囊形状一次 `ClipPath` 裁切 + 单次 backdrop
    模糊，相邻胶囊不串色；
-3. **`ImageFilter` 按 σ 缓存复用**（`src/utils/filter_cache.dart`），
+3. **`ImageFilter` 按 σ 缓存复用**（`src/foundations/filter_cache.dart`），
    σ < 0.5dp 的段（亚像素高斯）不绘制。
 
 性能验证请在 profile 模式下进行（debug 渲染开销数倍于 profile）：
@@ -905,35 +914,44 @@ adb shell dumpsys gfxinfo com.example.bottom_nav_demo | Select-String "Janky fra
 
 ```
 lib/
-├── mi_like_ui.dart          # 唯一对外 API（barrel 导出层）
+├── mi_like_ui.dart          # 唯一对外 API（barrel：分区导出 + 分层说明）
 ├── main.dart                # 演示应用入口
-├── demo/                    # 示例层（演示 app）
+├── demo/                    # 示例层（演示 app；不参与库导出）
+│   ├── demo_app.dart        #   外壳：明暗切换 / 设备语境 / 导航形态
+│   ├── mock_pages.dart      #   页面入口 MockPage + 共享小件 + part 声明
+│   └── pages/               #   按页面拆的 part：profile · home · showcase · search
 └── src/
-    ├── theme/               # 样式令牌层（颜色 / 文字 / 间距 / 透明与磨砂，明暗双配方）
-    ├── components/          # 组件层（类别 / 组件名 / 两级目录）
-    │   ├── navigation/      #   glass_nav_bar · glass_side_nav_bar · pill_tab_bar · top_bar · card_page_route
-    │   ├── buttons/         #   button · action_entry（纵向动作条目）
-    │   ├── inputs/          #   search_bar（含取消钮）· switch · slider · preference_tile
+    ├── theme/               # 设计 token（颜色 / 文字 / 间距 / 透明·磨砂 / 动效 / 行几何 / 各组件配色）
+    ├── foundations/         # 视觉与交互基元（squircle · 按压 / 悬停 / 焦点 · 滤镜缓存 · 格位数学）
+    ├── layout/              # 响应式与滚动（断点 / 视口 / 缩放画布 / 内容列 / 自适应网格 / 滚动作用域）
+    ├── components/          # 组件层（类别 / 组件名 /）
+    │   ├── navigation/      #   top_bar · glass_nav_bar · glass_side_nav_bar · pill_tab_bar · card_page_route
+    │   ├── buttons/         #   button · action_entry
+    │   ├── inputs/          #   search_bar（含取消钮）· switch · checkbox · slider
+    │   ├── lists/           #   settings_row（卡片 / 行 / 图标块）· preference_tile
     │   ├── cards/           #   theme_card
-    │   ├── feedback/        #   dialog · pull_up_panel · snackbar
-    │   ├── lists/           #   settings_row（设置分组卡片 / 行 / 图标块）
     │   └── effects/         #   gradient_blur
-    ├── overlay/             # 弹层基建（MiPopupHost 单点渲染层）
-    ├── icons/               # 图标 painter 合集
-    └── utils/               # 工具层（断点 / 缩放 / 响应式网格 / 悬停 / 按压 / 焦点 / 滚动接线 / 滤镜缓存）
+    ├── overlays/            # 浮层：popup_host（宿主 + 注册表）+ dialog · bottom_sheet · pull_up_panel · snackbar · floating_toolbar
+    └── icons/               # 图标 painter 合集
 
-test/                        # 单元 / 交互 / 视觉回归测试
+test/                        # 单元 / 交互 / 视觉回归 / 约束守门
+docs/                        # 架构 · 模块接口 · 使用与配置
 ```
 
 | 层 | 职责 |
 |---|---|
-| 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面 |
-| 组件层 `src/components/` | 可复用组件：widget + metrics + painter |
-| 弹层基建 `src/overlay/` | 弹层单点渲染（注册序即 z 序；`MiDialog` / `MiSnackbar` 经它注册，`MiPullUpPanel` 因绘制位契约刻意不入） |
-| 主题层 `src/theme/` | 跨组件样式令牌；透明 / 磨砂参数统一在 `transparency_tokens.dart`，动效规格统一在 `motion_tokens.dart` |
+| 导出层 `lib/mi_like_ui.dart` | 唯一对外 API 面；`architecture_test` 检查死链与覆盖 |
+| 主题层 `src/theme/` | 设计 token 单一来源：透明 / 磨砂在 `transparency_tokens.dart`，跨组件动效在 `motion_tokens.dart`，列表行几何在 `row_tokens.dart`，各组件配色在 `<组件>_tokens.dart` |
+| 基元层 `src/foundations/` | 与业务无关的视觉 / 交互零件（连续圆角、三态反馈、滤镜缓存、格位数学） |
+| 布局层 `src/layout/` | 响应式三断点与滚动位移作用域 |
+| 组件层 `src/components/` | 可复用组件：widget + metrics（+ 内部 painter） |
+| 浮层 `src/overlays/` | 宿主与注册表 + 全部覆盖层（弹框 / 抽屉 / 面板 / 轻提示 / 悬浮容器） |
 | 图标 `src/icons/` | 导航图标 painter 合集（`*IconPainter`） |
-| 工具层 `src/utils/` | 基础件与纯函数（响应式 / 悬停 / 按压 / 焦点 / squircle / 滤镜缓存） |
 | 示例层 `lib/demo/` | 演示应用，模拟真实使用方 |
+
+依赖只允许自上而下（`theme` ← `foundations` ← `layout` ← `components` ←
+`overlays`），由 `test/architecture_test.dart` 逐条断言；规则与理由见
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ## 开发与贡献
 
@@ -946,18 +964,26 @@ flutter test     # 全量测试（含视觉回归）
 
 - 公共类型 `Mi` 前缀（`MiGlassNavBar`、`MiColors`）；图标 painter 用
   `*IconPainter`
-- 文件名 snake_case；组件常量进 `<组件名>_metrics.dart`，配色进
-  `theme/` 对应 `*_tokens.dart`
+- 文件名 snake_case，且与主类同名去前缀（`glass_side_nav_bar.dart` 里放
+  `MiGlassSideNavBar`）；几何进 `<文件名>_metrics.dart`，配色进 `theme/`
+  对应 `<组件>_tokens.dart`，内部 painter 进 `<文件名>_painter.dart`
+- 依赖只允许自上而下：`theme` ← `foundations` ← `layout` ← `components` ←
+  `overlays`（`test/architecture_test.dart` 断言）
 - 使用方与测试只 import barrel；未导出的 `src/` 实现不承诺 API 稳定
-- 透明参数只有一个来源（`transparency_tokens.dart`），其余令牌与组件只引用
+  （`architecture_test` 检查每个 export 都有对应文件、每个实现文件都被导出）
+- 透明 / 磨砂、跨组件动效、列表行几何各有**唯一来源**，其余令牌与组件只引用
 
 **新增组件流程**
 
-1. `src/components/<类别>/<组件名>/` 建目录（widget / metrics / painter）
-2. 样式取主题层令牌，缺失则先补令牌
-3. barrel 补一行 `export`
-4. 测试与演示应用各补一例
+1. `src/components/<类别>/<组件名>/`（浮层则 `src/overlays/<组件名>/`）建目录：
+   `<组件名>.dart` + `<组件名>_metrics.dart`（+ 可选 `<组件名>_painter.dart`）
+2. 样式取主题层令牌，缺失则先补令牌（先判断属于全局 / 组件配色 / 组件几何）
+3. barrel 补一行 `export`（漏了会被 `architecture_test` 抓到）
+4. 补测试 `test/<组件名>_test.dart`，并在 `demo/pages/showcase_page.dart` 加一节陈列
 5. `flutter analyze` + `flutter test` 全绿后提交
+
+完整版（含口径注释与守门测试清单）见
+[docs/ARCHITECTURE.md §7](docs/ARCHITECTURE.md)。
 
 **测试**
 
@@ -966,7 +992,9 @@ flutter test     # 全量测试（含视觉回归）
   （文档配图亦由此生成，样式变更后以
   `flutter test --update-goldens test/preview_capture_test.dart` 刷新）
 - 性能预算：`test/perf_budget_test.dart`
-- 令牌约束：`test/transparency_config_test.dart`
+- 令牌约束：`test/transparency_config_test.dart`（透明）、
+  `test/motion_config_test.dart`（动效）
+- 分层与 barrel：`test/architecture_test.dart`
 
 ## 设计规格与度量
 
@@ -991,6 +1019,8 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiBottomSheet` — 底部弹窗（弹簧滑入 / 手柄下拉 / 只圆上两角）
 - [x] `MiFloatingToolbar` — 悬浮工具栏（胶囊托盘 + 按形状投影）
 - [x] `MiCheckbox` — 复选框（三态 / 勾号 trim 动效）
+- [x] `MiSwitch` / `MiSlider` — 开关（点按 / 拖拽 / 放大）与滑条
+- [x] `MiPreferenceTile` — 与列表行同族的通用设置行
 - [x] `MiCardPageRoute` — 页面推入转场
 - [x] `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` — 设置分组卡片与行
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`
