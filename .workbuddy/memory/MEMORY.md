@@ -67,6 +67,12 @@
 - `_searchRow` 分手机 Stack / 宽屏 Row 两条路径，**手机路径一字不动**。
 - **标题只在不透明区内**：搜索态下顶栏按空白区 `hitTestBehavior`，勿让材质层吃命中。
 
+## 浮层补件（`src/components/overlays/` + `inputs/checkbox/`）
+- **`MiBottomSheet`**：`show` 驱动，**必须经 `MiPopup`** 渲染（不自绘宿主）；滑入用 `FractionalTranslation(0, 1-p)`（按自身高比例、不跑布局、不预量高），弹簧 `miSpring(0.9, 0.38)`≈273ms；遮罩 = `dialogScrimProgressFor(mode, p)` 随进度淡入（**不是** Opacity）；只圆上两角 `MiSquircleBorder(topOnly: true)`；下拉跟手（越界走 `dragResistance` 0.1 回弹），`dismissDistance` 150 / `flingVelocity` 800 才请求关闭，宿主不接则 `addPostFrameCallback` 弹回。
+- **`MiFloatingToolbar`**：胶囊托盘，投影必须走 `MiSquircleShadowPainter`（`BoxShadow` 是矩形、圆角处漏影）；表面包 `GestureDetector(onTap: (){})` 吃点击。
+- **`MiCheckbox`**：⌀26，勾号 = 三点折线 `PathMetric` trim（半选三点向中心收拢成横杠）；未选填充 `controlOffFillFor`（与开关轨道同源）；`Semantics(checked/mixed/enabled)`，禁用 `MiDimens.disabledOpacity`。
+- 三者几何/动效均标「**参考实现值、本库无素材**」（源自 flutter_miuix，无素材可量）。
+
 ## 性能：每帧模糊预算
 - `BackdropFilter` = 每帧全 QUAD 高斯；口径 = 一次 build 的**层数 + 面积 dp²**，钉在 `test/perf_budget_test.dart`。深色实测：手机 393 首页/分类 **2 层/75,701**、我的 6/35,799；平板 768 2/117,843、我的 6/52,142；桌面 1366 2/**~170,000**（顶栏 1120×**124** + 展开栏 176×177.1）、我的 6/92,174。阈值 78k / 122k / 175k。
 - 优化：① 深色顶栏跳过 0…63.6（α=1）② 胶囊行 4 filter→1（`_CapsuleStripClipper`）③ `ImageFilter` 按 σ 缓存 + 跳过 σ<0.5。**恒定 σ：层数降、面积升**。
@@ -81,6 +87,7 @@
 - 纵向滚动录屏里竖直边缘（水平剖面）不受运动模糊影响 → 优先取图标/头像左右缘。
 - **判据别被描边骗** → 沿列剖面找单行硬跳变。「是不是缩放」用另一轴固定特征判；「是不是阴影」看压暗沿 x 是否平坦（平坦 = scrim）。
 ### 布局
+- **`MiPopupRegistry` 变更通知必须在帧末**：构建期同步 `notifyListeners()` 会让宿主 `setState() called during build`（首帧即挂浮层必崩）。测试里浮层几何要 **pump 两帧**才生效。
 - **无 child 的 `DecoratedBox`/`Container` 松约束下取 `constraints.smallest`**（宽 0 不报错）→ 加 `SizedBox.expand()`。
 - **网格断点按「容器宽」标定**；**`MiPillTabBar` 在宽父级里会居中** → 包 `Align(centerStart)`。
 - **全屏页壳 Stack 子级一律 `Positioned`**（否则整页居中偏移）；内容自适应用 `Center(widthFactor: 1.0)`。
