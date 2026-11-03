@@ -8,7 +8,7 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
 import '../../../utils/glass_rim.dart';
-import '../../../utils/hover_feedback.dart';
+import '../../../utils/pressable.dart';
 import '../../../utils/squircle.dart';
 import 'pill_tab_bar_metrics.dart';
 
@@ -180,41 +180,36 @@ class MiPillTabBar extends StatelessWidget {
       // 度量的单层边缘 AA 一致，勿再外包 ClipRRect，两层 AA 叠乘会把边缘
       // 覆盖率压成 c²）。
       fills.add(
+        // 语义选中态（读屏可感知当前选中项）+ 三态反馈统一入口：点按 /
+        // Enter / Space 选中；悬停只给**未选中**胶囊（选中项已是近不透明
+        // 实心，再叠一层读不出变化，反而糊住选中态）；焦点环全项统一
+        //（Tab 每项一停，推导桌面语义）。
         Semantics(
           button: true,
           selected: selected,
           label: labels[i],
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => onTap(i),
-            // 悬停只给**未选中**胶囊：选中项已是近不透明实心，再叠一层读不出
-            // 变化，反而糊住选中态（叠色是 5.6% 的实色，不是 Opacity —— 不给
-            // 磨砂子树引入 saveLayer）。
-            child: MiHoverFeedback(
-              mode: mode,
-              enabled: !selected,
-              borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-              child: AnimatedContainer(
-                duration: fillDuration,
-                curve: Curves.easeOut,
-                width: widths[i],
-                height: MiPillTabMetrics.pillHeight,
-                decoration: ShapeDecoration(
-                  color:
-                      selected ? faded(palette.selectedFill) : unselectedFill,
-                  shape: const MiSquircleBorder(MiDimens.radiusPill),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  labels[i],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: MiTypography.pillLabel.copyWith(
-                    color: faded(
-                      selected
-                          ? palette.selectedLabel
-                          : palette.unselectedLabel,
-                    ),
+          child: MiPressable(
+            onPressed: () => onTap(i),
+            mode: mode,
+            hover: !selected,
+            borderRadius: BorderRadius.circular(MiDimens.radiusPill),
+            child: AnimatedContainer(
+              duration: fillDuration,
+              curve: Curves.easeOut,
+              width: widths[i],
+              height: MiPillTabMetrics.pillHeight,
+              decoration: ShapeDecoration(
+                color: selected ? faded(palette.selectedFill) : unselectedFill,
+                shape: const MiSquircleBorder(MiDimens.radiusPill),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                labels[i],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MiTypography.pillLabel.copyWith(
+                  color: faded(
+                    selected ? palette.selectedLabel : palette.unselectedLabel,
                   ),
                 ),
               ),

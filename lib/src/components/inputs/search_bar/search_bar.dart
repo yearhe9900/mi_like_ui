@@ -10,7 +10,7 @@ import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../utils/filter_cache.dart';
 import '../../../utils/glass_rim.dart';
-import '../../../utils/hover_feedback.dart';
+import '../../../utils/pressable.dart';
 import '../../../utils/squircle.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
@@ -155,16 +155,20 @@ class MiSearchBar extends StatelessWidget {
       child: bar,
     );
     if (onTap != null) {
-      // 悬停叠色铺在**整条**之上（圆角与栏体同档，避免出现方角）：
-      // 只对「点一下就进搜索」的形态有意义，可编辑形态由输入框自己给光标。
-      bar = MiHoverFeedback(
+      // 三态反馈统一入口：悬停叠色铺在**整条**之上（圆角与栏体同档，
+      // 避免方角）+ 点按进搜索（推导桌面语义同惯例）。
+      //
+      // **焦点环刻意不挂**（`focus: false`）：点按可点形态时，点击会把
+      // 焦点给到包装层（`Focus.hasFocus` 含后代聚合），随即切换的可编辑
+      // 形态又要 autoFocus 输入框 —— 两代焦点链互相干扰（预览实测：
+      // 暗色下点击后环被祖先聚合点亮、描边常驻）。搜索的键盘可达性走
+      // ⌘K / 宿主路径（示例层 MiSearchShortcuts），不占 Tab 停靠。
+      bar = MiPressable(
+        onPressed: onTap,
         mode: mode,
+        focus: false,
         borderRadius: BorderRadius.circular(MiDimens.radiusPill),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: bar,
-        ),
+        child: bar,
       );
     }
     return bar;

@@ -40,10 +40,15 @@ class _DemoAppState extends State<DemoApp> {
       initialRoute: '/',
       onGenerateRoute: (settings) => MiCardPageRoute<void>(
         settings: settings,
-        builder: (_) => DemoHome(
-          themeMode: _mode,
-          device: widget.device,
-          onThemeModeChanged: (m) => setState(() => _mode = m),
+        // 弹层单点渲染层：包在路由内容外 —— 页面内投放的 snackbar 等
+        // 浮层注册到宿主，不扰动页面自己的栈（Stack 中插会让后续
+        // 子树重建、滚动位置归零）。
+        builder: (_) => MiPopupHost(
+          child: DemoHome(
+            themeMode: _mode,
+            device: widget.device,
+            onThemeModeChanged: (m) => setState(() => _mode = m),
+          ),
         ),
       ),
     );

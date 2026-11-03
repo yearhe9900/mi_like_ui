@@ -69,6 +69,55 @@
   不再手写 `_pressed`），明暗与配色走 `MiTheme` + `MiSettingsPalette`；
   度量与配方在 `MiSettingsMetrics` / `MiSettingsPalette`（当前为推导值，
   升级为度量后原位替换）。demo 设置页已迁移，7 例交互 / 几何测试锁定。
+### Added（弹层基建）
+
+- **`MiPopupHost` / `MiPopup` / `MiPopupScope` —— 弹层单点渲染层**：
+  - 注册序即 z 序（后开在上，无 zIndex 状态机 —— 本库同时可见浮层 ≤ 2，
+    是相对 flutter_miuix 千行四件套的刻意裁剪）；不扰动页面栈（Stack
+    中插会让后续子树重建、滚动位置归零）；非模态条目自动包 `IgnorePointer`；
+  - `MiDialog` 内部经 `MiPopup` 注册（无宿主就地渲染 —— 既有用法与黄金图
+    零变化）；`MiPullUpPanel` 因绘制位契约（导航栏之下）刻意不入；
+  - demo 根部挂宿主；示例消息条从 Material `ScaffoldMessenger` 换到本库
+    `MiSnackbar`。
+
+### Added（组件：Snackbar / Switch / Slider / PreferenceTile）
+
+- **`MiSnackbar`** —— 贴屏底自动收起消息条（2.5s 常驻、滑入 300 / 滑出
+  200ms、可带动作钮、`MiSnackbar.show` 同类替换投放）。几何时序全推导
+  （`MiSnackbarMetrics` 注明口径）；配色零新造（表面 = 面板同值、墨色 =
+  弹框标题、动作 = 强调色）；
+- **`MiSwitch`** —— 52×32 轨道 + ⌀26 白钮，临界阻尼吸附弹簧
+  （`miSpring(1.0, 0.35)`，无过冲）；禁用降 0.38 透明（全推导，
+  `switch_metrics.dart` 注明口径）；
+- **`MiSlider`** —— 受控滑条：拖拽 `globalToLocal` 坐标换算取值（不累加
+  delta —— flutter_miuix 同款回归教训）、键盘 ← / → 一格、`divisions`
+  分档吸附（全推导）；
+- **`MiPreferenceTile`** —— 设置行：行高与弹框列表行同源、按压同 state
+  layer、尾随插槽吃 `MiSwitch`（`MiForm` 的行单元）；
+- 测试：`snackbar_test` / `switch_test` / `slider_test` /
+  `preference_tile_test` + 弹层基建契约用例（非模态不吃下层命中等）。
+
+### Added（可达性）
+
+- 主题卡 / 胶囊行经 `MiPressable` 补 Tab 焦点环与 Enter / Space 激活
+  （推导桌面语义，静止态零像素、黄金图零重拍）；`MiSearchBar` **刻意不做**
+  Tab 停靠 —— 点击给包装层的焦点被祖先聚合点亮环，与可编辑态 autoFocus
+  互相干扰（预览实测），搜索可达性走 ⌘K / 宿主路径。
+
+### Changed（磨砂审计）
+
+- `MiTransparencyTokens.blurSaturation` 预留 token（恒等 1.0）：
+  `BackdropFilter` 路线在当前 SDK（3.47）无色控组合入口（无
+  `ImageFilter.colorFilter` 工厂），记录接入条件，不硬造实现；
+- `MiFilterCache` 文档补两条审计：3σ 采样 margin 对本库不适用
+  （`BackdropFilter` 原生采样边界外邻域，快照纹理路线的坑）；缓存 key
+  即值（σ 纯函数，无 OS4 材质引用相等式的失效窗口）+ `filter_cache_test`。
+
+### Added（文档）
+
+- `.claude/skills/mi-like-ui/SKILL.md` —— AI 编码助手技能卡：API 速览、
+  度量驱动纪律、坑清单（真源仍是 README 与各 `*_metrics.dart` /
+  `theme/*_tokens.dart`）。
 
 ### Changed（demo）
 
