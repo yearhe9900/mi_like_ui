@@ -63,7 +63,7 @@ MiGlassNavBar(
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
 | 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用） |
-| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格 |
+| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格 |
 | 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、明暗模式切换、弹框入口 |
 | 首页点搜索栏 | `MiCardPageRoute` 推入搜索页（下层页左移视差 + 压暗） |
@@ -89,7 +89,7 @@ MiGlassNavBar(
 | `MiCheckbox` | 复选框（三态：开 / 关 / 半选，勾号淡入 + trim 划开；未选档与开关同源） |
 | `MiBottomSheet` | 底部弹窗（只圆上两角、弹簧滑入滑出、手柄下拉关闭、遮罩；宽屏限宽居中） |
 | `MiFloatingToolbar` | 悬浮工具栏（胶囊容器 + 固定几何投影 + 可选描边，只做容器） |
-| `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何与交互全推导：弹簧吸附 / 坐标换算取值 / 设置行） |
+| `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何与交互全推导：弹簧吸附 + 拖拽切换 / 坐标换算取值 / 设置行） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
@@ -581,6 +581,12 @@ MiCheckbox(
 
 - **`MiSwitch`**：52×32 轨道 + ⌀26 白钮，切换 = 临界阻尼吸附弹簧
   （`miSpring(1.0, 0.35)`，无过冲）；`onChanged(null)` = 禁用（降 0.38 透明）。
+  **点按与水平拖拽都能切换**：拖拽时钮体跟手（轨道色同步插值），松手越过
+  行程中点即吸附到另一端、未越过则弹回；拖拽被父级手势抢占同样弹回。
+  钮体在**按压 / 拖拽态放大 1.127**（参考实现值，来自 flutter_miuix 上游；
+  触屏点按没有悬停叠色，这是它的按压视觉），松开回原尺寸。RTL 下钮体
+  从右端起算、拖拽方向镜像。触感（`HapticFeedback`）不代发 —— 需要时
+  在 `onChanged` 里自行触发（与 `MiPullUpPanel` / `MiCheckbox` 同口径）。
 - **`MiSlider`**：4dp 轨道 + ⌀20 拇指，受控 `value/onChanged`；拖拽用
   **`globalToLocal` 坐标换算**取值（不用 `details.delta` 累加 —— 拖出
   边界会漂，flutter_miuix 同款回归教训）；键盘 ← / → 一格（全程 / 20），

@@ -104,9 +104,9 @@ void main() {
     // 进「我的」页，模式切换入口在页面顶部
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
-    expect(find.byType(Switch), findsOneWidget);
+    expect(find.byType(MiSwitch), findsOneWidget);
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(MiSwitch));
     await tester.pumpAndSettle();
 
     // 切到浅色：底色与导航栏配方整体翻转
@@ -118,7 +118,7 @@ void main() {
     );
 
     // 再切回深色
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(MiSwitch));
     await tester.pumpAndSettle();
     scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
     expect(scaffold.backgroundColor, const Color(0xFF08080A));
@@ -135,7 +135,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(MiSwitch));
     await tester.pumpAndSettle();
 
     await expectLater(find.byType(DemoHome), matchesGoldenFile('goldens/demo_light_mine.png'));

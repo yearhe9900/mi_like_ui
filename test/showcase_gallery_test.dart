@@ -55,6 +55,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 展示页的滚动体（页内 `ListView`；命中多个 `Scrollable`，取第一个）。
+  Finder showcaseScrollable() => find
+      .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
+      .first;
+
+  /// 逐行滚到可见再操作：吸顶头部会盖住顶缘，`ensureVisible` 的落点可能
+  /// 被头部 / 浮动底栏吃掉，这里按行步进滚动。
+  Future<void> revealRow(WidgetTester tester, Finder finder) async {
+    await tester.scrollUntilVisible(
+      finder,
+      120,
+      scrollable: showcaseScrollable(),
+    );
+    await tester.pumpAndSettle();
+  }
+
   group('「组件展示」组', () {
     testWidgets('搜索栏：静态态 + 输入态 + 取消钮随输入态 fade', (tester) async {
       await pumpShowcase(tester);
@@ -102,12 +118,49 @@ void main() {
       expect(find.text('WLAN'), findsOneWidget);
       expect(find.text('蓝牙'), findsOneWidget);
       expect(find.text('个人热点'), findsOneWidget);
-      expect(find.byType(Switch), findsOneWidget);
 
-      final before = tester.widget<Switch>(find.byType(Switch)).value;
-      await tester.tap(find.byType(Switch));
+      // 尾部开关已换成本库的 MiSwitch（不再是 Material Switch）。
+      final bluetoothRow = find.ancestor(
+        of: find.text('蓝牙'),
+        matching: find.byType(MiSettingsRow),
+      );
+      final wifiSwitch =
+          find.descendant(of: bluetoothRow, matching: find.byType(MiSwitch));
+      expect(wifiSwitch, findsOneWidget);
+
+      final before = tester.widget<MiSwitch>(wifiSwitch).value;
+      await tester.tap(wifiSwitch);
       await tester.pumpAndSettle();
-      expect(tester.widget<Switch>(find.byType(Switch)).value, !before);
+      expect(tester.widget<MiSwitch>(wifiSwitch).value, !before);
+    });
+
+    testWidgets('开关：开 / 关 / 禁用三态陈列都在', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '组件展示');
+
+      Finder switchOf(String label) => find.descendant(
+            of: find.ancestor(
+              of: find.text(label),
+              matching: find.byType(MiSettingsRow),
+            ),
+            matching: find.byType(MiSwitch),
+          );
+
+      await revealRow(tester, switchOf('已开启'));
+      expect(tester.widget<MiSwitch>(switchOf('已开启')).value, isTrue);
+      expect(tester.widget<MiSwitch>(switchOf('已关闭')).value, isFalse);
+
+      await revealRow(tester, find.text('禁用态（开关）'));
+      expect(
+        tester.widget<MiSwitch>(switchOf('禁用态（开关）')).onChanged,
+        isNull,
+        reason: 'onChanged 为 null = 禁用态',
+      );
+
+      await revealRow(tester, switchOf('已关闭'));
+      await tester.tap(switchOf('已关闭'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<MiSwitch>(switchOf('已关闭')).value, isTrue);
     });
 
     testWidgets('复选框：三态陈列，点按即切换（半选 → 全选）', (tester) async {
@@ -116,12 +169,6 @@ void main() {
 
       // 复选框一节在列表下方：逐行滚到可见再点（吸顶头部会盖住顶缘，
       // 直接 ensureVisible 的落点会被头部吃掉）。
-      final scrollable = find
-          .descendant(
-            of: find.byType(ListView),
-            matching: find.byType(Scrollable),
-          )
-          .first;
       Finder boxOf(String label) => find.descendant(
             of: find.ancestor(
               of: find.text(label),
@@ -129,22 +176,14 @@ void main() {
             ),
             matching: find.byType(MiCheckbox),
           );
-      Future<void> revealRow(String label) async {
-        await tester.scrollUntilVisible(
-          find.text(label),
-          120,
-          scrollable: scrollable,
-        );
-        await tester.pumpAndSettle();
-      }
 
-      await revealRow('全部同步');
+      await revealRow(tester, find.text('全部同步'));
       expect(tester.widget<MiCheckbox>(boxOf('全部同步')).value, isTrue);
       await tester.tap(boxOf('全部同步'));
       await tester.pumpAndSettle();
       expect(tester.widget<MiCheckbox>(boxOf('全部同步')).value, isFalse);
 
-      await revealRow('部分选中（半选）');
+      await revealRow(tester, find.text('部分选中（半选）'));
       expect(tester.widget<MiCheckbox>(boxOf('部分选中（半选）')).value, isNull);
       await tester.tap(boxOf('部分选中（半选）'));
       await tester.pumpAndSettle();
@@ -154,8 +193,8 @@ void main() {
         reason: '半选点一下即全选',
       );
 
-      await revealRow('禁用态');
-      expect(tester.widget<MiCheckbox>(boxOf('禁用态')).onChanged, isNull);
+      await revealRow(tester, find.text('禁用态（复选框）'));
+      expect(tester.widget<MiCheckbox>(boxOf('禁用态（复选框）')).onChanged, isNull);
     });
 
     testWidgets('三态反馈：按压计数走 MiPressable', (tester) async {

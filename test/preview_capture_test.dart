@@ -221,7 +221,7 @@ void main() {
     );
 
     // 浅色：同页切模式
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(MiSwitch));
     await tester.pumpAndSettle();
     await expectLater(
       find.byType(DemoHome),
@@ -253,7 +253,7 @@ void main() {
         // 模式切换入口在「我的」页顶部
         await tester.tap(find.text('我的').last);
         await tester.pumpAndSettle();
-        await tester.tap(find.byType(Switch));
+        await tester.tap(find.byType(MiSwitch));
         await tester.pumpAndSettle();
       }
       await expectLater(find.byType(DemoHome), matchesGoldenFile(file));
@@ -619,7 +619,7 @@ void main() {
         // 模式切换入口在「我的」页顶部，切完回首页
         await tester.tap(find.text('我的').last);
         await tester.pumpAndSettle();
-        await tester.tap(find.byType(Switch));
+        await tester.tap(find.byType(MiSwitch));
         await tester.pumpAndSettle();
         await tester.tap(find.text('首页').last);
         await tester.pumpAndSettle();

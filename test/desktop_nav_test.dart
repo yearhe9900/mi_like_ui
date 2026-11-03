@@ -638,7 +638,7 @@ void main() {
       // 切浅色：图标翻成深色（否则浅底上看不见）
       await tester.tap(find.text('我的').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(Switch));
+      await tester.tap(find.byType(MiSwitch));
       await tester.pumpAndSettle();
       expect(overlay().statusBarIconBrightness, Brightness.dark);
     });

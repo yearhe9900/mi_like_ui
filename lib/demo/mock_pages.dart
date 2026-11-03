@@ -273,8 +273,9 @@ class MockPage extends StatelessWidget {
                   value: themeMode == MiThemeMode.light ? '浅色' : '深色',
                   leading: const MiSettingsTile(Icons.light_mode_outlined, Color(0xFF7A5CFA)),
                   chevron: false,
-                  trailing: Switch(
+                  trailing: MiSwitch(
                     value: themeMode != MiThemeMode.light,
+                    themeMode: themeMode,
                     onChanged: (v) => onThemeModeChanged!(
                       v ? MiThemeMode.dark : MiThemeMode.light,
                     ),
@@ -1237,8 +1238,8 @@ class _ThemeCardGrid extends StatelessWidget {
 /// |----|------|
 /// | Logo 展示 | `nav_icons.dart` 全量 logo + 占位展示位（补可滚长度） |
 /// | 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 占位展示位 |
-/// | 组件展示 | 搜索栏两态 + 取消钮、设置行、桌面三态反馈、响应式网格 |
-/// | 弹层与效果 | 弹框（声明式 + 命令式 `showMiDialog`）、弹出面板、渐进模糊 |
+/// | 组件展示 | 搜索栏两态 + 取消钮、设置行、开关、复选框、悬浮工具栏、桌面三态反馈、响应式网格 |
+/// | 弹层与效果 | 弹框（声明式 + 命令式 `showMiDialog`）、弹出面板、底部弹窗、渐进模糊 |
 ///
 /// 占位展示位只出现在前两组（它们要靠网格长度演示「滚动内容从吸顶胶囊
 /// 后方经过」）；后两组内容本身足够长。
@@ -1786,11 +1787,14 @@ class _DemoSurface extends StatelessWidget {
 
 /// 「组件展示」分组（示例层）：库组件的**可交互**陈列。
 ///
-/// 四小节各演示一处 API 面：
+/// 六小节各演示一处 API 面：
 ///  * 搜索栏 —— 静态展示态（`onTap`）与输入态（`editable: true`）同列，
 ///    取消钮随输入态以 `fade` 0 → 1 淡入（alpha 乘进填充与叉号墨色，
 ///    **不套 Opacity**：圆钮内含 backdrop 磨砂，saveLayer 会让它变空）；
 ///  * 设置行 —— 值文 + chevron / 开关尾部 / 副标题三种尾部形态；
+///  * 开关 —— 开 / 关 / 禁用三态（点按或左右拖拽切换）；
+///  * 复选框 —— 开 / 关 / 半选 / 禁用四态；
+///  * 悬浮工具栏 —— 胶囊托盘容器（投影按形状绘制）；
 ///  * 桌面三态反馈 —— 按压 / 悬停 / 键盘焦点环（触屏素材没有样张，
 ///    按桌面惯例推导的那层）；
 ///  * 响应式网格 —— 列数随容器宽 4 / 6 / 8 切换。
@@ -1816,6 +1820,10 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
 
   /// 开关行（设置行尾部开关的演示态）。
   bool _wifi = true;
+
+  /// 开关陈列（开 / 关两态各一，第三行禁用）。
+  bool _switchOn = true;
+  bool _switchOff = false;
 
   /// 复选三态（开 / 关 / 半选）与一条禁用行。
   bool _checkOn = true;
@@ -1961,8 +1969,9 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
               leading:
                   const MiSettingsTile(Icons.bluetooth, Color(0xFF2F9BFF)),
               // 尾部开关：给出 trailing 时 chevron 自动让位。
-              trailing: Switch(
+              trailing: MiSwitch(
                 value: _wifi,
+                themeMode: mode,
                 onChanged: (v) => setState(() => _wifi = v),
               ),
               onTap: () => setState(() => _wifi = !_wifi),
@@ -1971,7 +1980,7 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
               themeMode: mode,
               label: '个人热点',
               subtitle: '允许其他设备通过 Wi-Fi 连接',
-              value: _wifi ? '已开启' : '已关闭',
+              value: _wifi ? '已连接' : '未连接',
               leading: const MiSettingsTile(
                 Icons.wifi_tethering,
                 Color(0xFF34C759),
@@ -1984,6 +1993,46 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
           context,
           '行 = 前导块 + 主文案（+ 副标题）+ 值文 / 尾部 + chevron；整行'
               '按压高亮带，三态反馈走 MiPressable。',
+        ),
+        const SizedBox(height: 14),
+        // ── 开关 ───────────────────────────────────────────────
+        const _SectionTitle('开关'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: '已开启',
+              chevron: false,
+              trailing: MiSwitch(
+                value: _switchOn,
+                themeMode: mode,
+                onChanged: (v) => setState(() => _switchOn = v),
+              ),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '已关闭',
+              chevron: false,
+              trailing: MiSwitch(
+                value: _switchOff,
+                themeMode: mode,
+                onChanged: (v) => setState(() => _switchOff = v),
+              ),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '禁用态（开关）',
+              chevron: false,
+              trailing: const MiSwitch(value: true, onChanged: null),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'MiSwitch：点按或左右拖拽切换（拖过行程中点即吸附，未过则弹回）；'
+              '按下 / 拖拽时钮体放大 1.127、轨道色随行程插值，松手弹簧吸附，'
+              '无涟漪；禁用整件降透明。',
         ),
         const SizedBox(height: 14),
         // ── 复选框 ─────────────────────────────────────────────
@@ -2023,7 +2072,7 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
             ),
             MiSettingsRow(
               themeMode: mode,
-              label: '禁用态',
+              label: '禁用态（复选框）',
               chevron: false,
               trailing: const MiCheckbox(value: true, onChanged: null),
             ),
