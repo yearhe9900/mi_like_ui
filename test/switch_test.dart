@@ -129,4 +129,167 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 400));
     expect(knobLeft(tester), before, reason: '禁用点按不应移动钮体');
   });
+
+  testWidgets('拖拽：越过行程中点即切换（受控上抛）', (tester) async {
+    setWindow(tester, const Size(400, 300));
+
+    var value = false;
+    bool? reported;
+    Widget build() => harness(
+          value: value,
+          onChanged: (v) {
+            value = v;
+            reported = v;
+          },
+        );
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    // 分步移动：单次大位移会被 touch slop（18）整段吃掉。
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(MiSwitch)),
+    );
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await gesture.moveBy(const Offset(15, 0));
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pump();
+
+    expect(reported, isTrue, reason: '拖过中点应回调 true');
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle(const Duration(milliseconds: 400));
+    expect(
+      knobLeft(tester),
+      moreOrLessEquals(
+        MiSwitchMetrics.knobInset + MiSwitchMetrics.travel,
+        epsilon: 0.05,
+      ),
+      reason: '归位到右端',
+    );
+  });
+
+  testWidgets('拖拽：未越过中点则弹回原位、不回调', (tester) async {
+    setWindow(tester, const Size(400, 300));
+
+    var calls = 0;
+    await tester.pumpWidget(
+      harness(value: false, onChanged: (_) => calls++),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(MiSwitch)),
+    );
+    await tester.pump();
+    // 总位移 25 → 扣掉 slop 后约 7dp，进度 ≈ 0.35 < 0.5。
+    await gesture.moveBy(const Offset(20, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(5, 0));
+    await tester.pump();
+    final dragging = knobLeft(tester);
+    expect(dragging, greaterThan(MiSwitchMetrics.knobInset),
+        reason: '拖拽中钮体应跟手');
+
+    await gesture.up();
+    await tester.pumpAndSettle(const Duration(milliseconds: 400));
+
+    expect(calls, 0, reason: '未过中点不切换');
+    expect(
+      knobLeft(tester),
+      moreOrLessEquals(MiSwitchMetrics.knobInset, epsilon: 0.05),
+      reason: '弹回左端',
+    );
+  });
+
+  testWidgets('按压：钮体放大到参考档，松开回原尺寸', (tester) async {
+    setWindow(tester, const Size(400, 300));
+
+    await tester.pumpWidget(harness(onChanged: (_) {}));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(MiSwitch.knobKey)).width,
+      moreOrLessEquals(MiSwitchMetrics.knobSize, epsilon: 0.01),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(MiSwitch)),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(MiSwitch.knobKey)).width,
+      moreOrLessEquals(
+        MiSwitchMetrics.knobSize * MiSwitchMetrics.knobScaleActive,
+        epsilon: 0.05,
+      ),
+      reason: '按下时放大到 knobScaleActive',
+    );
+
+    await gesture.up();
+    await tester.pumpAndSettle(const Duration(milliseconds: 400));
+    expect(
+      tester.getSize(find.byKey(MiSwitch.knobKey)).width,
+      moreOrLessEquals(MiSwitchMetrics.knobSize, epsilon: 0.01),
+      reason: '松开回原尺寸',
+    );
+  });
+
+  testWidgets('RTL：钮体从右端起算、拖拽方向镜像', (tester) async {
+    setWindow(tester, const Size(400, 300));
+
+    var value = false;
+    Widget build() => MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              body: Center(
+                child: MiSwitch(
+                  value: value,
+                  themeMode: MiThemeMode.dark,
+                  onChanged: (v) => value = v,
+                ),
+              ),
+            ),
+          ),
+        );
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    // 关态时钮体贴右缘：左缘 = 轨道宽 − 内缩 − 钮径。
+    final switchRect = tester.getRect(find.byType(MiSwitch));
+    double rightGap() =>
+        switchRect.right - tester.getRect(find.byKey(MiSwitch.knobKey)).right;
+    expect(
+      rightGap(),
+      moreOrLessEquals(MiSwitchMetrics.knobInset, epsilon: 0.05),
+      reason: 'RTL 关态钮体贴右缘',
+    );
+
+    // 向左拖（RTL 的「开」方向）。
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(MiSwitch)),
+    );
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await gesture.moveBy(const Offset(-15, 0));
+      await tester.pump();
+    }
+    await gesture.up();
+    await tester.pump();
+    expect(value, isTrue, reason: 'RTL 向左拖 = 开');
+
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle(const Duration(milliseconds: 400));
+    expect(
+      switchRect.right - tester.getRect(find.byKey(MiSwitch.knobKey)).right,
+      moreOrLessEquals(
+        MiSwitchMetrics.trackWidth -
+            MiSwitchMetrics.knobInset -
+            MiSwitchMetrics.knobSize,
+        epsilon: 0.05,
+      ),
+      reason: 'RTL 开态钮体贴左缘',
+    );
+  });
 }
