@@ -29,6 +29,9 @@ export 'src/theme/dialog_tokens.dart';
 export 'src/theme/pull_up_panel_tokens.dart';
 export 'src/theme/snackbar_tokens.dart';
 export 'src/theme/switch_tokens.dart';
+export 'src/theme/checkbox_tokens.dart';
+export 'src/theme/bottom_sheet_tokens.dart';
+export 'src/theme/floating_toolbar_tokens.dart';
 export 'src/theme/motion_tokens.dart';
 export 'src/theme/settings_tokens.dart';
 
@@ -57,6 +60,8 @@ export 'src/components/inputs/preference_tile/preference_tile.dart';
 export 'src/components/inputs/preference_tile/preference_tile_metrics.dart';
 export 'src/components/inputs/slider/slider.dart';
 export 'src/components/inputs/slider/slider_metrics.dart';
+export 'src/components/inputs/checkbox/checkbox.dart';
+export 'src/components/inputs/checkbox/checkbox_metrics.dart';
 export 'src/components/cards/theme_card/theme_card.dart';
 export 'src/components/cards/theme_card/theme_card_metrics.dart';
 export 'src/components/feedback/dialog/dialog.dart';
@@ -72,6 +77,12 @@ export 'src/components/feedback/snackbar/snackbar_metrics.dart';
 
 // ── 弹层基建（单点渲染层） ─────────────────────────────────────────────────
 export 'src/overlay/mi_popup_host.dart';
+
+// ── 浮层（Overlays：贴底抽屉 / 悬浮容器） ──────────────────────────────────
+export 'src/components/overlays/bottom_sheet/bottom_sheet.dart';
+export 'src/components/overlays/bottom_sheet/bottom_sheet_metrics.dart';
+export 'src/components/overlays/floating_toolbar/floating_toolbar.dart';
+export 'src/components/overlays/floating_toolbar/floating_toolbar_metrics.dart';
 
 // ── 效果层（不依赖具体页面形态） ──────────────────────────────────────────
 export 'src/components/effects/gradient_blur/gradient_blur.dart';

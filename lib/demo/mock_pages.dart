@@ -1817,6 +1817,11 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
   /// 开关行（设置行尾部开关的演示态）。
   bool _wifi = true;
 
+  /// 复选三态（开 / 关 / 半选）与一条禁用行。
+  bool _checkOn = true;
+  bool _checkOff = false;
+  bool? _checkMixed;
+
   /// 按压计数（三态反馈演示的点按反馈）。
   int _presses = 0;
 
@@ -1981,6 +1986,91 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
               '按压高亮带，三态反馈走 MiPressable。',
         ),
         const SizedBox(height: 14),
+        // ── 复选框 ─────────────────────────────────────────────
+        const _SectionTitle('复选框'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: '全部同步',
+              chevron: false,
+              trailing: MiCheckbox(
+                value: _checkOn,
+                themeMode: mode,
+                onChanged: (v) => setState(() => _checkOn = v),
+              ),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '仅 Wi-Fi 下同步',
+              chevron: false,
+              trailing: MiCheckbox(
+                value: _checkOff,
+                themeMode: mode,
+                onChanged: (v) => setState(() => _checkOff = v),
+              ),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '部分选中（半选）',
+              chevron: false,
+              trailing: MiCheckbox(
+                value: _checkMixed,
+                themeMode: mode,
+                onChanged: (v) => setState(() => _checkMixed = v),
+              ),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '禁用态',
+              chevron: false,
+              trailing: const MiCheckbox(value: true, onChanged: null),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'MiCheckbox：三态（开 / 关 / 半选 —— 半选点一下即全选）；勾号'
+              '先淡入再沿路径划开，半选是同一套路径点收拢成横杠；按压叠色'
+              '与弹框按钮同配方，禁用整件降透明。',
+        ),
+        const SizedBox(height: 14),
+        // ── 悬浮工具栏 ──────────────────────────────────────────
+        const _SectionTitle('悬浮工具栏'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: 'MiFloatingToolbar：胶囊容器（外留白 12 / 8、圆角 50、投影'
+              '几何固定、可选 0.75dp 描边）—— 只做容器，横 / 纵由内容自定；'
+              '容器吃掉点击、内部按钮照常响应。',
+          child: Center(
+            child: MiFloatingToolbar(
+              themeMode: mode,
+              showDivider: true,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final (icon, label) in const [
+                    (Icons.share_outlined, '分享'),
+                    (Icons.edit_outlined, '编辑'),
+                    (Icons.delete_outline, '删除'),
+                  ])
+                    SizedBox(
+                      width: 64,
+                      height: 56,
+                      child: MiActionEntry(
+                        icon: icon,
+                        label: label,
+                        themeMode: mode,
+                        onPressed: () => _demoSnack(context, '$label 被点击'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         // ── 桌面三态反馈 ────────────────────────────────────────
         const _SectionTitle('桌面三态反馈'),
         _DemoSurface(
@@ -2081,6 +2171,8 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
 ///    挂浮层与显隐状态；它挂**根导航器**（`showDialog` 同口径），
 ///    PC 套壳演示里会盖住整窗（这正是与壳内声明式浮层的差异）；
 ///  * 弹出面板 —— 从本组的触发行弹起（锚点 = 触发行圆心），自定义高 240；
+///  * 底部弹窗 —— 贴底滑入的抽屉（只圆上两角、手柄下拉 / 点遮罩收起），
+///    同样经弹层宿主渲染；
 ///  * 渐进模糊 —— [MiGradientBlur] 的独立用法（顶栏那条材质不依赖顶栏）。
 class _LayerShowcase extends StatefulWidget {
   const _LayerShowcase({
@@ -2110,6 +2202,9 @@ class _LayerShowcase extends StatefulWidget {
 class _LayerShowcaseState extends State<_LayerShowcase> {
   /// σ 缩放（渐进模糊演示）：1.0 = 度量材质；0.4 ≈ 满速滚动的省帧档。
   double _sigmaScale = 1.0;
+
+  /// 底部弹窗显隐（示例层）：遮罩点按 / 手柄下拉都交宿主置 false。
+  bool _sheet = false;
 
   /// 命令式弹框：await 拿下标，弹一条提示说明结果。
   Future<void> _imperativeDialog() async {
@@ -2245,9 +2340,61 @@ class _LayerShowcaseState extends State<_LayerShowcase> {
               '面板外不压暗、点面板外收回；高度 / 内容由调用方定义。',
         ),
         const SizedBox(height: 14),
+        // ── 底部弹窗 ──────────────────────────────────────
+        const _SectionTitle('底部弹窗'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: '贴底滑入（手柄 + 遮罩）',
+              leading: const MiSettingsTile(
+                Icons.vertical_align_bottom,
+                Color(0xFF34C759),
+              ),
+              onTap: () => setState(() => _sheet = true),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'MiBottomSheet：只圆上两角、弹簧滑入滑出（过冲 ~0.15%）；手柄下拉'
+              '到位或点遮罩触发 onDismissRequest，滑出收口后才回调 onDismissed；'
+              '宽屏限宽 640 居中。',
+        ),
+        const SizedBox(height: 14),
         // ── 渐进模糊 ──────────────────────────────────────
         const _SectionTitle('渐进模糊'),
         _GradientBlurDemo(themeMode: mode),
+        // 弹层本体：经 MiPopup 注册到外壳的 MiPopupHost（与弹框同一宿主）。
+        MiBottomSheet(
+          show: _sheet,
+          title: '选择操作',
+          themeMode: mode,
+          onDismissRequest: () => setState(() => _sheet = false),
+          child: MiActionEntryRow(
+            entries: [
+              MiActionEntry(
+                icon: Icons.share_outlined,
+                label: '分享',
+                themeMode: mode,
+                onPressed: () => setState(() => _sheet = false),
+              ),
+              MiActionEntry(
+                icon: Icons.edit_outlined,
+                label: '编辑',
+                themeMode: mode,
+                onPressed: () => setState(() => _sheet = false),
+              ),
+              MiActionEntry(
+                icon: Icons.delete_outline,
+                label: '删除',
+                themeMode: mode,
+                onPressed: () => setState(() => _sheet = false),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

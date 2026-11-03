@@ -6,6 +6,47 @@
 
 ## [Unreleased]
 
+### Added（组件：复选框）
+
+- **`MiCheckbox` —— 复选框**（三态 / 勾号 trim 动效）：26dp 圆形控件，
+  未选走全库「关闭档」墨量（`controlOffFillFor`，与开关轨道同源）、选中
+  走强调色，勾号以 `PathMetric` trim 逐段描出（√ 形状三点收拢，半选时
+  收成横杠，`alphaMs` / `trimMs` / `indetMs` 三段并行）；三态（按压 /
+  悬停 / 焦点）与 Enter / Space 激活收编自 `MiPressable`，按压叠色复用
+  `dialogPressedFill`，不缩放；`Semantics` 下发 checked / mixed / enabled，
+  禁用降透明至 `MiDimens.disabledOpacity`；9 例几何 / 交互 / 语义 / 键盘
+  测试锁定。几何与动效标注为**参考实现值**（本库无素材）。
+
+### Added（浮层：底部弹窗 / 悬浮工具栏）
+
+- **`MiBottomSheet` —— 底部弹窗**：`show` 驱动的声明式贴底抽屉，经
+  `MiPopup` 渲染、遮罩按滑入进度淡入（`dialogScrimProgressFor`）；弹簧
+  展开（`miSpring(damping: 0.9, response: 0.38)`，约 273ms）按自身高度
+  做 `FractionalTranslation` 滑入，不跑布局也不需预先量高；手柄下拉抽屉
+  跟手（`dragResistance` 阻尼回弹），超过 `dismissDistance` 或甩速过
+  `flingVelocity` 才请求关闭，宿主不接则自动弹回；只圆上两角
+  （`MiSquircleBorder(topOnly: true)`，G2 连续曲率）；宽屏 `maxWidth` 640
+  居中、底部让开安全区与键盘内缩。
+- **`MiFloatingToolbar` —— 悬浮工具栏**：托盘式胶囊容器（`cornerRadius`
+  50），内容自定、几何固定（外留白 12/8、投影 `blurRadius` 10 无偏移、
+  可选 0.75dp 描边），投影用 `MiSquircleShadowPainter` 按形状绘制（非
+  `BoxShadow` 矩形，故圆角处不漏影）；表面吃点击不穿透。
+- **`MiPopupRegistry` 通知改推到帧末**：注册 / 注销 / 刷新在 build 期不再
+  同步 `notifyListeners`（否则「首帧即挂浮层」会在宿主上触发
+  `setState() called during build`），合帧后统一通知。
+
+### Changed（基建）
+
+- `MiSquircle.pathOf` / `addRect` / `MiSquircleClipper` 增加 `topOnly`
+  （只圆上两角，弹窗贴底形态用）；`MiSquircleBorder` 增加 `topOnly` 与
+  `side`（可选描边，`BorderSide.none` 时不绘制），相等性与
+  `shouldReclip` 一并纳入。
+- `MiDimens.disabledOpacity`（0.38）上提为全库禁用档，开关 metric 改为
+  同源转发，调用点零改动；`MiTransparencyTokens` 新增
+  `controlOffFillAlpha` / `controlOffFillFor`（开关轨道与复选框共用的
+  「关闭档」墨量）、`dialogScrimProgressFor`（遮罩带进度）、
+  `sheetHandleFor`（弹窗手柄，含按压加深档）。
+
 ### Changed（demo）
 
 - **「分类」页占位组落地为真实组件陈列**：后两个胶囊分组原为「示例三 /

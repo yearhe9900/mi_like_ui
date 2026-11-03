@@ -9,7 +9,7 @@
 ## 特性
 
 - **成套组件**：玻璃悬浮底部 / 侧边导航栏、胶囊标签行、胶囊按钮、搜索栏、
-  大标题折叠顶栏、渐进模糊、主题卡片、弹框
+  大标题折叠顶栏、渐进模糊、主题卡片、弹框、底部弹窗、悬浮工具栏、复选框
 - **连续圆角**：全库圆角为 Squircle（G2 连续曲率，HyperOS / iOS 标志性
   角形，边缘高光不打折），半径语义与度量值不变
 - **明暗双模式**：全部组件提供深 / 浅两套配方，`MiThemeMode` 统一切换
@@ -63,8 +63,8 @@ MiGlassNavBar(
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
 | 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用） |
-| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格 |
-| 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
+| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格 |
+| 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、明暗模式切换、弹框入口 |
 | 首页点搜索栏 | `MiCardPageRoute` 推入搜索页（下层页左移视差 + 压暗） |
 
@@ -86,6 +86,9 @@ MiGlassNavBar(
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp）；命令式 `showMiDialog` 返回被点下标 |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
 | `MiSnackbar` | 轻量消息条（自动收起、同类替换、可带动作钮；几何全推导） |
+| `MiCheckbox` | 复选框（三态：开 / 关 / 半选，勾号淡入 + trim 划开；未选档与开关同源） |
+| `MiBottomSheet` | 底部弹窗（只圆上两角、弹簧滑入滑出、手柄下拉关闭、遮罩；宽屏限宽居中） |
+| `MiFloatingToolbar` | 悬浮工具栏（胶囊容器 + 固定几何投影 + 可选描边，只做容器） |
 | `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何与交互全推导：弹簧吸附 / 坐标换算取值 / 设置行） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
@@ -507,6 +510,69 @@ MiSnackbar.show(context, message: '已添加到收藏', actionLabel: '撤销',
 `MiSnackbar` 几何与时序全为推导值（`MiSnackbarMetrics` 注明口径），
 配色不新造色值（表面 = 弹出面板同值、墨色 = 弹框标题墨色、动作 = 强调色）。
 
+### 底部弹窗与悬浮工具栏（MiBottomSheet / MiFloatingToolbar）
+
+**`MiBottomSheet`**：贴底滑入的模态抽屉 —— 只圆上两角、带拖拽手柄，声明式
+显隐（`show` 唯一开关），经 `MiPopupHost` 渲染（`MiDialog` 同一宿主，z 序 =
+注册序）。
+
+```dart
+MiBottomSheet(
+  show: _sheet,
+  title: '选择操作',
+  onDismissRequest: () => setState(() => _sheet = false), // 遮罩点按 / 下拉到位
+  onDismissed: () {},                                   // 滑出收口后才回调
+  child: MyActions(),
+);
+```
+
+- **动效**：滑入 / 滑出同一条弹簧（ζ ≈ 0.9、≈0.38s 收敛、过冲 ~0.15%）；
+  位移按**自身高度**做比例平移（`FractionalTranslation`，短抽屉与长抽屉观感
+  一致，且不跑布局）。滑出**收口后**才回调 `onDismissed` 并注销弹层 —— 不
+  提前自毁。
+- **下拉**：手柄是唯一拖拽把手（内容区留给内部滚动，整面拖会与滚动抢手势）。
+  速度 > 800dp/s 或位移 > 150dp 触发 `onDismissRequest`；上拉受阻尼（抽屉已
+  贴底），禁用下拉时下拉也只是阻尼回弹。
+- **几何**：圆角 28、左右内缩 24、手柄 45×4（承托区 24）、标题行上下 6 / 12；
+  宽屏限宽 **640** 居中。**数值取自 `flutter_miuix` 的参考实现（源自 HyperOS
+  组件规格），本库无抽屉素材** —— `MiBottomSheetMetrics` 逐项标注「参考实现
+  值」，素材到位后复核。
+- **配色**：不新造色值 —— 表面 = 系统浮层表面档（暗 #2C2C2C / 亮 #FFFFFF，
+  与弹出面板、Snackbar 同源）、标题墨色 = 弹框标题、遮罩 = 弹框遮罩档（随
+  滑入进度淡入）、手柄 = onSurface @0.20（按压 @0.35）。
+
+**`MiFloatingToolbar`**：浮在内容之上的胶囊容器，**只做容器**（横 / 纵由
+`child` 自定），外留白 12 / 8、圆角 50（半径大于半高时按胶囊画真半圆端头）、
+投影几何**固定**（blur 10 / 零偏移，`showShadow` 只决定画不画）、可选 0.75dp
+描边。容器带 opaque 命中行为：点空白处不穿透到背后内容，内部按钮仍正常胜出。
+投影走 squircle 路径投影（`MaskFilter.blur`）而非 elevation 语义，也不引
+saveLayer —— 放在含磨砂的页面里不影响下层 `BackdropFilter`。
+
+### 复选框（MiCheckbox）
+
+⌀26 圆底 + 勾号，三态：`true` 开 / `false` 关 / `null` **半选**。
+
+```dart
+MiCheckbox(
+  value: _agreed,                              // null = 半选
+  onChanged: (v) => setState(() => _agreed = v), // 回调恒给确定态
+);
+```
+
+- **连续变形**：开态勾号先淡入（150ms）再沿路径划开（trim 300ms、区间
+  0.186…0.803）；半选是同一套路径点收拢成横杠（200ms）—— 三态之间没有跳变。
+- **点按语义**：`false → true → false`，半选 `null → true`（点一下即全选），
+  因此 `onChanged` 入参是 `bool` 而非 `bool?`。
+- **反馈**：按压 = 圆底叠按压色（与弹框按钮同一配方 12% / 150ms，**不缩放**）；
+  悬停叠色与键盘焦点环走 `MiPressable`；禁用（`onChanged` 为 null）= 降透明
+  `MiDimens.disabledOpacity`（与开关 / 滑条同档）。
+- **不发震动**：勾选是否震属业务语义，由调用方在 `onChanged` 里自行
+  `HapticFeedback`（与 `MiPullUpPanel` 不代发触感同一口径）。
+- **配色**：选中 = `MiColors.accent` + 白勾；未选 = onSurface @12%
+  （`MiTransparencyTokens.controlOffFillFor`，与开关关闭轨**同一档** —— 两件
+  并排时未选态墨量必须一致）。**几何取自 `flutter_miuix` 参考实现**（⌀26、
+  视口 23 的路径点、笔画 9%），本库无复选框素材，`MiCheckboxMetrics` 已标注。
+
 ### 表单控件（推导档：MiSwitch / MiSlider / MiPreferenceTile）
 
 触屏素材无开关 / 滑条 / 设置行样张 —— 三件的几何与交互**全为推导**
@@ -916,6 +982,9 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiThemeCard` — 主题卡片
 - [x] `MiDialog` — 弹框（含纵向操作列表形态）
 - [x] `MiPullUpPanel` — 弹出面板（按钮弹起 / 弹簧动效）
+- [x] `MiBottomSheet` — 底部弹窗（弹簧滑入 / 手柄下拉 / 只圆上两角）
+- [x] `MiFloatingToolbar` — 悬浮工具栏（胶囊托盘 + 按形状投影）
+- [x] `MiCheckbox` — 复选框（三态 / 勾号 trim 动效）
 - [x] `MiCardPageRoute` — 页面推入转场
 - [x] `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` — 设置分组卡片与行
 - [x] 响应式工具 — `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints`

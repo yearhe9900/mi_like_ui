@@ -110,13 +110,60 @@ void main() {
       expect(tester.widget<Switch>(find.byType(Switch)).value, !before);
     });
 
+    testWidgets('复选框：三态陈列，点按即切换（半选 → 全选）', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '组件展示');
+
+      // 复选框一节在列表下方：逐行滚到可见再点（吸顶头部会盖住顶缘，
+      // 直接 ensureVisible 的落点会被头部吃掉）。
+      final scrollable = find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      Finder boxOf(String label) => find.descendant(
+            of: find.ancestor(
+              of: find.text(label),
+              matching: find.byType(MiSettingsRow),
+            ),
+            matching: find.byType(MiCheckbox),
+          );
+      Future<void> revealRow(String label) async {
+        await tester.scrollUntilVisible(
+          find.text(label),
+          120,
+          scrollable: scrollable,
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await revealRow('全部同步');
+      expect(tester.widget<MiCheckbox>(boxOf('全部同步')).value, isTrue);
+      await tester.tap(boxOf('全部同步'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<MiCheckbox>(boxOf('全部同步')).value, isFalse);
+
+      await revealRow('部分选中（半选）');
+      expect(tester.widget<MiCheckbox>(boxOf('部分选中（半选）')).value, isNull);
+      await tester.tap(boxOf('部分选中（半选）'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<MiCheckbox>(boxOf('部分选中（半选）')).value,
+        isTrue,
+        reason: '半选点一下即全选',
+      );
+
+      await revealRow('禁用态');
+      expect(tester.widget<MiCheckbox>(boxOf('禁用态')).onChanged, isNull);
+    });
+
     testWidgets('三态反馈：按压计数走 MiPressable', (tester) async {
       await pumpShowcase(tester);
       await switchTab(tester, '组件展示');
 
       // 三态反馈一节在列表下方：先滚到可见。
-      await tester.drag(find.byType(ListView), const Offset(0, -420));
-      await tester.pumpAndSettle();
+      await reveal(tester, find.text('按我'));
 
       expect(find.text('按我'), findsOneWidget);
       await tester.tap(find.text('按我'));
@@ -223,6 +270,26 @@ void main() {
       await tester.tapAt(const Offset(196, 300));
       await tester.pumpAndSettle();
       expect(find.byType(MiPullUpPanel), findsNothing);
+    });
+
+    testWidgets('底部弹窗：贴底滑入、点遮罩收起', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '弹层与效果');
+      await reveal(tester, find.text('贴底滑入（手柄 + 遮罩）'));
+
+      expect(find.byType(MiBottomSheet), findsOneWidget);
+      // 未打开时不渲染任何层。
+      expect(find.byKey(MiBottomSheet.surfaceKey), findsNothing);
+
+      await tester.tap(find.text('贴底滑入（手柄 + 遮罩）'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(MiBottomSheet.surfaceKey), findsOneWidget);
+      expect(find.text('选择操作'), findsOneWidget);
+
+      // 点遮罩（抽屉之上）→ 宿主置 show false → 滑出收口后注销。
+      await tester.tapAt(const Offset(196, 120));
+      await tester.pumpAndSettle();
+      expect(find.byKey(MiBottomSheet.surfaceKey), findsNothing);
     });
 
     testWidgets('渐进模糊：σ 缩放滑杆改 MiGradientBlur.sigmaScale', (tester) async {
