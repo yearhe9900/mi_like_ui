@@ -238,6 +238,10 @@ class MockPage extends StatelessWidget {
         return _ShowcasePage(
           themeMode: themeMode,
           onSearchActiveChanged: onSearchActiveChanged,
+          // 弹层演示入口（「弹层与效果」组）：与「我的」页共用外壳的
+          // 浮层挂载点 —— 弹框画在机身壳**内**（PC 套壳演示里不会盖住整窗）。
+          onShowDialog: onShowDialog,
+          onShowListDialog: onShowListDialog,
         );
       default:
         // 设置页风格（参考素材：系统设置页明暗截图）：顶层页形态
@@ -1227,31 +1231,55 @@ class _ThemeCardGrid extends StatelessWidget {
 /// 搜索栏 / 胶囊行及其间隙）盖在**同一条渐进磨砂**下，零件不再各绘 backdrop。
 ///
 /// 胶囊分类标签是框架组件 [MiPillTabBar]（明暗完整素材度量），用来切分
-/// 组件分组；下方网格是各组件的展示位 —— 「Logo 展示」组前 N 位（N =
-/// `nav_icons.dart` 全量 logo 数）展示全部真实框架 logo，「按钮展示」组先陈列
-/// `MiButton` 按钮本体（关注 / 已关注 / 禁用三态），各组其余铺占位补足
-/// 可滚长度，其它分组为示例占位（渐变圆角方块 + 抽象图形 + 「示例组件N」）。
+/// 组件分组。四组都是**真实组件陈列**（不再有「示例组件N」占位组）：
+///
+/// | 组 | 内容 |
+/// |----|------|
+/// | Logo 展示 | `nav_icons.dart` 全量 logo + 占位展示位（补可滚长度） |
+/// | 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 占位展示位 |
+/// | 组件展示 | 搜索栏两态 + 取消钮、设置行、桌面三态反馈、响应式网格 |
+/// | 弹层与效果 | 弹框（声明式 + 命令式 `showMiDialog`）、弹出面板、渐进模糊 |
+///
+/// 占位展示位只出现在前两组（它们要靠网格长度演示「滚动内容从吸顶胶囊
+/// 后方经过」）；后两组内容本身足够长。
 ///
 /// 吸顶展示：网格上滚时从胶囊后方经过，借胶囊的半透明磨砂直观展示
 /// 透明/透射效果。
 class _ShowcasePage extends StatefulWidget {
-  const _ShowcasePage({required this.themeMode, this.onSearchActiveChanged});
+  const _ShowcasePage({
+    required this.themeMode,
+    this.onSearchActiveChanged,
+    this.onShowDialog,
+    this.onShowListDialog,
+  });
 
   final MiThemeMode themeMode;
   final ValueChanged<bool>? onSearchActiveChanged;
+
+  /// 弹框演示入口（demo 功能）：由外壳挂浮层（机身壳内），语义同 [MockPage]。
+  final ValueChanged<MiDialogPosition>? onShowDialog;
+
+  /// 操作列表弹框入口（demo 功能），语义同 [MockPage]。
+  final VoidCallback? onShowListDialog;
 
   @override
   State<_ShowcasePage> createState() => _ShowcasePageState();
 }
 
 class _ShowcasePageState extends State<_ShowcasePage> {
-  /// 分类胶囊标签（对应截图 推荐/背屏/小部件/主题 的位置）：前两个按
-  /// 分组内容命名（Logo 展示 / 按钮展示），后两个仍是占位示例。
-  static const List<String> _tabs = ['Logo 展示', '按钮展示', '示例三', '示例四'];
+  /// 分类胶囊标签（对应参考截图 推荐 / 背屏 / 小部件 / 主题 的位置）：
+  /// 四组都是真实组件陈列（前两组另有占位展示位补可滚长度）。
+  static const List<String> _tabs = [
+    'Logo 展示',
+    '按钮展示',
+    '组件展示',
+    '弹层与效果',
+  ];
 
-  /// 每个分类下的展示位数量（示例内容）；取足够行数使网格溢出可滚，
-  /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明/磨砂透射。
-  static const List<int> _counts = [32, 32, 32, 32];
+  /// 前两组占位展示位数量（示例内容）：取足够行数使网格溢出可滚，
+  /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明 / 磨砂透射。
+  /// 后两组（组件展示 / 弹层与效果）内容本身可滚，不用占位。
+  static const List<int> _counts = [32, 32, 0, 0];
 
   /// 「Logo 展示」组的 logo 名称（与 [_logos] 顺序一致；`nav_icons.dart`
   /// 全量，含顶栏返回箭头与竖点「更多」）。
@@ -1281,6 +1309,23 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       ];
 
   int _tab = 0;
+
+  /// 弹出面板演示（「弹层与效果」组，从组内按钮弹起）：`_panel` = 面板挂载
+  /// （含收回动画进行中）；点面板外或经控制器收回，收口后卸载。
+  bool _panel = false;
+  final _panelController = MiPullUpPanelController();
+
+  /// 面板触发按钮（面板唤起锚点：它的圆心即缩放原点）。
+  final GlobalKey _panelTriggerKey = GlobalKey();
+
+  /// 触发按钮圆心（全局坐标，面板唤起锚点）。
+  Offset? get _panelAnchor {
+    final box = _panelTriggerKey.currentContext?.findRenderObject();
+    if (box is RenderBox && box.attached && box.hasSize) {
+      return box.localToGlobal(box.size.center(Offset.zero));
+    }
+    return null;
+  }
 
   /// 搜索态（与首页同一套交互，见 `MiTopBar.searchActive`）。
   bool _searching = false;
@@ -1346,6 +1391,80 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       name: _tileNames[k % _tileNames.length],
     );
   }
+
+  /// 分组内容（四组均为真实组件陈列，见类文档的分组表）。
+  ///
+  /// 前两组带占位展示位网格（补可滚长度，吸顶磨砂要有内容从后方经过）；
+  /// 后两组内容本身可滚。
+  List<Widget> _tabBody({
+    required bool logoMode,
+    required List<CustomPainter> logos,
+    required int count,
+  }) {
+    switch (_tab) {
+      case 0:
+        return [
+          const _SectionTitle('Logo 展示'),
+          _logoGrid(logoMode: logoMode, logos: logos, count: count),
+          const SizedBox(height: 20),
+        ];
+      case 1:
+        return [
+          _ButtonShowcase(themeMode: widget.themeMode),
+          const _SectionTitle('展示位'),
+          _logoGrid(logoMode: logoMode, logos: logos, count: count),
+          const SizedBox(height: 20),
+        ];
+      case 2:
+        return [
+          _ComponentShowcase(themeMode: widget.themeMode),
+          const SizedBox(height: 20),
+        ];
+      default:
+        return [
+          _LayerShowcase(
+            themeMode: widget.themeMode,
+            onShowDialog: widget.onShowDialog,
+            onShowListDialog: widget.onShowListDialog,
+            panelTriggerKey: _panelTriggerKey,
+            // 面板已在挂载中（收回动画未收口）时不再重复唤起。
+            onShowPanel: () {
+              if (_panel) return;
+              HapticFeedback.lightImpact();
+              setState(() => _panel = true);
+            },
+          ),
+          const SizedBox(height: 20),
+        ];
+    }
+  }
+
+  /// 列表底部让位：手机 / 窄窗有**浮动底栏**（栏体浮起 24.2 + 栏高 55.4，
+  /// ≈ 80），末节要能滚出栏外 → 100；宽屏导航是侧栏、不占底部 → 20。
+  double _listBottomInset(BuildContext context) =>
+      MiViewport.of(context).isCompact ? 100 : 20;
+
+  /// 占位展示位网格（Logo 组 / 按钮组补可滚长度）：列数按容器宽断点
+  /// 切换（4 / 6 / 8），行距 18 沿用原「每行 bottom: 18」的节奏。
+  Widget _logoGrid({
+    required bool logoMode,
+    required List<CustomPainter> logos,
+    required int count,
+  }) =>
+      MiResponsiveGrid(
+        compactColumns: 4,
+        mediumColumns: 6,
+        expandedColumns: 8,
+        // 内容宽断点（同主题卡网格）：369 → 4 列、776 → 6 列、
+        // 舞台 952 → 8 列。
+        compactMax: 520,
+        mediumMax: 800,
+        itemSpacing: 12,
+        runSpacing: 18,
+        children: [
+          for (var i = 0; i < count; i++) _tileAt(i, logoMode, logos),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1436,37 +1555,21 @@ class _ShowcasePageState extends State<_ShowcasePage> {
                   makeBar(1.0).occupiedHeight(context) +
                       MiTopBarMetrics.headerContentGap,
                   inset,
-                  0,
+                  // 底部让开浮动底栏：栏浮在内容之上（内容从栏后滚过），
+                  // 滚到底时末节不能压在玻璃栏下 —— 「弹层与效果」组的
+                  // 面板触发行就在列表末尾。
+                  _listBottomInset(context),
                 ),
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 分组头：「按钮展示」组先陈列按钮本体，占位网格另起一节；
-                    // 其余组单节（Logo 组 / 占位组）。
-                    if (_tab == 1) ...[
-                      _ButtonShowcase(themeMode: widget.themeMode),
-                      const _SectionTitle('组件展示'),
-                    ] else
-                      _SectionTitle(logoMode ? 'Logo 展示' : '组件展示'),
-                    // 展示位网格：列数按容器宽断点切换（4 / 6 / 8），
-                    // 行距 18 沿用原「每行 bottom: 18」的节奏。
-                    MiResponsiveGrid(
-                      compactColumns: 4,
-                      mediumColumns: 6,
-                      expandedColumns: 8,
-                      // 内容宽断点（同主题卡网格）：369 → 4 列、776 → 6 列、
-                      // 舞台 952 → 8 列。
-                      compactMax: 520,
-                      mediumMax: 800,
-                      itemSpacing: 12,
-                      runSpacing: 18,
-                      children: [
-                        for (var i = 0; i < count; i++)
-                          _tileAt(i, logoMode, logos),
-                      ],
+                    // 分组内容由 [_tabBody] 按胶囊下标给出。
+                    ..._tabBody(
+                      logoMode: logoMode,
+                      logos: logos,
+                      count: count,
                     ),
-                    const SizedBox(height: 20),
                   ],
                 ),
               ],
@@ -1479,6 +1582,22 @@ class _ShowcasePageState extends State<_ShowcasePage> {
               key: const ValueKey('showcaseSearchCover'),
               child: ColoredBox(
                 color: MiColors.pageBackgroundFor(widget.themeMode),
+              ),
+            ),
+          // 弹出面板（「弹层与效果」组的触发按钮唤起）：插在吸顶头部之下
+          // 绘制（面板贴底部、与头部区不重叠）；子级带 key —— 增删时按 key
+          // 配对，后面的顶栏子树不重建。
+          if (_panel)
+            Positioned.fill(
+              key: const ValueKey('showcasePanelOverlay'),
+              child: MiPullUpPanel(
+                // 自定义长高：演示传固定 240（null = 内容自适应）。
+                height: 240,
+                anchorPoint: _panelAnchor,
+                themeMode: widget.themeMode,
+                controller: _panelController,
+                onDismissed: () => setState(() => _panel = false),
+                child: _PanelDemoContent(themeMode: widget.themeMode),
               ),
             ),
           // 吸顶头部：搜索框 + 胶囊分类标签悬浮在滚动内容之上
@@ -1596,6 +1715,716 @@ class _ButtonShowcaseState extends State<_ButtonShowcase> {
     );
   }
 }
+
+// ── 「组件展示」组（示例层）：库组件的可交互陈列 ────────────────────────────
+
+/// 分组说明小字（示例层）：每个小节下方的口径说明。
+Widget _demoNote(BuildContext context, String text) {
+  final fg = Theme.of(context).colorScheme.onSurface;
+  return Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 11,
+        height: 1.5,
+        color: fg.withValues(alpha: 0.55),
+      ),
+    ),
+  );
+}
+
+/// 展示底座（示例层）：圆角中性面 + 下方说明文字 —— 「组件展示」组的
+/// 陈列容器（设置行 / 弹框这类自带卡片的组件直接用 [MiSettingsCard]，
+/// 不再套一层底）。
+///
+/// 底色是**演示层中性面**（不是库组件 token）：只是给组件一块干净的
+/// 陈列底；组件自带的表面（搜索栏填充 / 焦点环 …）仍在其上自绘，
+/// 正好能看出「组件材质」与「页面底」的叠压关系。
+class _DemoSurface extends StatelessWidget {
+  const _DemoSurface({
+    required this.themeMode,
+    required this.caption,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  final MiThemeMode themeMode;
+  final String caption;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = themeMode == MiThemeMode.light;
+    final fg = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: light ? Colors.white : const Color(0xFF1C1C1E),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: child,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          caption,
+          style: TextStyle(
+            fontSize: 11,
+            height: 1.5,
+            color: fg.withValues(alpha: 0.55),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 「组件展示」分组（示例层）：库组件的**可交互**陈列。
+///
+/// 四小节各演示一处 API 面：
+///  * 搜索栏 —— 静态展示态（`onTap`）与输入态（`editable: true`）同列，
+///    取消钮随输入态以 `fade` 0 → 1 淡入（alpha 乘进填充与叉号墨色，
+///    **不套 Opacity**：圆钮内含 backdrop 磨砂，saveLayer 会让它变空）；
+///  * 设置行 —— 值文 + chevron / 开关尾部 / 副标题三种尾部形态；
+///  * 桌面三态反馈 —— 按压 / 悬停 / 键盘焦点环（触屏素材没有样张，
+///    按桌面惯例推导的那层）；
+///  * 响应式网格 —— 列数随容器宽 4 / 6 / 8 切换。
+///
+/// 全部是真实组件，不再是「示例组件N」渐变占位。
+class _ComponentShowcase extends StatefulWidget {
+  const _ComponentShowcase({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  State<_ComponentShowcase> createState() => _ComponentShowcaseState();
+}
+
+class _ComponentShowcaseState extends State<_ComponentShowcase> {
+  final TextEditingController _query = TextEditingController();
+  final FocusNode _queryFocus = FocusNode();
+  final FocusNode _ringFocus = FocusNode();
+
+  /// 输入态（聚焦或有输入）：取消钮才可见 —— 与顶栏搜索态同一契约。
+  bool _focused = false;
+  String _text = '';
+
+  /// 开关行（设置行尾部开关的演示态）。
+  bool _wifi = true;
+
+  /// 按压计数（三态反馈演示的点按反馈）。
+  int _presses = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _queryFocus.addListener(() {
+      if (mounted) setState(() => _focused = _queryFocus.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _queryFocus.dispose();
+    _ringFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.themeMode;
+    final light = mode == MiThemeMode.light;
+    final ink = MiColors.foregroundFor(mode);
+    final searching = _focused || _text.isNotEmpty;
+    // 陈列面（chip 底）：白面上浅一档 / 黑面上深一档。
+    final chipColor =
+        light ? const Color(0xFFF2F2F7) : const Color(0xFF2C2C2E);
+
+    // 三态反馈的一格：64 高的陈列块 + 下方说明。
+    Widget feedbackTile(String caption, Widget chip) => Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          chip,
+          const SizedBox(height: 8),
+          Text(
+            caption,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10.5,
+              height: 1.4,
+              color: ink.withValues(alpha: 0.55),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Widget chipBox(String label) => Container(
+      height: 64,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: chipColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w500,
+          color: ink,
+        ),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── 搜索栏 ─────────────────────────────────────────────
+        const _SectionTitle('搜索栏'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: 'MiSearchBar：上为静态展示态（点按经 onTap），下为输入态'
+              '（editable: true）+ 取消钮 —— 聚焦或有输入时 fade 0 → 1 淡入'
+              '（alpha 乘进填充与叉号墨色，不套 Opacity：圆钮内含 backdrop '
+              '磨砂，saveLayer 会让它变空）。',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              MiSearchBar(
+                hint: '搜索主题 / 壁纸 / 图标',
+                themeMode: mode,
+                onTap: () => _demoSnack(context, '静态搜索栏被点击'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: MiSearchBar(
+                      hint: '点这里输入',
+                      themeMode: mode,
+                      editable: true,
+                      controller: _query,
+                      focusNode: _queryFocus,
+                      onChanged: (v) => setState(() => _text = v),
+                    ),
+                  ),
+                  const SizedBox(width: MiDimens.spaceMd),
+                  // 取消钮常驻排版、只动 fade（结构不变，磨砂不掉）。
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: searching ? 1 : 0),
+                    duration: const Duration(milliseconds: 200),
+                    builder: (context, fade, _) => MiSearchCancelButton(
+                      themeMode: mode,
+                      fade: fade,
+                      onTap: searching
+                          ? () {
+                              _query.clear();
+                              _queryFocus.unfocus();
+                              setState(() => _text = '');
+                            }
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        // ── 设置行 ─────────────────────────────────────────────
+        const _SectionTitle('设置行'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: 'WLAN',
+              value: '已开启',
+              leading: const MiSettingsTile(Icons.wifi, Color(0xFF2F9BFF)),
+              onTap: () => _demoSnack(context, '值文 + chevron 行'),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '蓝牙',
+              leading:
+                  const MiSettingsTile(Icons.bluetooth, Color(0xFF2F9BFF)),
+              // 尾部开关：给出 trailing 时 chevron 自动让位。
+              trailing: Switch(
+                value: _wifi,
+                onChanged: (v) => setState(() => _wifi = v),
+              ),
+              onTap: () => setState(() => _wifi = !_wifi),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '个人热点',
+              subtitle: '允许其他设备通过 Wi-Fi 连接',
+              value: _wifi ? '已开启' : '已关闭',
+              leading: const MiSettingsTile(
+                Icons.wifi_tethering,
+                Color(0xFF34C759),
+              ),
+              onTap: () => _demoSnack(context, '副标题 + 值文行'),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          '行 = 前导块 + 主文案（+ 副标题）+ 值文 / 尾部 + chevron；整行'
+              '按压高亮带，三态反馈走 MiPressable。',
+        ),
+        const SizedBox(height: 14),
+        // ── 桌面三态反馈 ────────────────────────────────────────
+        const _SectionTitle('桌面三态反馈'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: '悬停叠色与键盘焦点环是推导的桌面语义（触屏素材没有样张）：'
+              'Tab 走焦点、Enter / Space 激活、鼠标移入叠色。',
+          child: Row(
+            children: [
+              feedbackTile(
+                'MiPressable\n按压 + 悬停 + 焦点环',
+                // 新组件统一入口：三态一体（按压视觉由 pressBuilder 给）。
+                MiPressable(
+                  mode: mode,
+                  borderRadius: BorderRadius.circular(14),
+                  onPressed: () => setState(() => _presses++),
+                  pressBuilder: (context, pressed, child) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    curve: Curves.easeOut,
+                    color: pressed
+                        ? MiColors.accent.withValues(alpha: 0.18)
+                        : Colors.transparent,
+                    child: child,
+                  ),
+                  child: chipBox(_presses == 0 ? '按我' : '按了 $_presses 次'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              feedbackTile(
+                'MiHoverFeedback\n只有悬停叠色',
+                MiHoverFeedback(
+                  mode: mode,
+                  borderRadius: BorderRadius.circular(14),
+                  child: chipBox('悬停我'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              feedbackTile(
+                'MiFocusRing\nTab 聚焦 / Enter 激活',
+                MiFocusRing(
+                  mode: mode,
+                  focusNode: _ringFocus,
+                  borderRadius: BorderRadius.circular(14),
+                  onActivate: () => _demoSnack(context, 'Enter / Space 激活'),
+                  // 点按请求聚焦：焦点环是键盘语义，鼠标点按也该看得见。
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _ringFocus.requestFocus(),
+                    child: chipBox('点我聚焦'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        // ── 响应式网格 ────────────────────────────────────────
+        const _SectionTitle('响应式网格'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: 'MiResponsiveGrid：列数按容器宽断点切换（< 520 → 4 列、'
+              '< 800 → 6 列、更宽 → 8 列）；与展示位网格、主题卡网格同一机制。',
+          child: MiResponsiveGrid(
+            compactColumns: 4,
+            mediumColumns: 6,
+            expandedColumns: 8,
+            compactMax: 520,
+            mediumMax: 800,
+            itemSpacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < 8; i++)
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: _tileGradients[i % _tileGradients.length],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── 「弹层与效果」组（示例层）：弹框 / 弹出面板 / 渐进模糊 ───────────────────
+
+/// 「弹层与效果」分组（示例层）：三类弹层与效果层组件的可交互陈列。
+///
+///  * 弹框（声明式）—— 由**外壳挂浮层**（与「我的」页同一入口），所以
+///    PC 套壳演示里弹框画在机身壳内、不盖整窗；
+///  * 弹框（命令式 `showMiDialog`）—— `await` 拿被点下标，免去 Stack
+///    挂浮层与显隐状态；它挂**根导航器**（`showDialog` 同口径），
+///    PC 套壳演示里会盖住整窗（这正是与壳内声明式浮层的差异）；
+///  * 弹出面板 —— 从本组的触发行弹起（锚点 = 触发行圆心），自定义高 240；
+///  * 渐进模糊 —— [MiGradientBlur] 的独立用法（顶栏那条材质不依赖顶栏）。
+class _LayerShowcase extends StatefulWidget {
+  const _LayerShowcase({
+    required this.themeMode,
+    required this.onShowDialog,
+    required this.onShowListDialog,
+    required this.panelTriggerKey,
+    required this.onShowPanel,
+  });
+
+  final MiThemeMode themeMode;
+
+  /// 声明式弹框入口（外壳挂浮层）；null = 外壳未接（如单独渲染本页）。
+  final ValueChanged<MiDialogPosition>? onShowDialog;
+
+  /// 操作列表弹框入口；语义同 [onShowDialog]。
+  final VoidCallback? onShowListDialog;
+
+  /// 面板触发行（唤起锚点）与唤起回调。
+  final GlobalKey panelTriggerKey;
+  final VoidCallback onShowPanel;
+
+  @override
+  State<_LayerShowcase> createState() => _LayerShowcaseState();
+}
+
+class _LayerShowcaseState extends State<_LayerShowcase> {
+  /// σ 缩放（渐进模糊演示）：1.0 = 度量材质；0.4 ≈ 满速滚动的省帧档。
+  double _sigmaScale = 1.0;
+
+  /// 命令式弹框：await 拿下标，弹一条提示说明结果。
+  Future<void> _imperativeDialog() async {
+    final i = await showMiDialog(
+      context,
+      dialog: MiDialog(
+        themeMode: widget.themeMode,
+        title: '删除联系人',
+        message: '确定从本地和云端同时删除“方太安装师傅”吗？',
+        messageAlign: TextAlign.start,
+        actions: [
+          // 原 onPressed 仍会执行（先回调后关闭）；演示不接行为。
+          const MiDialogAction(label: '取消', onPressed: _noop),
+          const MiDialogAction(
+            label: '删除',
+            style: MiDialogActionStyle.destructive,
+            onPressed: _noop,
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    _demoSnack(
+      context,
+      i == null ? '弹框被关闭（点遮罩 / 系统返回）' : '被点的是第 $i 个按钮',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.themeMode;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── 弹框（声明式，外壳挂浮层） ───────────────────────────
+        const _SectionTitle('弹框'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: '底部弹框（默认）',
+              leading: const MiSettingsTile(
+                Icons.arrow_downward_rounded,
+                Color(0xFF2F9BFF),
+              ),
+              onTap: widget.onShowDialog == null
+                  ? null
+                  : () => widget.onShowDialog!(MiDialogPosition.bottom),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '顶部弹框',
+              leading: const MiSettingsTile(
+                Icons.arrow_upward_rounded,
+                Color(0xFF34C759),
+              ),
+              onTap: widget.onShowDialog == null
+                  ? null
+                  : () => widget.onShowDialog!(MiDialogPosition.top),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '居中弹框',
+              leading: const MiSettingsTile(
+                Icons.crop_square_rounded,
+                Color(0xFFFF9500),
+              ),
+              onTap: widget.onShowDialog == null
+                  ? null
+                  : () => widget.onShowDialog!(MiDialogPosition.center),
+            ),
+            MiSettingsRow(
+              themeMode: mode,
+              label: '操作列表弹框（纵向）',
+              leading: const MiSettingsTile(
+                Icons.view_agenda_outlined,
+                Color(0xFF7A5CFA),
+              ),
+              onTap: widget.onShowListDialog,
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          '声明式：if (visible) MiDialog(…) 挂在页面 Stack 里 —— 这里由'
+              '外壳统一挂浮层（与「我的」页同一入口），弹框画在机身壳内。',
+        ),
+        const SizedBox(height: 14),
+        // ── 弹框（命令式 showMiDialog） ─────────────────────────
+        const _SectionTitle('命令式弹框'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              themeMode: mode,
+              label: '删除联系人（await 拿下标）',
+              leading: const MiSettingsTile(
+                Icons.delete_outline,
+                Color(0xFFFF3B30),
+              ),
+              onTap: _imperativeDialog,
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'showMiDialog：final i = await showMiDialog(context, dialog: …) '
+              '返回被点按钮 / 列表项下标（点遮罩 / 系统返回 = null），免去'
+              'Stack 挂浮层与显隐状态；挂根导航器（showDialog 同口径）。',
+        ),
+        const SizedBox(height: 14),
+        // ── 弹出面板 ──────────────────────────────────────
+        const _SectionTitle('弹出面板'),
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            MiSettingsRow(
+              key: widget.panelTriggerKey,
+              themeMode: mode,
+              label: '从按钮弹起（自定义高 240）',
+              leading: const MiSettingsTile(
+                Icons.open_in_new,
+                Color(0xFF7A5CFA),
+              ),
+              onTap: widget.onShowPanel,
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'MiPullUpPanel：从触发按钮圆心等比放大长到终态（弹簧 + 轻微过冲），'
+              '面板外不压暗、点面板外收回；高度 / 内容由调用方定义。',
+        ),
+        const SizedBox(height: 14),
+        // ── 渐进模糊 ──────────────────────────────────────
+        const _SectionTitle('渐进模糊'),
+        _GradientBlurDemo(themeMode: mode),
+      ],
+    );
+  }
+}
+
+/// 渐进模糊独立用法演示（示例层）：高频内容（复用首页横幅 painter）压在
+/// 顶部 120dp 的渐进模糊下 —— 顶最糊、向下衰减、区底归零。
+///
+/// 下方滑杆演示 [MiGradientBlur.sigmaScale]：运动中把各段 σ 等比压低是
+/// 本库的省帧档（0.6 ≈ 满速滚动），曲线**形状**不变、只改强度。
+class _GradientBlurDemo extends StatefulWidget {
+  const _GradientBlurDemo({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  State<_GradientBlurDemo> createState() => _GradientBlurDemoState();
+}
+
+class _GradientBlurDemoState extends State<_GradientBlurDemo> {
+  /// 模糊区高（度量曲线跨度 119dp 取整档）与演示面高。
+  static const double _blurExtent = 120;
+  static const double _surfaceHeight = 190;
+
+  double _sigmaScale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = widget.themeMode == MiThemeMode.light;
+    final fg = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            height: _surfaceHeight,
+            child: Stack(
+              children: [
+                // 高频内容：平坦色块在模糊下不变，判不出「有没有糊」。
+                const Positioned.fill(
+                  child: CustomPaint(
+                    painter: _HeroPainter(),
+                    child: SizedBox.expand(),
+                  ),
+                ),
+                // 渐进模糊：叠在滚动内容之上、其它内容之下（组件自带
+                // IgnorePointer，不参与手势）。`underSurface: false` ——
+                // 上面没有不透明压色，模糊真的会被看到，一段都不能跳。
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: MiGradientBlur(
+                    height: _blurExtent,
+                    sigmaScale: _sigmaScale,
+                    underSurface: false,
+                  ),
+                ),
+                Positioned(
+                  left: 14,
+                  top: 12,
+                  child: Text(
+                    '顶部最糊 → 向下变清晰',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _demoNote(
+          context,
+          'MiGradientBlur：分段定 σ 的顶部渐进模糊，可独立于顶栏使用'
+              '（顶栏 showBlur: true 内部复用的就是它）。',
+        ),
+        Row(
+          children: [
+            Text(
+              'σ 缩放 ${_sigmaScale.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: fg.withValues(alpha: 0.7),
+              ),
+            ),
+            Expanded(
+              child: Slider(
+                value: _sigmaScale,
+                min: 0.4,
+                max: 1.0,
+                divisions: 12,
+                label: _sigmaScale.toStringAsFixed(2),
+                onChanged: (v) => setState(() => _sigmaScale = v),
+              ),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'σ 缩放是运动中的省帧档（0.6 ≈ 满速滚动）：各段 σ 同比例压低，'
+              '曲线形状不变、只改强度；停稳后传回 1.0 即恢复度量材质。',
+        ),
+      ],
+    );
+  }
+}
+
+/// 弹出面板内容（demo 功能，非框架组件）：标题 + 2×2 快捷操作。
+///
+/// 高度由外层 `MiPullUpPanel.height` 自定义（240dp）；内容在终态尺寸下
+/// 排版、随面板一起缩放。
+class _PanelDemoContent extends StatelessWidget {
+  const _PanelDemoContent({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  static const List<(IconData, String)> _entries = [
+    (Icons.wallpaper, '壁纸'),
+    (Icons.radio_button_checked, '图标'),
+    (Icons.lock_outline, '锁屏'),
+    (Icons.font_download_outlined, '字体'),
+    (Icons.music_note, '铃声'),
+    (Icons.palette_outlined, '主题色'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = MiColors.foregroundFor(themeMode);
+    final sub = themeMode == MiThemeMode.dark
+        ? const Color(0xB3FFFFFF)
+        : const Color(0xB3000000);
+
+    Widget cell((IconData, String) e) => Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(e.$1, size: 26, color: ink),
+          const SizedBox(height: 8),
+          Text(
+            e.$2,
+            style: MiTypography.dialogItemSubtitle.copyWith(color: sub),
+          ),
+        ],
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '主题装扮',
+            style: MiTypography.dialogTitle.copyWith(color: ink),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [for (final e in _entries.sublist(0, 3)) cell(e)],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [for (final e in _entries.sublist(3)) cell(e)],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 弹层演示的空回调（命令式弹框的原 `onPressed` 仍会执行，演示不接行为）。
+void _noop() {}
 
 /// 组件展示位：渐变底 + 墨迹图形 + 名称（logo / 占位共用）。
 class _ShowcaseTile extends StatelessWidget {

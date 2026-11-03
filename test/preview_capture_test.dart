@@ -299,7 +299,7 @@ void main() {
     addTearDown(tester.view.reset);
     await _loadPreviewFonts(tester);
 
-    // 胶囊条特写（页底 = 分类页实测底色）
+    // 胶囊条特写（页底 = 分类页实测底色；标签与 demo 分类页四组同名）
     Widget strip(MiThemeMode mode) => MaterialApp(
           home: Scaffold(
             backgroundColor: mode == MiThemeMode.light
@@ -308,7 +308,7 @@ void main() {
             body: Align(
               alignment: Alignment.topCenter,
               child: MiPillTabBar(
-                labels: const ['Logo 展示', '按钮展示', '示例三', '示例四'],
+                labels: const ['Logo 展示', '按钮展示', '组件展示', '弹层与效果'],
                 selectedIndex: 0,
                 onTap: (_) {},
                 themeMode: mode,

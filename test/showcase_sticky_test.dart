@@ -63,11 +63,11 @@ void main() {
 
     // 吸顶后标签仍可点（头部悬浮在滚动内容之上，命中测试不受影响）
     const dark = MiPillTabPalette.dark;
-    await tester.tap(find.text('示例三'));
+    await tester.tap(find.text('组件展示'));
     await tester.pump(const Duration(milliseconds: 300));
     final container = tester.widget<AnimatedContainer>(
       find.ancestor(
-        of: find.text('示例三'),
+        of: find.text('组件展示'),
         matching: find.byType(AnimatedContainer),
       ),
     );
