@@ -45,6 +45,8 @@ export 'src/components/navigation/card_page_route/card_page_route.dart';
 export 'src/components/navigation/card_page_route/card_page_route_metrics.dart';
 export 'src/components/buttons/button/button.dart';
 export 'src/components/buttons/button/button_metrics.dart';
+export 'src/components/buttons/action_entry/action_entry.dart';
+export 'src/components/buttons/action_entry/action_entry_metrics.dart';
 export 'src/components/inputs/search_bar/search_bar.dart';
 export 'src/components/inputs/search_bar/search_bar_metrics.dart';
 export 'src/components/inputs/search_bar/search_cancel_button.dart';

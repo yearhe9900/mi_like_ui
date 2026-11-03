@@ -76,6 +76,7 @@ MiGlassNavBar(
 | `MiGlassSideNavBar` | 玻璃悬浮侧边导航栏（宽屏 / 桌面形态，与底部栏同语义同配方） |
 | `MiPillTabBar` | 胶囊分类标签行（选中胶囊磨砂透镜、出血滚动） |
 | `MiButton` | 胶囊按钮（主 / 次级 / 禁用三态） |
+| `MiActionEntry` / `MiActionEntryRow` | 纵向动作条目（图标在上文字在下的菜单格：按压淡出 / 高亮态 / 禁用降透明，三态走 `MiPressable`；行 = 等分横排） |
 | `MiSearchBar` | 搜索栏（静态展示 / 可输入两态，磨砂与导航栏同源） |
 | `MiSearchCancelButton` | 搜索取消按钮（搜索态配套） |
 | `MiTopBar` | 大标题折叠顶部导航栏（渐进磨砂材质、可内嵌搜索栏 / 标签行、搜索态） |
@@ -179,6 +180,36 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
 `onPressed` 为 `null` 时进入禁用态。
 
 <img src="doc/preview/button_light.png" width="360" alt="浅色胶囊按钮三态" /> <img src="doc/preview/button_dark.png" width="360" alt="深色胶囊按钮三态" />
+
+### 纵向动作条目（MiActionEntry / MiActionEntryRow）
+
+底部菜单格「图标在上、文字在下」的等分横排条目（目录 / 夜间 / 设置 /
+更多这类「点了就执行动作」的菜单项）；与 `MiGlassNavBar` 的 tab 条目
+（导航选中态语义）分工不同，本件无选中态概念。
+
+**规格**（详见 `MiActionEntryMetrics`）：22dp 图标 + 3dp 间隙 +
+`MiTypography.navLabel` 文字（10.5dp Medium）；行高默认 56dp，等分
+排布（`MiActionEntryRow` 用 `Expanded` 每格同宽）。
+
+```dart
+MiActionEntryRow(entries: [
+  MiActionEntry(icon: Icons.menu_book_outlined, label: '目录', onPressed: openToc),
+  MiActionEntry(
+    icon: nightOn ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+    label: '夜间',
+    active: nightOn,          // 高亮态：图标与文字走强调色
+    onPressed: toggleNight,
+  ),
+  MiActionEntry(icon: Icons.tune, label: '设置', onPressed: openSettings),
+])
+```
+
+- **按压 = 整格淡出 0.55**（瞬时，MReader 自拼件口径）；**禁用**
+  （`onPressed == null`）降透明至全库禁用档 ≈38%，不消失、不响应；
+- 三态（按压 / 悬停叠色 / 键盘焦点环 + Enter / Space 激活）收编自
+  `MiPressable`，组件内不手写按压逻辑；淡出经 `IconTheme` /
+  `DefaultTextStyle` 下发（不引 saveLayer，磨砂子树约束见库约定）；
+- 明暗走 `MiTheme`；高亮色取 `MiTheme.accentOf`（品牌色可注入）。
 
 ### 搜索栏（MiSearchBar / MiSearchCancelButton）
 
@@ -809,7 +840,7 @@ lib/
     ├── theme/               # 样式令牌层（颜色 / 文字 / 间距 / 透明与磨砂，明暗双配方）
     ├── components/          # 组件层（类别 / 组件名 / 两级目录）
     │   ├── navigation/      #   glass_nav_bar · glass_side_nav_bar · pill_tab_bar · top_bar · card_page_route
-    │   ├── buttons/         #   button
+    │   ├── buttons/         #   button · action_entry（纵向动作条目）
     │   ├── inputs/          #   search_bar（含取消钮）· switch · slider · preference_tile
     │   ├── cards/           #   theme_card
     │   ├── feedback/        #   dialog · pull_up_panel · snackbar

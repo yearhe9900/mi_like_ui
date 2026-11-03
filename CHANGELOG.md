@@ -28,6 +28,22 @@
   下标与遮罩关闭、面板唤起 / 收回、σ 缩放）；胶囊标签改动同步
   `showcase_sticky_test` 与胶囊特写预览图。
 
+### Added（组件：动作条目）
+
+- **`MiActionEntry` / `MiActionEntryRow` —— 纵向动作条目**（issue #5）：
+  图标在上、文字在下的底部菜单格（目录 / 夜间 / 设置 / 更多这类等分
+  横排），收编 MReader `control_bar.dart` 自拼的 `_MenuEntry`：
+  - 几何按度量：22dp 图标 + 3dp 间隙 + `MiTypography.navLabel` 文字
+    （10.5dp Medium），行高默认 56（`MiActionEntryMetrics` 注明口径）；
+  - 按压 = 整格淡出 0.55（MReader 口径，瞬时）；禁用降透明至全库禁用
+    档 ≈38%（引用 `MiTransparencyTokens.disabledLabelAlpha`）不消失；
+    高亮态（如「夜间」已开）图标与文字走强调色；
+  - 三态（按压 / 悬停 / 焦点）与 Enter / Space 激活收编自 `MiPressable`，
+    组件内不手写 `_pressed`；淡出经 IconTheme / DefaultTextStyle 下发，
+    不引 saveLayer；
+  - `MiActionEntryRow` = 等分横排容器（`Expanded` 每格同宽），宿主也可
+    自行 `Row + Expanded` 组合；8 例几何 / 交互 / 主题测试锁定。
+
 ### Added（弹层）
 
 - **`showMiDialog` —— 命令式弹框**：`await` 返回被点按钮 / 列表项下标
