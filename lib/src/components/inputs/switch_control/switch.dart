@@ -3,6 +3,7 @@ import 'package:flutter/physics.dart';
 
 import '../../../theme/colors.dart';
 import '../../../theme/switch_tokens.dart';
+import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../foundations/pressable.dart';
@@ -128,10 +129,7 @@ class _MiSwitchState extends State<MiSwitch>
 
   @override
   Widget build(BuildContext context) {
-    final mode = widget.themeMode ??
-        (Theme.of(context).brightness == Brightness.light
-            ? MiThemeMode.light
-            : MiThemeMode.dark);
+    final mode = MiTheme.modeOf(context, explicit: widget.themeMode);
     final enabled = widget.onChanged != null;
     final trackOff = MiTransparencyTokens.switchTrackOffFor(mode);
     const trackOn = MiColors.accent;

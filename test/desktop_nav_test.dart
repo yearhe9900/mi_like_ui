@@ -9,7 +9,7 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/demo_app.dart';
 import 'package:mi_like_ui/demo/mock_pages.dart';
 // 内部画笔：只用来把「选中胶囊落在哪个槽位」读成数值（不属公开 API）。
-import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/side_nav_bar_painter.dart';
+import 'package:mi_like_ui/src/components/navigation/glass_side_nav_bar/glass_side_nav_bar_painter.dart';
 
 /// 宽屏**内容列**在给定窗口下的几何（`MiContentColumn` 1120dp 上限 + 居中）：
 /// 返回两侧留白与列宽。内容让位（侧栏列 + 分隔留白，桌面档展开态）先被

@@ -15,8 +15,8 @@ import '../../../foundations/filter_cache.dart';
 import '../../../foundations/hover_feedback.dart';
 import '../glass_nav_bar/glass_nav_bar.dart' show MiGlassNavFab, MiGlassNavItem;
 import '../glass_nav_bar/glass_nav_bar_metrics.dart';
-import 'side_nav_bar_metrics.dart';
-import 'side_nav_bar_painter.dart';
+import 'glass_side_nav_bar_metrics.dart';
+import 'glass_side_nav_bar_painter.dart';
 
 /// 玻璃悬浮侧边导航栏（宽屏 / 桌面形态，明暗双模式）。
 ///

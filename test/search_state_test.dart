@@ -10,7 +10,7 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 /// 搜索态（点按搜索栏 → 输入态）的几何 / 动效 / 交互。
 ///
 /// 参考录屏「短信」搜索（592×1280 @24fps）实测值见
-/// `search_cancel_metrics.dart` 与 `MiTopBarMetrics` 的搜索态段。
+/// `search_cancel_button_metrics.dart` 与 `MiTopBarMetrics` 的搜索态段。
 
 const double _w = 393;
 

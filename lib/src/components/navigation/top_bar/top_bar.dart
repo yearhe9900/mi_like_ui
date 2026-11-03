@@ -10,7 +10,7 @@ import '../../../foundations/pressable.dart';
 import '../../effects/gradient_blur/gradient_blur.dart';
 import '../../inputs/search_bar/search_bar.dart';
 import '../../inputs/search_bar/search_cancel_button.dart';
-import '../../inputs/search_bar/search_cancel_metrics.dart';
+import '../../inputs/search_bar/search_cancel_button_metrics.dart';
 import '../../../layout/scroll_binder.dart';
 import '../pill_tab_bar/pill_tab_bar.dart';
 import 'top_bar_metrics.dart';
