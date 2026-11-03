@@ -27,3 +27,6 @@ test/failures/
 # 参考素材抽帧（原始视频另行归档，可重抽）
 .workbuddy/vframes/
 __pycache__/
+
+# 本地 agent 工具的符号链接（指向 .claude/skills）
+.agents/
