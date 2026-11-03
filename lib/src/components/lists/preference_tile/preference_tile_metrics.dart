@@ -1,11 +1,11 @@
-import '../../../overlays/dialog/dialog_list_metrics.dart';
+import '../../../theme/row_tokens.dart';
 
-/// `MiPreferenceTile` 的几何规格（**推导值**，与弹框列表行同族复用）。
+/// `MiPreferenceTile` 的几何规格（**推导值**，与列表行同族复用）。
 ///
-/// 设置行与弹框操作列表是同一套「前导图标 + 主文案 + 副标题 + 尾随」
-/// 行模式 —— 行高直接复用 [MiDialogListMetrics.rowHeight]（47.2 / 68.2，
-/// 有 / 无副标题），图标 22 与间距同档；页面级内边距为推导（触屏素材
-/// 无设置页样张，取通行 16dp 行内边距）。
+/// 设置行与弹框操作列表是同一套「前导图标 + 主文案 + 副标题 + 尾随」行
+/// 模式 —— 行高取 theme 层的 [MiRowMetrics]（47.2 / 68.2，有 / 无副标题），
+/// 图标 22 与间距同档；页面级内边距为推导（触屏素材无设置页样张，取通行
+/// 16dp 行内边距）。行几何的真源在 theme 层，这里不再反向依赖浮层。
 class MiPreferenceTileMetrics {
   MiPreferenceTileMetrics._();
 
@@ -27,7 +27,7 @@ class MiPreferenceTileMetrics {
   /// 分隔线与行内边距对齐（推导：与文字列同列起收）。
   static const double dividerInset = paddingH;
 
-  /// 行高（有 / 无副标题两档）—— 弹框列表行同源。
+  /// 行高（有 / 无副标题两档）—— 列表行几何同源（[MiRowMetrics]）。
   static double heightFor({required bool hasSubtitle}) =>
-      MiDialogListMetrics.rowHeight(hasSubtitle: hasSubtitle);
+      MiRowMetrics.heightFor(hasSubtitle: hasSubtitle);
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../foundations/pressable.dart';
-import '../../../overlays/dialog/dialog_metrics.dart';
 import '../../../theme/dialog_tokens.dart';
 import '../../../theme/mi_theme.dart';
+import '../../../theme/motion_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
@@ -12,10 +12,10 @@ import 'preference_tile_metrics.dart';
 /// 设置行（`MiPreferenceTile`）：前导图标（可选）+ 标题 + 副标题（可选）
 /// + 尾随控件（可选，如 `MiSwitch` / 箭头）的一行式设置项。
 ///
-/// 行模式与弹框操作列表同族：行高复用 [MiDialogListMetrics.rowHeight]
-/// （47.2 / 68.2），文字样式复用 `MiTypography.dialogAction` /
-/// `dialogItemSubtitle`，按压叠色 = 弹框同配方（[MiDialogMetrics]
-/// .pressDurationMs + `MiTransparencyTokens.dialogPressFor`）—— 无新造值。
+/// 行模式与弹框操作列表同族：行高取 theme 层 [MiRowMetrics]（47.2 / 68.2），
+/// 文字样式复用 `MiTypography.dialogAction` / `dialogItemSubtitle`，按压叠色
+/// = 弹框同配方（[MiMotionTokens.pressMs] +
+/// `MiTransparencyTokens.dialogPressFor`）—— 无新造值，也不反向依赖浮层。
 ///
 /// 交互经 [MiPressable]：[onTap] 非空时整行可点（点按 / Enter / Space
 /// 触发）+ 悬停叠色 + Tab 焦点环（桌面语义，推导同惯例）；为 null 时
@@ -121,7 +121,7 @@ class MiPreferenceTile extends StatelessWidget {
             // 按压整行叠弹框同款 state layer（压在页面底色上，不换填充）。
             pressBuilder: (context, pressed, child) => AnimatedContainer(
               duration: const Duration(
-                milliseconds: MiDialogMetrics.pressDurationMs,
+                milliseconds: MiMotionTokens.pressMs,
               ),
               curve: Curves.easeOutQuad,
               color: pressed

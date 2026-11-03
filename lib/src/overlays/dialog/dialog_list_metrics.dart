@@ -1,5 +1,4 @@
-import 'dart:math' as math;
-
+import '../../theme/row_tokens.dart';
 import '../../theme/typography.dart';
 import 'dialog_metrics.dart';
 
@@ -26,36 +25,35 @@ class MiDialogListMetrics {
   /// 留位，取通行菜单的 ~20）。
   static const double rowInsetX = 20.0;
 
-  /// 前导图标边长 22.0（推导：行内容高 23.2 内取 ~22，图标不顶满行距）。
-  static const double rowIconSize = 22.0;
+  /// 前导图标边长（**同源转发** [MiRowMetrics.iconSize]）。
+  static const double rowIconSize = MiRowMetrics.iconSize;
 
   /// 图标与文字列间距 14.0（推导：菜单通行的「图标-文字」呼吸档）。
   static const double rowGap = 14.0;
 
-  /// 行上下留白 12.0（推导：单行项总高 47.2 = 2×12 + 23.2，取通行行菜单
-  /// 的紧凑档）。
-  static const double rowPaddingY = 12.0;
+  /// 行上下留白（**同源转发** [MiRowMetrics.paddingY]）。
+  static const double rowPaddingY = MiRowMetrics.paddingY;
 
-  /// 项主文案行距 = 正文行距度量 23.2（主文案与正文同字号 15.9，沿用）。
-  static const double mainLinePitch = MiDialogMetrics.messageLinePitch;
+  /// 项主文案行距（**同源转发** [MiRowMetrics.mainLinePitch]；该值即正文
+  /// 行距度量 [MiDialogMetrics.messageLinePitch]）。
+  static const double mainLinePitch = MiRowMetrics.mainLinePitch;
 
-  /// 副标题行距 18.0（推导：13.0 × ~1.38）。
-  static const double subtitleLinePitch = 18.0;
+  /// 副标题行距 18.0（**同源转发** [MiRowMetrics.subtitleLinePitch]）。
+  static const double subtitleLinePitch = MiRowMetrics.subtitleLinePitch;
 
-  /// 主文案与副标题之间的间隙 3.0（推导：两条 23.2/18.0 行距之间的最小
-  /// 可读缝）。
-  static const double subtitleGap = 3.0;
+  /// 主文案与副标题之间的间隙（**同源转发** [MiRowMetrics.subtitleGap]）。
+  static const double subtitleGap = MiRowMetrics.subtitleGap;
 
   /// 分隔线厚 1.0（推导：hairline 通行值；色见 `MiDialogPalette.divider`）。
   static const double dividerThickness = 1.0;
 
   /// 行高：无副标题 = 2×行留白 + max(主行距, 图标) = 47.2；有副标题 =
   /// 2×行留白 + 主行距 + 间隙 + 副行距 = 68.2（推导，见类注释）。
+  ///
+  /// **同源转发** [MiRowMetrics.heightFor] —— 设置行 / 偏好行与本列表共用
+  /// 同一套行几何，真源在 theme 层（组件层不再为拿行高反向依赖本文件）。
   static double rowHeight({required bool hasSubtitle}) =>
-      2 * rowPaddingY +
-      (hasSubtitle
-          ? mainLinePitch + subtitleGap + subtitleLinePitch
-          : math.max(mainLinePitch, rowIconSize));
+      MiRowMetrics.heightFor(hasSubtitle: hasSubtitle);
 
   /// 项主文案墨心（行顶起算）= 行留白 + 主行距之半 = 23.6 —— 恰为单行行
   /// 高 47.2 之半（无副标题时整行垂直居中；有副标题时上承主文案）。
