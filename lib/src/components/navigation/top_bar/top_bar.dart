@@ -5,13 +5,13 @@ import '../../../theme/top_bar_tokens.dart';
 import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/filter_cache.dart';
-import '../../../utils/pressable.dart';
+import '../../../foundations/filter_cache.dart';
+import '../../../foundations/pressable.dart';
 import '../../effects/gradient_blur/gradient_blur.dart';
 import '../../inputs/search_bar/search_bar.dart';
 import '../../inputs/search_bar/search_cancel_button.dart';
 import '../../inputs/search_bar/search_cancel_metrics.dart';
-import '../../../utils/scroll_binder.dart';
+import '../../../layout/scroll_binder.dart';
 import '../pill_tab_bar/pill_tab_bar.dart';
 import 'top_bar_metrics.dart';
 

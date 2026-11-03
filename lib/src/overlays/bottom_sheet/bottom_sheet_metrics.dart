@@ -1,6 +1,6 @@
 import 'package:flutter/physics.dart';
 
-import '../../../theme/motion_tokens.dart';
+import '../../theme/motion_tokens.dart';
 
 /// `MiBottomSheet` 的几何与动效规格。
 ///

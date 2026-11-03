@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/gradient_blur_tokens.dart';
-import '../../../utils/filter_cache.dart';
+import '../../../foundations/filter_cache.dart';
 
 /// 顶部渐进模糊：自顶部最模糊向下逐段变清晰、区底归零的磨砂层。
 ///

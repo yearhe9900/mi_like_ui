@@ -1,4 +1,4 @@
-import '../../feedback/dialog/dialog_list_metrics.dart';
+import '../../../overlays/dialog/dialog_list_metrics.dart';
 
 /// `MiPreferenceTile` 的几何规格（**推导值**，与弹框列表行同族复用）。
 ///

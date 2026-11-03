@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
-import '../../../utils/focus_ring.dart';
-import '../../../utils/hover_feedback.dart';
+import '../../../foundations/focus_ring.dart';
+import '../../../foundations/hover_feedback.dart';
 import '../switch_control/switch_metrics.dart';
 import 'slider_metrics.dart';
 

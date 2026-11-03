@@ -5,8 +5,8 @@ import '../../../theme/colors.dart';
 import '../../../theme/switch_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/pressable.dart';
+import '../../../foundations/squircle.dart';
 import 'switch_metrics.dart';
 
 /// 开关（`MiSwitch`）：轨道 + 圆钮的二值开关，吸附弹簧切换。

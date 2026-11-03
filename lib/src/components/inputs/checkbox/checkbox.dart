@@ -5,7 +5,7 @@ import '../../../theme/dimens.dart';
 import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
-import '../../../utils/pressable.dart';
+import '../../../foundations/pressable.dart';
 import 'checkbox_metrics.dart';
 import 'checkbox_painter.dart';
 

@@ -5,8 +5,8 @@ import '../../../theme/motion_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/pressable.dart';
-import '../../feedback/dialog/dialog_metrics.dart';
+import '../../../foundations/pressable.dart';
+import '../../../overlays/dialog/dialog_metrics.dart';
 import 'preference_tile_metrics.dart';
 
 /// 设置行（`MiPreferenceTile`）：前导图标（可选）+ 标题 + 副标题（可选）

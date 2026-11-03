@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import '../../../theme/typography.dart';
+import '../../theme/typography.dart';
 import 'dialog_metrics.dart';
 
 /// [MiDialogLayout.list]（纵向操作列表）的几何规格 —— **全部为推导值**。

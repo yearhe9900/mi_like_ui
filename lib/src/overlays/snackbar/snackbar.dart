@@ -3,13 +3,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../../overlay/mi_popup_host.dart';
-import '../../../theme/snackbar_tokens.dart';
-import '../../../theme/theme_mode.dart';
-import '../../../theme/transparency_tokens.dart';
-import '../../../theme/typography.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../popup_host.dart';
+import '../../theme/snackbar_tokens.dart';
+import '../../theme/theme_mode.dart';
+import '../../theme/transparency_tokens.dart';
+import '../../theme/typography.dart';
+import '../../foundations/pressable.dart';
+import '../../foundations/squircle.dart';
 import 'snackbar_metrics.dart';
 
 /// 轻量消息条（`MiSnackbar`）：贴屏底的自动收起提示条，可带一个文字动作。

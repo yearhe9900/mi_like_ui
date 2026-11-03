@@ -2,14 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../../overlay/mi_popup_host.dart';
-import '../../../theme/dialog_tokens.dart';
-import '../../../theme/mi_theme.dart';
-import '../../../theme/theme_mode.dart';
-import '../../../theme/transparency_tokens.dart';
-import '../../../theme/typography.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../popup_host.dart';
+import '../../theme/dialog_tokens.dart';
+import '../../theme/mi_theme.dart';
+import '../../theme/theme_mode.dart';
+import '../../theme/transparency_tokens.dart';
+import '../../theme/typography.dart';
+import '../../foundations/pressable.dart';
+import '../../foundations/squircle.dart';
 import 'dialog_list_metrics.dart';
 import 'dialog_metrics.dart';
 

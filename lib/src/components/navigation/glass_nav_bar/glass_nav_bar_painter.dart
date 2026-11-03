@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/glass_tokens.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/squircle.dart';
 
 /// Paints the scrim (with a stadium-shaped hole where the pill is),
 /// the pill glass lens and the subtle rim highlights.

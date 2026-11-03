@@ -4,7 +4,7 @@ import '../../../theme/colors.dart';
 import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/pressable.dart';
+import '../../../foundations/pressable.dart';
 import 'action_entry_metrics.dart';
 
 /// 「图标在上、文字在下」的纵向动作条目（底部菜单格：目录 / 夜间 / 设置 /

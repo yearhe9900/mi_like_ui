@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/floating_toolbar_tokens.dart';
-import '../../../theme/mi_theme.dart';
-import '../../../theme/theme_mode.dart';
-import '../../../utils/squircle.dart';
+import '../../theme/floating_toolbar_tokens.dart';
+import '../../theme/mi_theme.dart';
+import '../../theme/theme_mode.dart';
+import '../../foundations/squircle.dart';
 import 'floating_toolbar_metrics.dart';
 
 /// 悬浮工具栏（`MiFloatingToolbar`）：一块浮在内容之上的胶囊容器。

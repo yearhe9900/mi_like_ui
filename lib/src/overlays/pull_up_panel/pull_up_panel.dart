@@ -3,12 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
-import '../../../theme/mi_theme.dart';
-import '../../../theme/motion_tokens.dart';
-import '../../../theme/pull_up_panel_tokens.dart';
-import '../../../theme/theme_mode.dart';
-import '../../../theme/transparency_tokens.dart';
-import '../../../utils/squircle.dart';
+import '../../theme/mi_theme.dart';
+import '../../theme/motion_tokens.dart';
+import '../../theme/pull_up_panel_tokens.dart';
+import '../../theme/theme_mode.dart';
+import '../../theme/transparency_tokens.dart';
+import '../../foundations/squircle.dart';
 import 'pull_up_panel_metrics.dart';
 
 /// [MiPullUpPanel] 的显隐控制器（宿主可编程收起）。

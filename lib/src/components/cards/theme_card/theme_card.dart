@@ -5,8 +5,8 @@ import '../../../theme/mi_theme.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/pressable.dart';
+import '../../../foundations/squircle.dart';
 import 'theme_card_metrics.dart';
 
 /// 竖向预览卡片（明暗双模式）。

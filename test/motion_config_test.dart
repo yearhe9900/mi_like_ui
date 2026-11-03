@@ -16,8 +16,9 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 /// 白名单口径：
 ///  * `*_metrics.dart` —— 组件私有动效数值的家；
 ///  * `motion_tokens.dart` —— 跨组件动效数值的家；
-///  * `lib/src/utils/` —— 公开参数默认值是 API 的一部分（如
-///    `MiHoverFeedback(duration: …)` 的默认 150ms），不是隐藏常量，不扫；
+///  * `lib/src/foundations/` + `lib/src/layout/` —— 公开参数默认值是 API 的
+///    一部分（如 `MiHoverFeedback(duration: …)` 的默认 150ms），不是隐藏
+///    常量，不扫；
 ///  * demo（`lib/demo/`）不扫 —— 示例层模拟真实使用方，用裸值是合法用法。
 ///
 /// 刻意**放行** `Curves.xxx`：那是 Flutter 官方命名常量（token），不是字面量；
@@ -63,9 +64,11 @@ List<String> _dartFilesIn(String dir) => Directory(dir)
     .where((p) => p.endsWith('.dart'))
     .toList();
 
-/// 组件层扫描目标：排除各组件私有动效的家（`*_metrics.dart`）。
-Iterable<String> _componentFiles() => _dartFilesIn('lib/src/components')
-    .where((p) => !p.endsWith('_metrics.dart'));
+/// 组件层扫描目标（含浮层）：排除各组件私有动效的家（`*_metrics.dart`）。
+Iterable<String> _componentFiles() => [
+      ..._dartFilesIn('lib/src/components'),
+      ..._dartFilesIn('lib/src/overlays'),
+    ].where((p) => !p.endsWith('_metrics.dart'));
 
 /// theme 层扫描目标：排除跨组件动效的家。
 Iterable<String> _themeFiles() => _dartFilesIn('lib/src/theme')
@@ -85,11 +88,12 @@ void main() {
           reason: '跨组件动效数值进 MiMotionTokens，其余 theme 文件只引用');
     });
 
-    test('utils 放行有据：默认值是公开参数（规则不空转的旁证之一）', () {
+    test('foundations 放行有据：默认值是公开参数（规则不空转的旁证之一）', () {
       // MiHoverFeedback / MiFocusRing 的默认时长是 API 的一部分，
       // 白名单放行；这里只确认文件确实存在、白名单口径没有漂移。
-      expect(File('lib/src/utils/hover_feedback.dart').existsSync(), isTrue);
-      expect(File('lib/src/utils/focus_ring.dart').existsSync(), isTrue);
+      expect(
+          File('lib/src/foundations/hover_feedback.dart').existsSync(), isTrue);
+      expect(File('lib/src/foundations/focus_ring.dart').existsSync(), isTrue);
     });
   });
 

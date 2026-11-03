@@ -4,8 +4,8 @@ import '../../../icons/nav_icons.dart';
 import '../../../theme/mi_theme.dart';
 import '../../../theme/settings_tokens.dart';
 import '../../../theme/theme_mode.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/pressable.dart';
+import '../../../foundations/squircle.dart';
 import 'settings_row_metrics.dart';
 
 /// 设置分组卡片：圆角容器裁剪行间按压高亮带（方角带在圆角处随卡片裁切）。

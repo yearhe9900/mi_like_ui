@@ -8,10 +8,10 @@ import '../../../theme/search_bar_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/filter_cache.dart';
-import '../../../utils/glass_rim.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/filter_cache.dart';
+import '../../../foundations/glass_rim.dart';
+import '../../../foundations/pressable.dart';
+import '../../../foundations/squircle.dart';
 import 'search_bar_metrics.dart';
 import 'search_bar_painter.dart';
 

@@ -1,5 +1,5 @@
-import '../../../theme/motion_tokens.dart';
-import '../../../theme/typography.dart';
+import '../../theme/motion_tokens.dart';
+import '../../theme/typography.dart';
 
 /// [MiDialog] 的几何与动效规格（设计度量，393dp 设计宽）。
 ///

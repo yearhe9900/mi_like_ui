@@ -6,10 +6,10 @@ import '../../../theme/pill_tab_tokens.dart';
 import '../../../theme/theme_mode.dart';
 import '../../../theme/transparency_tokens.dart';
 import '../../../theme/typography.dart';
-import '../../../utils/filter_cache.dart';
-import '../../../utils/glass_rim.dart';
-import '../../../utils/pressable.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/filter_cache.dart';
+import '../../../foundations/glass_rim.dart';
+import '../../../foundations/pressable.dart';
+import '../../../foundations/squircle.dart';
 import 'pill_tab_bar_metrics.dart';
 
 /// 胶囊分类标签行（明暗双模式）。

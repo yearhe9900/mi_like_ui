@@ -67,9 +67,11 @@ void main() {
           reason: '把这个值挪进 MiTransparencyTokens，再在这里引用它');
     });
 
-    test('组件层：完全不得出现 alpha 字面量（一律取 token）', () {
-      final offenders =
-          _dartFilesIn('lib/src/components').expand(_violationsIn).toList();
+    test('组件层（含浮层）：完全不得出现 alpha 字面量（一律取 token）', () {
+      final offenders = [
+        ..._dartFilesIn('lib/src/components'),
+        ..._dartFilesIn('lib/src/overlays'),
+      ].expand(_violationsIn).toList();
       expect(offenders, isEmpty,
           reason: '组件只消费 token，不自己定透明度');
     });

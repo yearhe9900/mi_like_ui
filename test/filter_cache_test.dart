@@ -1,8 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mi_like_ui/mi_like_ui.dart';
-// 框架内部工具（不经 barrel）：直接引 src 验证缓存契约。
-import 'package:mi_like_ui/src/utils/filter_cache.dart';
 
 /// `MiFilterCache` 值相等缓存的守门测试。
 ///

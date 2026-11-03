@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/mi_theme.dart';
 import '../../../theme/transparency_tokens.dart';
-import '../../../utils/squircle.dart';
+import '../../../foundations/squircle.dart';
 import 'card_page_route_metrics.dart';
 
 /// 卡片式页面推入转场：新页从右缘滑入、前缘带大圆角，下层页左移视差并压暗。

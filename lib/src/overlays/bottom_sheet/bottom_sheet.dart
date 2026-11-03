@@ -4,13 +4,13 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
-import '../../../overlay/mi_popup_host.dart';
-import '../../../theme/bottom_sheet_tokens.dart';
-import '../../../theme/mi_theme.dart';
-import '../../../theme/theme_mode.dart';
-import '../../../theme/transparency_tokens.dart';
-import '../../../theme/typography.dart';
-import '../../../utils/squircle.dart';
+import '../popup_host.dart';
+import '../../theme/bottom_sheet_tokens.dart';
+import '../../theme/mi_theme.dart';
+import '../../theme/theme_mode.dart';
+import '../../theme/transparency_tokens.dart';
+import '../../theme/typography.dart';
+import '../../foundations/squircle.dart';
 import 'bottom_sheet_metrics.dart';
 
 /// 底部弹窗 / 抽屉（`MiBottomSheet`）：贴底滑入的模态层，带拖拽手柄。
