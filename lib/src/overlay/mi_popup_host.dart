@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// 弹层句柄：宿主渲染一条弹层所需的最小描述。
 ///
@@ -28,28 +29,53 @@ class MiPopupHandle {
 class MiPopupRegistry extends ChangeNotifier {
   final List<MiPopupHandle> _entries = <MiPopupHandle>[];
 
+  /// 是否已排了一次「帧末通知」（构建期改表时合并成一次）。
+  bool _notifyScheduled = false;
+
   /// 当前注册的弹层（只读视图，宿主按序渲染）。
   List<MiPopupHandle> get entries => List<MiPopupHandle>.unmodifiable(_entries);
 
   void add(MiPopupHandle handle) {
     _entries.add(handle);
-    notifyListeners();
+    _notify();
   }
 
   void remove(MiPopupHandle handle) {
-    if (_entries.remove(handle)) notifyListeners();
+    if (_entries.remove(handle)) _notify();
   }
 
   /// 移除某类标签的全部弹层（snackbar 的「同类替换」）。
   void removeByTag(String tag) {
     final before = _entries.length;
     _entries.removeWhere((h) => h.tag == tag);
-    if (_entries.length != before) notifyListeners();
+    if (_entries.length != before) _notify();
   }
 
   /// 句柄内容变更（非增删）时请求宿主重建 —— 注册方专用，
   /// 补上 `notifyListeners` 的 `@protected` 可见性。
-  void refresh() => notifyListeners();
+  void refresh() => _notify();
+
+  /// 通知宿主重建；**构建期一律推到帧末**。
+  ///
+  /// 注册方在 `didChangeDependencies` / `didUpdateWidget` 里改表是常态
+  /// （首次挂载、`show` 翻转、内容更新），此时宿主正在同一帧里建它的子树
+  /// —— 同步 `notifyListeners` 会让宿主 `setState` during build 抛错。
+  /// 推到帧末只延迟一次重绘（同帧内多次变更合并成一次），弹层观感无差。
+  void _notify() {
+    if (SchedulerBinding.instance.schedulerPhase !=
+        SchedulerPhase.persistentCallbacks) {
+      notifyListeners();
+      return;
+    }
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _notifyScheduled = false;
+      // 宿主可能已随页面一起销毁：此时没人听，不必再通知。
+      if (!hasListeners) return;
+      notifyListeners();
+    });
+  }
 }
 
 /// 弹层宿主作用域：把 [MiPopupRegistry] 暴露给最近的后代 [MiPopup]。
@@ -210,6 +236,8 @@ class _MiPopupState extends State<MiPopup> {
   void _register() {
     final registry = _registry;
     if (!widget.show || registry == null) return;
+    // 登记本身是同步的（构建期也能安全调用，通知由注册表推到帧末）；
+    // 宿主下一帧即渲染本条 —— 首帧就带弹层的页面也能正常出图。
     _handle = MiPopupHandle(
       build: (context) => widget.builder(context),
       modal: widget.modal,

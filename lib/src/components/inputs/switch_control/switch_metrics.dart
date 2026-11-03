@@ -1,5 +1,6 @@
 import 'package:flutter/animation.dart';
 
+import '../../../theme/dimens.dart';
 import '../../../theme/motion_tokens.dart';
 
 /// `MiSwitch` 的几何 / 动效规格（**全部推导值**，无实机素材）。
@@ -32,6 +33,7 @@ class MiSwitchMetrics {
   /// 吸附弹簧（Folme 口径，推导）：临界阻尼、无过冲。
   static final SpringDescription snap = miSpring(damping: 1.0, response: 0.35);
 
-  /// 禁用态整体透明（Material 禁用档通行值，推导）。
-  static const double disabledOpacity = 0.38;
+  /// 禁用态整体透明（**推导**；**同源转发** [MiDimens.disabledOpacity] ——
+  /// 表单控件三件共用一档，历史 API 保留以免调用点改动）。
+  static const double disabledOpacity = MiDimens.disabledOpacity;
 }

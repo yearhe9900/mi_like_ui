@@ -31,13 +31,18 @@ class MiSquircle {
 
   /// [rect] 的连续圆角轮廓；[radius] ≥ 短边一半时为**真半圆端头的胶囊**
   ///（圆弧，见 [addRect] 的胶囊例外）。
+  ///
+  /// [topOnly] 为 true 时只圆上两角、下缘方角贴到 `rect.bottom`（贴屏幕
+  /// 底缘的弹窗 / 抽屉用：下角在屏外，圆了也看不见，还会在内容裁形上多切
+  /// 一刀）。
   static Path pathOf(
     Rect rect,
     double radius, {
     double extension = MiSquircle.extension,
+    bool topOnly = false,
   }) {
     final path = Path();
-    addRect(path, rect, radius, extension: extension);
+    addRect(path, rect, radius, extension: extension, topOnly: topOnly);
     return path;
   }
 
@@ -53,11 +58,19 @@ class MiSquircle {
     Rect rect,
     double radius, {
     double extension = MiSquircle.extension,
+    bool topOnly = false,
   }) {
     if (rect.width <= 0 || rect.height <= 0) return;
     final halfMin = math.min(rect.width, rect.height) * 0.5;
     if (radius >= halfMin) {
-      path.addRRect(RRect.fromRectAndRadius(rect, Radius.circular(halfMin)));
+      // 胶囊例外：端头走真半圆；topOnly 时只给上两角。
+      path.addRRect(topOnly
+          ? RRect.fromRectAndCorners(
+              rect,
+              topLeft: Radius.circular(halfMin),
+              topRight: Radius.circular(halfMin),
+            )
+          : RRect.fromRectAndRadius(rect, Radius.circular(halfMin)));
       return;
     }
     final ext = extension.clamp(minExtension, maxExtension);
@@ -69,6 +82,17 @@ class MiSquircle {
     final l = rect.left, t = rect.top;
     final r = rect.right, b = rect.bottom;
     final handle = tile * (1.0 - control);
+    if (topOnly) {
+      path
+        ..moveTo(l, b)
+        ..lineTo(l, t + tile)
+        ..cubicTo(l, t + handle, l + handle, t, l + tile, t)
+        ..lineTo(r - tile, t)
+        ..cubicTo(r - handle, t, r, t + handle, r, t + tile)
+        ..lineTo(r, b)
+        ..close();
+      return;
+    }
     path
       ..moveTo(l + tile, t)
       ..lineTo(r - tile, t)
@@ -88,6 +112,7 @@ class MiSquircleClipper extends CustomClipper<Path> {
   const MiSquircleClipper(
     this.radius, {
     this.extension = MiSquircle.extension,
+    this.topOnly = false,
   });
 
   /// 名义圆角半径（夹位逻辑见 [MiSquircle.pathOf]）。
@@ -96,16 +121,22 @@ class MiSquircleClipper extends CustomClipper<Path> {
   /// 瓦片倍率（见 [MiSquircle.extension]）。
   final double extension;
 
+  /// 只圆上两角（见 [MiSquircle.pathOf]）。
+  final bool topOnly;
+
   @override
   Path getClip(Size size) => MiSquircle.pathOf(
         Offset.zero & size,
         radius,
         extension: extension,
+        topOnly: topOnly,
       );
 
   @override
   bool shouldReclip(MiSquircleClipper oldClipper) =>
-      oldClipper.radius != radius || oldClipper.extension != extension;
+      oldClipper.radius != radius ||
+      oldClipper.extension != extension ||
+      oldClipper.topOnly != topOnly;
 }
 
 /// [ShapeDecoration] / [PhysicalShape] 用的连续圆角形状
@@ -114,6 +145,8 @@ class MiSquircleBorder extends ShapeBorder {
   const MiSquircleBorder(
     this.cornerRadius, {
     this.extension = MiSquircle.extension,
+    this.topOnly = false,
+    this.side = BorderSide.none,
   });
 
   /// 名义圆角半径。
@@ -122,12 +155,28 @@ class MiSquircleBorder extends ShapeBorder {
   /// 瓦片倍率（见 [MiSquircle.extension]）。
   final double extension;
 
+  /// 只圆上两角（见 [MiSquircle.pathOf]）。
+  final bool topOnly;
+
+  /// 描边（**推导能力**：源实现 `MiuixSquircleBorder` 有 `side`，本库此前
+  /// 只用它做填充与裁形；悬浮工具栏的 `dividerLine` 描边需要它）。
+  ///
+  /// 描边沿轮廓**居中**画（`width/2` 在轮廓内外），与 `BorderSide` 的默认
+  /// 口径一致；`BorderSide.none` 时不画 —— 走填充或裁形的旧调用点逐像素
+  /// 不变。
+  final BorderSide side;
+
   @override
-  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.strokeInset);
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) =>
-      MiSquircle.pathOf(rect, cornerRadius, extension: extension);
+      MiSquircle.pathOf(
+        rect,
+        cornerRadius,
+        extension: extension,
+        topOnly: topOnly,
+      );
 
   /// 内轮廓未做等距内缩（与描边内缩场景无关 —— 本库只用它做填充与裁形）。
   @override
@@ -135,21 +184,44 @@ class MiSquircleBorder extends ShapeBorder {
       Path()..addRect(rect);
 
   @override
-  ShapeBorder scale(double t) =>
-      MiSquircleBorder(cornerRadius * t, extension: extension);
+  ShapeBorder scale(double t) => MiSquircleBorder(
+        cornerRadius * t,
+        extension: extension,
+        topOnly: topOnly,
+        side: side.scale(t),
+      );
 
   @override
-  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none || side.width <= 0) return;
+    // 沿轮廓居中描边：把矩形内缩半个笔宽，使笔画仍落在 rect 之内。
+    final inset = side.width / 2;
+    final path = MiSquircle.pathOf(
+      rect.deflate(inset),
+      math.max(cornerRadius - inset, 0),
+      extension: extension,
+      topOnly: topOnly,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = side.width
+        ..color = side.color,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MiSquircleBorder &&
           other.cornerRadius == cornerRadius &&
-          other.extension == extension);
+          other.extension == extension &&
+          other.topOnly == topOnly &&
+          other.side == side);
 
   @override
-  int get hashCode => Object.hash(cornerRadius, extension);
+  int get hashCode => Object.hash(cornerRadius, extension, topOnly, side);
 }
 
 /// 连续圆角投影画笔（`BoxShadow` 的 squircle 版）：`ShapeDecoration` 不带

@@ -386,6 +386,17 @@ class MiTransparencyTokens {
   static Color dialogScrimFor(MiThemeMode mode) =>
       mode == MiThemeMode.dark ? dialogScrimDark : dialogScrimLight;
 
+  /// 按明暗模式 + 进度取遮罩色（`progress` = 开合动画的透明度 0…1）。
+  ///
+  /// 底部弹窗这类「随弹簧逐帧滑入」的层需要遮罩跟着进度淡入淡出；
+  /// alpha 仍在统一配置里算，组件只传进度。
+  static Color dialogScrimProgressFor(MiThemeMode mode, double progress) {
+    final base = mode == MiThemeMode.dark
+        ? dialogScrimAlphaDark
+        : dialogScrimAlphaLight;
+    return Color.fromRGBO(0, 0, 0, base * progress.clamp(0.0, 1.0));
+  }
+
   /// 弹框次级文字（正文 + 中性按钮标签）alpha：onSurface @0.80。
   ///
   /// 反解口径：同一批像素在**两种填充**上读数差 ≈6 级（正文压卡片
@@ -485,15 +496,43 @@ class MiTransparencyTokens {
         (pushDimAlphaMax * progress.clamp(0.0, 1.0)),
       );
 
-  // ══ 八、开关（`MiSwitch`）════════════════════════════════════════════
+  // ══ 八、控件未选态（`MiSwitch` 关闭轨 / `MiCheckbox` 未选）══════════════
 
-  /// 开关**关闭档**轨道填充 alpha（**推导值**：onSurface @31/255 ≈ 12%，
+  /// 控件**未选 / 关闭**档填充 alpha（**推导值**：onSurface @31/255 ≈ 12%，
   /// Material 3 off-track 同档；与「表面填充 onSurface @6%」同族、高一档
-  /// 对比 —— 触屏素材无开关样张，按通行 state layer 档位推导）。
-  static const double switchTrackOffAlpha = 31 / 255;
+  /// 对比 —— 触屏素材无开关 / 复选框样张，按通行 state layer 档位推导）。
+  ///
+  /// 开关关闭轨与复选框未选圆底共用同一档：两件在同一个设置行里并排出现
+  /// 时，未选态的墨量必须一致，否则读起来像两个不同层级的控件。
+  static const double controlOffFillAlpha = 31 / 255;
 
-  /// 开关关闭档轨道色（亮 = 黑 @12% / 暗 = 白 @12%，state layer 同语言）。
-  static Color switchTrackOffFor(MiThemeMode mode) => mode == MiThemeMode.dark
-      ? Color.fromRGBO(255, 255, 255, switchTrackOffAlpha)
-      : Color.fromRGBO(0, 0, 0, switchTrackOffAlpha);
+  /// 控件未选档填充色（亮 = 黑 @12% / 暗 = 白 @12%，state layer 同语言）。
+  static Color controlOffFillFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark
+          ? const Color.fromRGBO(255, 255, 255, controlOffFillAlpha)
+          : const Color.fromRGBO(0, 0, 0, controlOffFillAlpha);
+
+  /// 开关关闭档轨道色 —— **同源转发** [controlOffFillFor]（历史 API，调用点
+  /// 零改动）：开关与复选框的未选档是同一份数值。
+  static Color switchTrackOffFor(MiThemeMode mode) => controlOffFillFor(mode);
+
+  // ══ 九、底部弹窗拖拽手柄（`MiBottomSheet`）════════════════════════════════
+
+  /// 手柄静止墨量（**推导值**，非度量）：onSurface @0.20 —— 手柄是「这里
+  /// 可以拉」的提示，要能看见又不能与标题抢注意力（0.12 在 #2C2C2C 上几乎
+  /// 读不出，0.35 已经像一条分隔线）。
+  static const double sheetHandleAlpha = 0.20;
+
+  /// 手柄按压态墨量（**推导值**）：@0.35 —— 按下的反馈做成「变亮 + 拉长」，
+  /// 墨量只提一档（与 9.4% 按压高光同量级的观感变化）。
+  static const double sheetHandlePressAlpha = 0.35;
+
+  /// 拖拽手柄色：亮 = 黑 / 暗 = 白，[press] 0…1 在静止与按压两档之间插值。
+  static Color sheetHandleFor(MiThemeMode mode, {double press = 0}) {
+    final t = press.clamp(0.0, 1.0);
+    final a = sheetHandleAlpha + (sheetHandlePressAlpha - sheetHandleAlpha) * t;
+    return mode == MiThemeMode.dark
+        ? Color.fromRGBO(255, 255, 255, a)
+        : Color.fromRGBO(0, 0, 0, a);
+  }
 }
