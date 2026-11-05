@@ -18,7 +18,7 @@ part of '../mock_pages.dart';
 /// |----|------|
 /// | Logo 展示 | `nav_icons.dart` 全量 logo + 占位展示位（补可滚长度） |
 /// | 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 占位展示位 |
-/// | 组件展示 | 搜索栏两态 + 取消钮、设置行、开关、复选框、悬浮工具栏、桌面三态反馈、响应式网格 |
+/// | 组件展示 | 搜索栏两态 + 取消钮、设置行、开关、复选框、悬浮工具栏、桌面三态反馈、响应式网格、菜单 |
 /// | 弹层与效果 | 弹框（声明式 + 命令式 `showMiDialog`）、弹出面板、底部弹窗、渐进模糊 |
 ///
 /// 占位展示位只出现在前两组（它们要靠网格长度演示「滚动内容从吸顶胶囊
@@ -554,7 +554,7 @@ class _DemoSurface extends StatelessWidget {
 
 /// 「组件展示」分组（示例层）：库组件的**可交互**陈列。
 ///
-/// 六小节各演示一处 API 面：
+/// 八小节各演示一处 API 面：
 ///  * 搜索栏 —— 静态展示态（`onTap`）与输入态（`editable: true`）同列，
 ///    取消钮随输入态以 `fade` 0 → 1 淡入（alpha 乘进填充与叉号墨色，
 ///    **不套 Opacity**：圆钮内含 backdrop 磨砂，saveLayer 会让它变空）；
@@ -564,7 +564,9 @@ class _DemoSurface extends StatelessWidget {
 ///  * 悬浮工具栏 —— 胶囊托盘容器（投影按形状绘制）；
 ///  * 桌面三态反馈 —— 按压 / 悬停 / 键盘焦点环（触屏素材没有样张，
 ///    按桌面惯例推导的那层）；
-///  * 响应式网格 —— 列数随容器宽 4 / 6 / 8 切换。
+///  * 响应式网格 —— 列数随容器宽 4 / 6 / 8 切换；
+///  * 菜单 —— `MiMenu` 三种锚点形态：单选偏好行、级联子菜单、图标触发的
+///    多分组动作菜单（[_MenuShowcase]）。
 ///
 /// 全部是真实组件，不再是「示例组件N」渐变占位。
 class _ComponentShowcase extends StatefulWidget {
@@ -972,6 +974,173 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
                 ),
             ],
           ),
+        ),
+        const SizedBox(height: 14),
+        // ── 菜单 ───────────────────────────────────────────────
+        const _SectionTitle('菜单'),
+        _MenuShowcase(themeMode: mode),
+      ],
+    );
+  }
+}
+
+
+/// 「菜单」小节（示例层）：`MiMenu` 的三种锚点形态 —— 偏好行下拉、级联
+/// 子菜单、图标触发的多分组动作菜单。
+///
+/// 三处都**不劫持触发器**：行 / 图标的点按走 `MiMenuController.toggle()`，
+/// 菜单只借触发器的盒子当锚点（右缘对齐、优先下方）。几何上的口径全在库里
+/// （`MiMenuMetrics`），示例层不复制任何数字。
+class _MenuShowcase extends StatefulWidget {
+  const _MenuShowcase({required this.themeMode});
+
+  final MiThemeMode themeMode;
+
+  @override
+  State<_MenuShowcase> createState() => _MenuShowcaseState();
+}
+
+
+class _MenuShowcaseState extends State<_MenuShowcase> {
+  final MiMenuController _sort = MiMenuController();
+  final MiMenuController _share = MiMenuController();
+  final MiMenuController _actions = MiMenuController();
+
+  /// 排序方式（单选菜单的选中下标）。
+  static const List<String> _sorts = ['默认', '名称', '修改时间', '大小'];
+  int _sortIndex = 1;
+
+  /// 最近一次选择结果（回填到行的值文）。
+  String _shareTarget = '未选择';
+  String _action = '未选择';
+
+  @override
+  void dispose() {
+    _sort.dispose();
+    _share.dispose();
+    _actions.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.themeMode;
+    final sub = MiSettingsPalette.secondaryFor(mode);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MiSettingsCard(
+          themeMode: mode,
+          children: [
+            // ── 单选：选中项转强调色 + 尾部勾号 ──────────────────
+            MiMenu(
+              controller: _sort,
+              themeMode: mode,
+              groups: [
+                MiMenuGroup([
+                  for (var i = 0; i < _sorts.length; i++)
+                    MiMenuItem(
+                      label: _sorts[i],
+                      selected: _sortIndex == i,
+                      value: i,
+                    ),
+                ]),
+              ],
+              onSelected: (s) =>
+                  setState(() => _sortIndex = s.item.value! as int),
+              child: MiSettingsRow(
+                themeMode: mode,
+                label: '排序方式',
+                subtitle: '单选菜单：选中项带勾号，选完自动收起',
+                value: _sorts[_sortIndex],
+                trailing: MiMenuArrow(color: sub),
+                onTap: _sort.toggle,
+              ),
+            ),
+            // ── 级联：子列表首行是返回上级的同名行 ────────────────
+            MiMenu(
+              controller: _share,
+              themeMode: mode,
+              groups: const [
+                MiMenuGroup([
+                  MiMenuItem(
+                    label: '分享到',
+                    subtitle: '级联子菜单（微信 / 邮件 / 二维码）',
+                    children: [
+                      MiMenuItem(label: '微信', value: '微信'),
+                      MiMenuItem(label: '邮件', value: '邮件'),
+                      MiMenuItem(
+                        label: '二维码',
+                        enabled: false,
+                        value: '二维码',
+                      ),
+                    ],
+                  ),
+                  MiMenuItem(label: '复制链接', value: '复制链接'),
+                  MiMenuItem(label: '保存到相册', value: '相册'),
+                ]),
+              ],
+              onSelected: (s) =>
+                  setState(() => _shareTarget = s.item.value! as String),
+              child: MiSettingsRow(
+                themeMode: mode,
+                label: '分享',
+                subtitle: '带子菜单：点开第二级，箭头行返回上级',
+                value: _shareTarget,
+                trailing: MiMenuArrow(color: sub),
+                onTap: _share.toggle,
+              ),
+            ),
+            // ── 多分组动作菜单：组间分隔线 + 整组禁用 ─────────────
+            MiMenu(
+              controller: _actions,
+              themeMode: mode,
+              groups: const [
+                MiMenuGroup([
+                  MiMenuItem(label: '编辑', value: '编辑'),
+                  MiMenuItem(label: '复制', value: '复制'),
+                  MiMenuItem(label: '重命名', value: '重命名'),
+                ]),
+                // 整组禁用：项照常占位、墨色降档、不响应点按。
+                MiMenuGroup([MiMenuItem(label: '删除', value: '删除')], enabled: false),
+              ],
+              onSelected: (s) =>
+                  setState(() => _action = s.item.value! as String),
+              child: MiSettingsRow(
+                themeMode: mode,
+                label: '操作菜单（图标触发）',
+                subtitle: '多分组 + 整组禁用，锚点 = 右侧竖点图标',
+                value: _action,
+                trailing: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Center(
+                    child: CustomPaint(
+                      size: const Size(4, 18),
+                      painter: MoreVerticalIconPainter(sub),
+                    ),
+                  ),
+                ),
+                onTap: _actions.toggle,
+              ),
+            ),
+          ],
+        ),
+        _demoNote(
+          context,
+          'MiMenu：锚点量自子级盒子（右缘对齐、下方优先，放不下翻上方并夹紧'
+              '在宿主内）→ 0.15→1 缩放 + 单向揭示 + 淡入（弹簧 ζ 0.82）→ '
+              '面板圆角 16 / 宽 200–288 / 行内距 20、首末行 20 中间 12。'
+              '经 MiPopup 注册到宿主，z 序 = 注册序；点遮罩 / 系统返回收起，'
+              '收口后才回调 onDismissed。',
+        ),
+        _demoNote(
+          context,
+          '配色不新造：面板 = 弹框表面（暗 #242424 / 亮 #FFFFFF）、选中 = '
+              '品牌强调色、副文 = 设置行同一档 55%、遮罩取参考实现的窗口压暗'
+              '（亮 0.30 / 暗 0.60）。几何与动效为「参考实现值」（本库无菜单'
+              '素材），见 MiMenuMetrics 的对照表。',
         ),
       ],
     );
