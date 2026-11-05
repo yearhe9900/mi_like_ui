@@ -411,6 +411,56 @@ class MiTransparencyTokens {
   static const Color dialogTextSecondaryLight =
       Color.fromRGBO(0, 0, 0, dialogTextSecondaryAlpha);
 
+  // ══ 六·二、菜单（`MiMenu`）════════════════════════════════════════════════
+
+  /// 菜单面板填充（与弹框卡片同值：暗 #242424 / 亮 #FFFFFF）。
+  ///
+  /// 不透明、无渐变 —— 菜单是「就地展开的一张纸」，压在任意内容上都要保持
+  /// 同一读数；磨砂会在展开过程中把背后的行透出来，反而干扰读项。
+  static const Color menuSurfaceDark = Color(0xFF242424);
+  static const Color menuSurfaceLight = Color(0xFFFFFFFF);
+
+  /// 菜单行按压高亮（**预合成** = [dialogPressAlpha] 叠在面板填充上，直接铺色）：
+  /// 暗 白@0.12 压 #242424 → #3E3E3E；亮 黑@0.12 压 #FFFFFF → #E0E0E0。
+  static const Color menuPressDark = Color(0xFF3E3E3E);
+  static const Color menuPressLight = Color(0xFFE0E0E0);
+
+  /// 禁用态**文字**色（onSurface @38%，与 [disabledLabelAlpha] 同源）。
+  ///
+  /// 组件层不得自算透明度，禁用墨色统一从这里取（开关 / 复选框是整件
+  /// 降透明，不适用本档 —— 那是 `MiDimens.disabledOpacity`）。
+  static const Color disabledLabelDark =
+      Color.fromRGBO(255, 255, 255, disabledLabelAlpha / 255);
+  static const Color disabledLabelLight =
+      Color.fromRGBO(0, 0, 0, disabledLabelAlpha / 255);
+
+  /// 菜单遮罩 alpha（**参考实现值**，非本库度量：`flutter_miuix` 的
+  /// `windowDimming` 亮 `0x4D` / 暗 `0x99`）。
+  ///
+  /// 比弹框遮罩（0.20 / 0.60）亮色侧重一档：菜单是**就地展开**的浮层，
+  /// 背后就是触发它的那一行，压色要够把「菜单外的内容退到后面」、
+  /// 又不能重到读成「换了一屏」。暗色与弹框同档 0.60。
+  static const double menuScrimAlphaLight = 0.30;
+  static const double menuScrimAlphaDark = dialogScrimAlphaDark;
+
+  /// 菜单遮罩色（黑 @ 上述 alpha）。
+  static const Color menuScrimLight =
+      Color.fromRGBO(0, 0, 0, menuScrimAlphaLight);
+  static const Color menuScrimDark =
+      Color.fromRGBO(0, 0, 0, menuScrimAlphaDark);
+
+  /// 按明暗 + 进度取菜单遮罩色（`progress` = 0…1 的遮罩淡入进度）。
+  static Color menuScrimProgressFor(MiThemeMode mode, double progress) {
+    final base =
+        mode == MiThemeMode.dark ? menuScrimAlphaDark : menuScrimAlphaLight;
+    return Color.fromRGBO(0, 0, 0, base * progress.clamp(0.0, 1.0));
+  }
+
+  /// 按明暗模式取禁用态文字色（同源转发 [disabledLabelDark] /
+  /// [disabledLabelLight]，供只拿到 mode 的调用点使用）。
+  static Color disabledLabelFor(MiThemeMode mode) =>
+      mode == MiThemeMode.dark ? disabledLabelDark : disabledLabelLight;
+
   /// 弹框操作列表**分隔线** alpha（**推导值**，非度量：参考素材只有按钮式
   /// 弹框，没有「纵向操作列表」形态的样张）。取 onSurface @0.08：分隔线要
   /// 能读出「两项之间有界」，又不能重到在卡片填充（#FFFFFF / #242424）上

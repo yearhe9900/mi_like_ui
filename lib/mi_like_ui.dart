@@ -42,6 +42,7 @@ export 'src/theme/floating_toolbar_tokens.dart';
 export 'src/theme/settings_tokens.dart';
 export 'src/theme/switch_tokens.dart';
 export 'src/theme/checkbox_tokens.dart';
+export 'src/theme/menu_tokens.dart';
 
 // ── 视觉与交互基元 ────────────────────────────────────────────────────────
 export 'src/foundations/squircle.dart';
@@ -111,6 +112,8 @@ export 'src/overlays/snackbar/snackbar.dart';
 export 'src/overlays/snackbar/snackbar_metrics.dart';
 export 'src/overlays/floating_toolbar/floating_toolbar.dart';
 export 'src/overlays/floating_toolbar/floating_toolbar_metrics.dart';
+export 'src/overlays/menu/menu.dart';
+export 'src/overlays/menu/menu_metrics.dart';
 
 // ── 图标 ──────────────────────────────────────────────────────────────────
 export 'src/icons/nav_icons.dart';
