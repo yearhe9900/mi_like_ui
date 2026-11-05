@@ -18,7 +18,8 @@
 ## 特性
 
 - **成套组件**：玻璃悬浮底部 / 侧边导航栏、胶囊标签行、胶囊按钮、搜索栏、
-  大标题折叠顶栏、渐进模糊、主题卡片、弹框、底部弹窗、悬浮工具栏、复选框
+  大标题折叠顶栏、渐进模糊、主题卡片、弹框、锚定菜单、底部弹窗、悬浮工具栏、
+  复选框
 - **连续圆角**：全库圆角为 Squircle（G2 连续曲率，HyperOS / iOS 标志性
   角形，边缘高光不打折），半径语义与度量值不变
 - **明暗双模式**：全部组件提供深 / 浅两套配方，`MiThemeMode` 统一切换
@@ -72,7 +73,7 @@ MiGlassNavBar(
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
 | 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用） |
-| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格 |
+| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用） |
 | 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、明暗模式切换、弹框入口 |
 | 首页点搜索栏 | `MiCardPageRoute` 推入搜索页（下层页左移视差 + 压暗） |
@@ -94,6 +95,7 @@ MiGlassNavBar(
 | `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` | 设置分组卡片与行（前导图标块 + 主 / 副文案 + 值文 / 尾部 + chevron，整行按压带，三态反馈走 `MiPressable`） |
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp）；命令式 `showMiDialog` 返回被点下标 |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
+| `MiMenu` | 锚定菜单（贴着触发件弹出、右缘对齐 + 空间不足自动翻转；单选勾号 / 级联二级 / 多分组与整组禁用；弹簧缩放 + 单向揭示） |
 | `MiSnackbar` | 轻量消息条（自动收起、同类替换、可带动作钮；几何全推导） |
 | `MiCheckbox` | 复选框（三态：开 / 关 / 半选，勾号淡入 + trim 划开；未选档与开关同源） |
 | `MiBottomSheet` | 底部弹窗（只圆上两角、弹簧滑入滑出、手柄下拉关闭、遮罩；宽屏限宽居中） |
@@ -500,6 +502,66 @@ MiPullUpPanel(
 ```
 
 <img src="doc/preview/panel_dark.png" width="200" alt="深色弹出面板" /> <img src="doc/preview/panel_light.png" width="200" alt="浅色弹出面板" />
+
+### 锚定菜单（MiMenu）
+
+贴着触发件弹出的小面板菜单，用于「排序方式 / 分享到 / 更多操作」这类**就地
+选择**：触发件本身不被接管 —— `MiMenu` 只包住任意 `child` 量它的盒子做锚点，
+点按仍由 `child` 自己处理（通常是 `controller.toggle`），因此同一条
+`MiSettingsRow` 既是展示行也是菜单入口。
+
+**定位**：右缘与锚点右缘对齐、下方优先（间距 8dp）；下方放不下时翻到上方，
+上下都不行则取空间大的一侧并在宿主内夹紧（`MiMenuMetrics.panelOffset`，
+纯函数可单测）。
+
+**三种内容形态**：单选（`selected` → 强调色 + 右侧勾号）、级联
+（`children` 非空 → 面板内切到第二级，首行是**同名返回行**带左向箭头）、
+多分组（`MiMenuGroup` 之间画分隔线，`enabled: false` 的整组照常占位、墨色
+降档、不响应点按）。选中回调给 `MiMenuSelection`（`item` + 从根到叶的 `path`），
+默认选完自动收起（`collapseOnSelect: false` 可留开做连续操作）。
+
+```dart
+final sort = MiMenuController();
+
+MiMenu(
+  controller: sort,
+  themeMode: mode,
+  groups: [
+    MiMenuGroup([
+      MiMenuItem(label: '默认', selected: index == 0, value: 0),
+      MiMenuItem(label: '修改时间', selected: index == 2, value: 2),
+    ]),
+    MiMenuGroup([MiMenuItem(label: '删除', value: 'del')], enabled: false),
+  ],
+  onSelected: (s) => setState(() => index = s.item.value! as int),
+  onDismissed: () {},                 // 收起动画收口后才回调
+  child: MiSettingsRow(
+    label: '排序方式',
+    value: labels[index],
+    trailing: MiMenuArrow(color: sub),  // 可换上下双箭头 / 任意 widget
+    onTap: sort.toggle,
+  ),
+);
+```
+
+**动效**：0.15 → 1 缩放（原点钉在锚点那一侧的角上，视觉上从行边「长出来」）
++ 高度单向揭示（`MiMenuRevealClipper`，同时裁出 squircle 圆角）+ 200ms 淡入；
+位移走 ζ 0.82 弹簧（≈0.3s 收敛），**退出不反向播同一条曲线** —— 淡出 150ms
+单独计时（进入曲线反向播会把「快起慢停」翻成「慢起快停」）。遮罩随进度取
+参考实现的窗口压暗（亮 0.30 / 暗 0.60，`enableScrim: false` 可关）。
+
+**接线**：面板经 `MiPopup` 注册到最近 `MiPopupHost`（z 序 = 注册序，不扰动
+页面栈），点遮罩 / 系统返回都收起，收口后才回调 `onDismissed`；没有宿主时
+就地渲染，与库内其他浮层同一口径。
+
+**规格**（详见 `MiMenuMetrics`）：面板圆角 16dp、宽 200–288dp、最小高 50dp、
+离锚点 8dp；行内距 20dp、行上下留白 12dp（首末行 20dp）、图标格 26dp / 间距
+12dp、勾号 20dp、级联箭头 10×16dp、分隔线 1.5dp（内缩 20、上下 4dp）。几何与
+动效均为 `flutter_miuix` 的**参考实现值**（本库无菜单素材）；配色不新造色值 ——
+表面 = 弹框表面档（暗 #242424 / 亮 #FFFFFF）、选中 = 品牌强调色、副文 = 设置行
+同档 55%、按压叠色与分隔线取自既有 token（见 `MiMenuPalette`）。
+
+<img src="doc/preview/menu_light.png" width="200" alt="浅色单选菜单" /> <img src="doc/preview/menu_dark.png" width="200" alt="深色单选菜单" /> <img src="doc/preview/menu_cascade_dark.png" width="200" alt="深色级联二级菜单" />
 
 ### 弹层与轻提示（MiPopupHost / MiSnackbar）
 
@@ -935,7 +997,7 @@ lib/
     │   ├── lists/           #   settings_row（卡片 / 行 / 图标块）· preference_tile
     │   ├── cards/           #   theme_card
     │   └── effects/         #   gradient_blur
-    ├── overlays/            # 浮层：popup_host（宿主 + 注册表）+ dialog · bottom_sheet · pull_up_panel · snackbar · floating_toolbar
+    ├── overlays/            # 浮层：popup_host（宿主 + 注册表）+ dialog · menu · bottom_sheet · pull_up_panel · snackbar · floating_toolbar
     └── icons/               # 图标 painter 合集
 
 test/                        # 单元 / 交互 / 视觉回归 / 约束守门
@@ -949,7 +1011,7 @@ docs/                        # 架构 · 模块接口 · 使用与配置
 | 基元层 `src/foundations/` | 与业务无关的视觉 / 交互零件（连续圆角、三态反馈、滤镜缓存、格位数学） |
 | 布局层 `src/layout/` | 响应式三断点与滚动位移作用域 |
 | 组件层 `src/components/` | 可复用组件：widget + metrics（+ 内部 painter） |
-| 浮层 `src/overlays/` | 宿主与注册表 + 全部覆盖层（弹框 / 抽屉 / 面板 / 轻提示 / 悬浮容器） |
+| 浮层 `src/overlays/` | 宿主与注册表 + 全部覆盖层（弹框 / 菜单 / 抽屉 / 面板 / 轻提示 / 悬浮容器） |
 | 图标 `src/icons/` | 导航图标 painter 合集（`*IconPainter`） |
 | 示例层 `lib/demo/` | 演示应用，模拟真实使用方 |
 
@@ -1019,6 +1081,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiGradientBlur` — 顶部渐进模糊
 - [x] `MiThemeCard` — 主题卡片
 - [x] `MiDialog` — 弹框（含纵向操作列表形态）
+- [x] `MiMenu` — 锚定菜单（单选 / 级联 / 多分组禁用、锚点翻转与夹紧）
 - [x] `MiPullUpPanel` — 弹出面板（按钮弹起 / 弹簧动效）
 - [x] `MiBottomSheet` — 底部弹窗（弹簧滑入 / 手柄下拉 / 只圆上两角）
 - [x] `MiFloatingToolbar` — 悬浮工具栏（胶囊托盘 + 按形状投影）

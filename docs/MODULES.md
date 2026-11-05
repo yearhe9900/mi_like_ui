@@ -20,7 +20,7 @@
 | 动效 | `MiMotionTokens`（`pressMs` / `pressCurve` / `pressFadeInMs` / `panelExpand` / `panelCollapse`）、`miSpring(damping:, response:)` | 跨组件动效单一来源；Folme 口径弹簧换算 |
 | 透明 / 磨砂 | `MiTransparencyTokens`（`blurSigma` / `dialogScrimFor` / `surfaceFillFor` / `glassMembraneFor` / `controlOffFillFor` / `switchTrackOffFor` / `sheetHandleFor` / …） | alpha、σ、叠色、遮罩的**唯一**来源 |
 | 列表行几何 | `MiRowMetrics`（`paddingY` / `iconSize` / `mainLinePitch` / `heightFor(hasSubtitle:)`） | 设置行 / 偏好行 / 弹框列表共用的行高 47.2 / 68.2 |
-| 组件配色 | `MiGlassTokens` / `MiGlassPalette` / `MiPillTabPalette` / `MiButtonPalette` / `MiSearchBarPalette` / `MiTopBarPalette` / `MiDialogPalette` / `MiBottomSheetPalette` / `MiPullUpPanelPalette` / `MiSnackbarPalette` / `MiFloatingToolbarPalette` / `MiSettingsPalette` / `MiSwitchPalette` / `MiCheckboxPalette` | 各组件明暗双配方，均给 `of(mode)` 入口 |
+| 组件配色 | `MiGlassTokens` / `MiGlassPalette` / `MiPillTabPalette` / `MiButtonPalette` / `MiSearchBarPalette` / `MiTopBarPalette` / `MiDialogPalette` / `MiMenuPalette` / `MiBottomSheetPalette` / `MiPullUpPanelPalette` / `MiSnackbarPalette` / `MiFloatingToolbarPalette` / `MiSettingsPalette` / `MiSwitchPalette` / `MiCheckboxPalette` | 各组件明暗双配方，均给 `of(mode)` 入口 |
 | 模糊曲线 | `MiTopBarBlurBand` / `MiGradientBlurProfile` / `MiHeaderBlurProfile` | 渐进模糊的 σ 分档与拉伸规则 |
 
 ## 2. 视觉与交互基元（`src/foundations/`）
@@ -96,6 +96,7 @@
 | 单点渲染层 | `MiPopupHost({child})`、`MiPopup({show, builder, modal, tag})`、`MiPopupRegistry`（`entries` / `add` / `remove` / `removeByTag`）、`MiPopupScope`、`MiPopupHandle` | 页面里的浮层统一注册到宿主按序渲染；无宿主时就地渲染。注册表通知合并到帧末 |
 | 弹框 | `MiDialog({title, message, actions, items, layout, position, messageAlign, onScrimTap})`、`MiDialogAction`（`style: MiDialogActionStyle`）、`MiDialogItem`、`MiDialogPosition`、`MiDialogLayout`、`MiDialogMetrics` / `MiDialogListMetrics` | 按钮形态 / 纵向操作列表形态；三档位置 |
 | 命令式弹框 | `showMiDialog(context, dialog: …)` → `Future<int?>` | `await` 拿被点按钮 / 列表项下标（遮罩 / 返回 = null）；挂根导航器、零转场 |
+| 锚定菜单 | `MiMenu({groups, child, controller, onSelected, onDismissed, themeMode, maxHeight, enableScrim, collapseOnSelect})`、`MiMenuItem({label, subtitle, leading, enabled, selected, children, value})`、`MiMenuGroup(items, {enabled})`、`MiMenuSelection`、`MiMenuController`、`MiMenuArrow`、`MiMenuMetrics` / `MiMenuPalette` | 贴触发件弹出：单选勾号 / 级联二级 / 多分组禁用；右缘对齐 + 空间不足翻转夹紧；经 `MiPopup` 入宿主 |
 | 底部弹窗 | `MiBottomSheet({show, child, title, leading, trailing, onDismissRequest, onDismissed, enableDragDismiss, enableScrim, showHandle, cornerRadius, maxWidth})`、`MiBottomSheetMetrics` | 弹簧滑入、手柄下拉跟手、只圆上两角 |
 | 弹出面板 | `MiPullUpPanel({child, height, maxHeight, anchorPoint, collapsedSize, controller, onDismissed})`、`MiPullUpPanelController`、`MiPullUpPanelMetrics` | 从触发行弹起的面板（展开欠阻尼 / 收回临界阻尼） |
 | 轻提示 | `MiSnackbar.show(context, {message, actionLabel, onAction, duration, themeMode})`、`MiSnackbarController`、`MiSnackbarMetrics` | 底部轻提示，需要 `MiPopupHost` |
