@@ -15,6 +15,8 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/demo_app.dart';
 import 'package:mi_like_ui/demo/mock_pages.dart';
 
+import 'support/appearance.dart';
+
 /// README 预览图生成器（不是回归测试）。
 ///
 /// 黄金图测试环境无 CJK 字体（标签渲染为方框），README 展示图需要真实
@@ -221,8 +223,7 @@ void main() {
     );
 
     // 浅色：同页切模式
-    await tester.tap(find.byType(MiSwitch));
-    await tester.pumpAndSettle();
+    await pickAppearance(tester, DemoAppearance.light);
     await expectLater(
       find.byType(DemoHome),
       matchesGoldenFile('../doc/preview/demo_light.png'),
@@ -253,8 +254,7 @@ void main() {
         // 模式切换入口在「我的」页顶部
         await tester.tap(find.text('我的').last);
         await tester.pumpAndSettle();
-        await tester.tap(find.byType(MiSwitch));
-        await tester.pumpAndSettle();
+        await pickAppearance(tester, DemoAppearance.light);
       }
       await expectLater(find.byType(DemoHome), matchesGoldenFile(file));
     }
@@ -619,8 +619,7 @@ void main() {
         // 模式切换入口在「我的」页顶部，切完回首页
         await tester.tap(find.text('我的').last);
         await tester.pumpAndSettle();
-        await tester.tap(find.byType(MiSwitch));
-        await tester.pumpAndSettle();
+        await pickAppearance(tester, DemoAppearance.light);
         await tester.tap(find.text('首页').last);
         await tester.pumpAndSettle();
       }

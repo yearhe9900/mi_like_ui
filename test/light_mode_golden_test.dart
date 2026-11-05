@@ -6,6 +6,8 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 
 import 'package:mi_like_ui/demo/demo_app.dart';
 
+import 'support/appearance.dart';
+
 // 亮色参考截图的三种典型背景（881×1920 实测色）：暗卡 / 灰白照片卡 / 蓝卡，
 // 页面底色 #F7F7F7（新参考图平坦底色实测）—— 玻璃透射差异靠这些背景读出来。
 Widget lightBackdrop() {
@@ -101,13 +103,12 @@ void main() {
       MiThemeMode.dark,
     );
 
-    // 进「我的」页，模式切换入口在页面顶部
+    // 进「我的」页，外观模式入口在页面顶部（三档菜单，默认深色）
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
-    expect(find.byType(MiSwitch), findsOneWidget);
+    expect(appearanceValueText(tester), '深色');
 
-    await tester.tap(find.byType(MiSwitch));
-    await tester.pumpAndSettle();
+    await pickAppearance(tester, DemoAppearance.light);
 
     // 切到浅色：底色与导航栏配方整体翻转
     scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
@@ -118,8 +119,7 @@ void main() {
     );
 
     // 再切回深色
-    await tester.tap(find.byType(MiSwitch));
-    await tester.pumpAndSettle();
+    await pickAppearance(tester, DemoAppearance.dark);
     scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
     expect(scaffold.backgroundColor, const Color(0xFF08080A));
   });
@@ -135,8 +135,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('我的'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(MiSwitch));
-    await tester.pumpAndSettle();
+    await pickAppearance(tester, DemoAppearance.light);
 
     await expectLater(find.byType(DemoHome), matchesGoldenFile('goldens/demo_light_mine.png'));
   });
