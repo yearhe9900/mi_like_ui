@@ -55,10 +55,21 @@ class _DemoSearchPageState extends State<DemoSearchPage> {
   @override
   void initState() {
     super.initState();
-    // 进页即聚焦（参考素材：推入过程中键盘已经在弹）
+    // 进页即聚焦（参考素材：推入过程中键盘已经在弹）。焦点不推迟到转场
+    // 结束 —— 那样键盘要等页面落定才开始升，反而把「点搜索栏 → 可输入」
+    // 串成两段等待；保持并行，由 [MiCardPageRoute] 的短时长吸收。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focus.requestFocus();
     });
+  }
+
+  /// 返回：先收焦点再出栈，让键盘收起与转场**并行**。
+  ///
+  /// 旧路径直接 `maybePop()`：焦点仍在输入框上，键盘要等路由结束、页面
+  /// 销毁才收，系统键盘动画叠在 pop 之后，读作「返回还要再等一下」。
+  void _close() {
+    if (_focus.hasFocus) _focus.unfocus();
+    if (mounted) Navigator.of(context).maybePop();
   }
 
   @override
@@ -84,9 +95,7 @@ class _DemoSearchPageState extends State<DemoSearchPage> {
         // 桌面：Esc = 返回（同头部返回圆钮）；⌘/Ctrl + K = 重新聚焦输入框
         //（焦点在别处时的快捷回归）。
         onFocusSearch: () => _focus.requestFocus(),
-        onEscape: () {
-          if (mounted) Navigator.of(context).maybePop();
-        },
+        onEscape: _close,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -100,6 +109,7 @@ class _DemoSearchPageState extends State<DemoSearchPage> {
                       key: const ValueKey('searchBack'),
                       ink: ink,
                       palette: palette,
+                      onTap: _close,
                     ),
                     const SizedBox(width: _controlGap),
                     Expanded(child: _field(palette)),
@@ -185,16 +195,22 @@ class _DemoSearchPageState extends State<DemoSearchPage> {
 
 /// 返回圆钮（示例层）：⌀44.1 圆盘 + 顶栏同一枚箭头墨迹。
 class _BackCircle extends StatelessWidget {
-  const _BackCircle({super.key, required this.ink, required this.palette});
+  const _BackCircle({
+    super.key,
+    required this.ink,
+    required this.palette,
+    this.onTap,
+  });
 
   final Color ink;
   final MiSearchBarPalette palette;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Navigator.of(context).maybePop(),
+      onTap: onTap ?? () => Navigator.of(context).maybePop(),
       child: Container(
         width: MiSearchBarMetrics.barHeight,
         height: MiSearchBarMetrics.barHeight,

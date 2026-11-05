@@ -616,9 +616,12 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 ));
 ```
 
-**规格**（详见 `MiCardPageRouteMetrics`）：时长 300ms、位置曲线 `easeOutCubic`；
-新页前缘圆角 61.2dp；下层页左移 `0.25 × 页宽`（只平移、不缩放）；下层页压暗
-由 0 线性升至黑 @0.55。新页归位后不保留任何变换层与遮罩（静止页零额外绘制）。
+**规格**（详见 `MiCardPageRouteMetrics`）：进入 220ms、退出 180ms；进入位置曲线
+是实测拟合的 `easeOutCubic`，退出按「退出已过时间」另取一条 `easeOutCubic`
+（把进入曲线直接反向播会变成慢起快停，返回时前半程画面几乎不动）；新页前缘
+圆角 61.2dp；下层页左移 `0.25 × 页宽`（只平移、不缩放）；下层页压暗由 0 线性
+升至黑 @0.55，退出时随视觉进度同步褪去。新页归位后不保留任何变换层与遮罩
+（静止页零额外绘制）。
 
 - **两种角色**：`buildTransitions` 同时处理「本页正在进入」与「本页被上层压住」。
   下层页的视差依赖下层路由同样为本类（`secondaryAnimation` 钩子）；下层是平台
@@ -631,9 +634,9 @@ Navigator.of(context).push(MiCardPageRoute<void>(
 手机档的「大圆角滑入 + 视差」在桌面读作「两个窗口叠在一起」。淡入同样
 **不用 `Opacity`**：新页含磨砂顶栏，套 saveLayer 会让它自己的 backdrop 变空；
 改在新页之上盖一层**页底色实色**（`ColoredBox`，普通绘制）做 alpha 1→0，
-观感即「从页面底色里浮出来」。下层页不做视差、不压暗。220ms 通过
-`Interval(0, 0.73)` 落在 300ms 路由时长的前 73% 段（`transitionDuration`
-在构造时定死、拿不到上下文里的窗口宽）。
+观感即「从页面底色里浮出来」。下层页不做视差、不压暗。视觉铺满整段 220ms
+转场，不留「视觉已落定、路由仍在空转」的尾段 —— 旧实现把 220ms 压进 300ms
+的前 73%，pop 时这段空转读作「点了返回，前 80ms 画面完全不动」。
 
 <img src="doc/preview/push_transition_light.png" width="180" alt="浅色推入转场中" /> <img src="doc/preview/push_transition_dark.png" width="180" alt="深色推入转场中" /> <img src="doc/preview/search_page_dark.png" width="180" alt="落定后的搜索页头部" />
 
@@ -748,8 +751,9 @@ MiScrollBinder(
 
 **① 原地搜索态**（`MiTopBar.searchActive`）—— 搜索栏就地变输入框，右侧淡入
 取消钮（`MiSearchCancelButton`），胶囊标签行淡出并退出排版（`occupiedHeight`
-由 156dp 收至 100.1dp）；转场 220ms（起手静止 22ms + 位移 `easeOutQuint`），
-取消钮淡入与位移不同步、落在转场中段。示例在「分类」页。
+由 156dp 收至 100.1dp）；进入 180ms（起手静止 9ms + 位移 `easeOutQuint`），
+线性淡出类收进前 70% 时间，退出 150ms 走独立曲线（不反向播进入曲线）。取消钮
+淡入与位移不同步、作用在「搜索态可见度」的中段。示例在「分类」页。
 
 > **转场期的两条绘制约束**：① 胶囊行与取消钮的淡出**乘 alpha**（组件自带的
 > `fade` 参数），不套 `Opacity` —— saveLayer 会让子树里 backdrop 变空（磨砂

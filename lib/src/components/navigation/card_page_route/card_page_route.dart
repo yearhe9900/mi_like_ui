@@ -33,6 +33,11 @@ import 'card_page_route_metrics.dart';
 ///    **只有下层路由也是本类时才有视差** —— 平台自带路由没有这个钩子；
 ///    此时压暗仍由上层提供，视觉上只少一点点纵深。
 ///
+/// 退出（pop）走独立的 [MiCardPageRouteMetrics.reverseDurationMs] 与
+/// [MiCardPageRouteMetrics.exitMotion]：进入曲线反向播会把「快起慢停」翻成
+/// 「慢起快停」，返回时会先空等一大段、再突然弹回。上层滑出、下层视差与
+/// 压暗三者共用同一条退出进度，保持同步。
+///
 /// ## 为什么压暗用纯色填充而不是 `Opacity`
 ///
 /// `Opacity` / `FadeTransition` 会给整页引入 `saveLayer`，使下层
@@ -46,7 +51,9 @@ class MiCardPageRoute<T> extends PageRoute<T> {
     this.parallaxFraction = MiCardPageRouteMetrics.parallaxFraction,
     this.motion = MiCardPageRouteMetrics.motion,
     Duration? duration,
-  }) : _duration = duration;
+    Duration? reverseDuration,
+  })  : _duration = duration,
+        _reverseDuration = reverseDuration;
 
   /// 新页内容。
   final WidgetBuilder builder;
@@ -64,10 +71,17 @@ class MiCardPageRoute<T> extends PageRoute<T> {
   final Curve motion;
 
   final Duration? _duration;
+  final Duration? _reverseDuration;
 
   @override
   Duration get transitionDuration =>
       _duration ?? const Duration(milliseconds: MiCardPageRouteMetrics.durationMs);
+
+  /// 退出比进入略快，且**不复用**进入时长的默认值（见类文档「退出」）。
+  @override
+  Duration get reverseTransitionDuration =>
+      _reverseDuration ??
+      const Duration(milliseconds: MiCardPageRouteMetrics.reverseDurationMs);
 
   @override
   Color? get barrierColor => null;
@@ -143,6 +157,25 @@ class MiCardPageRoute<T> extends PageRoute<T> {
   }
 }
 
+/// 按方向求视觉进度：进入 0 → 1、退出 1 → 0，**两向都是快起慢停**。
+///
+/// 退出时 `animation.value` 反向走，直接对 [motion] 求值会得到慢起快停
+/// （`easeOutCubic` 的平坦尾段变成开头一大段几乎不动）。改为对「退出已过
+/// 时间」`1 - progress` 应用 [MiCardPageRouteMetrics.exitMotion] 再取补，
+/// 上层滑出、下层视差、宽屏幕布因此共用同一条进度。
+///
+/// 口径是「完整落定后再 pop」：视觉位置由 `animation.value` 直接解出，若
+/// 在 push 动画中途打断，快起曲线与打断瞬间的进度不连续（要归一化须另记
+/// 打断起点）。本库的搜索页在转场结束前不接受返回，故不走这条路径。
+double _visualProgress(
+    Animation<double> animation, Curve motion, double progress) {
+  if (animation.status == AnimationStatus.reverse) {
+    return (1 - MiCardPageRouteMetrics.exitMotion.transform(1 - progress))
+        .clamp(0.0, 1.0);
+  }
+  return motion.transform(progress).clamp(0.0, 1.0);
+}
+
 /// 上层页：全屏压暗 + 整页横向滑入（前缘圆角）。
 class _MiPushIncoming extends StatelessWidget {
   const _MiPushIncoming({
@@ -164,16 +197,20 @@ class _MiPushIncoming extends StatelessWidget {
       child: child,
       builder: (context, page) {
         final progress = animation.value.clamp(0.0, 1.0);
-        final visual = motion.transform(progress).clamp(0.0, 1.0);
+        final visual = _visualProgress(animation, motion, progress);
         // 归位后：不加变换层、不裁剪、不铺遮罩（静止页零额外绘制）。
         if (visual >= 1) return page!;
+        // 压暗在 push 方向仍是**线性**进度（度量）；退出方向改随视觉进度，
+        // 页面快速滑出时暗幕同步褪去，不留在下层慢慢变亮。
+        final dimProgress =
+            animation.status == AnimationStatus.reverse ? visual : progress;
         return Stack(
           children: [
             // 压暗在页面之下、屏幕之上：盖住下层页露出来的部分。
             Positioned.fill(
               child: IgnorePointer(
                 child: ColoredBox(
-                  color: MiTransparencyTokens.pushDimAt(progress),
+                  color: MiTransparencyTokens.pushDimAt(dimProgress),
                 ),
               ),
             ),
@@ -216,7 +253,7 @@ class _MiPushParallax extends StatelessWidget {
       builder: (context, page) {
         final progress = animation.value.clamp(0.0, 1.0);
         if (progress <= 0) return page!;
-        final visual = motion.transform(progress).clamp(0.0, 1.0);
+        final visual = _visualProgress(animation, motion, progress);
         // 位移按**页宽的比例** → `FractionalTranslation`（绘制期变换，不参与
         // 布局）。旧写法是 `LayoutBuilder + Transform.translate`：每帧重建
         // builder、多跑一次布局，而这里只需要一个平移。
@@ -239,8 +276,9 @@ class _MiPushParallax extends StatelessWidget {
 ///    给它套 saveLayer 会让 backdrop 变空 —— 转场期间磨砂整段消失（本项目
 ///    已实测的坑）。改在新页**之上**盖一层页底色实色（`ColoredBox`，
 ///    一次普通绘制、无离屏合成），alpha 1 → 0 即观感上的淡入；
-///  * 视觉时长 = 前 [MiCardPageRouteMetrics.wideVisualFraction] 段
-///    （220ms，`Interval`），之后直接返回原页（零额外图层）。
+///  * 视觉进度铺满整段转场（[MiCardPageRouteMetrics.wideVisualFraction] = 1），
+///    转场结束才返回原页（零额外图层），不留「视觉已落定、路由还在空转」的
+///    尾段 —— 旧实现的那段空转在 pop 时表现为前 80ms 画面完全不动。
 class _MiPushWide extends StatelessWidget {
   const _MiPushWide({
     required this.animation,
@@ -269,13 +307,12 @@ class _MiPushWide extends StatelessWidget {
         final progress = animation.value.clamp(0.0, 1.0);
         // 归位（视觉完成）：不加变换层、不裁剪、不铺幕布（零额外绘制）。
         if (progress >= MiCardPageRouteMetrics.wideVisualFraction) return page!;
-        // 视觉进度：0 → 1 落在前 55%（220ms）里，其后由上面的分支接管。
-        final visual = motion
-            .transform(
-              (progress / MiCardPageRouteMetrics.wideVisualFraction)
-                  .clamp(0.0, 1.0),
-            )
-            .clamp(0.0, 1.0);
+        final visual = _visualProgress(
+          animation,
+          motion,
+          (progress / MiCardPageRouteMetrics.wideVisualFraction)
+              .clamp(0.0, 1.0),
+        );
         return Stack(
           fit: StackFit.expand,
           children: [

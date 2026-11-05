@@ -190,7 +190,8 @@ void main() {
   });
 
   group('动效', () {
-    testWidgets('转场时长内走完；起手先静止，取消钮中段才淡入', (tester) async {
+    testWidgets('转场时长内走完；淡出收进前段，取消钮按搜索态可见度淡入',
+        (tester) async {
       const ms = MiTopBarMetrics.searchTransitionMs;
       final host = await _pump(tester);
       final rest = tester.getRect(find.byType(MiSearchBar)).width;
@@ -201,22 +202,21 @@ void main() {
       expect(tester.getRect(find.byType(MiSearchBar)).width, rest);
       expect(find.byType(MiSearchCancelButton), findsNothing);
 
-      // 1/4 时程：位移已走掉一大半（easeOutQuint + 前 10% 静止），但取消钮
-      // 还没到淡入区间（起于 35%）→ 现算 alpha 必须是 0
-      await tester.pump(Duration(milliseconds: ms ~/ 4));
+      // 1/4 时程：位移已走掉一大半（easeOutQuint + 前 5% 静止）；取消钮
+      // 区间作用在收进前 70% 的**可见度**上，此刻刚起步、远未满
+      await tester.pump(const Duration(milliseconds: ms ~/ 4));
       final mid = tester.getRect(find.byType(MiSearchBar)).width;
       expect(mid, lessThan(rest));
       expect(mid, greaterThan(rest - 54.1)); // 还没走完
-      expect(_cancelFade(tester), 0);
+      expect(_cancelFade(tester), greaterThan(0));
+      expect(_cancelFade(tester), lessThan(0.5));
 
-      // 半程：落在淡入区间（0.35…0.62）中段
-      await tester.pump(Duration(milliseconds: ms ~/ 4));
-      final alpha = _cancelFade(tester);
-      expect(alpha, greaterThan(0));
-      expect(alpha, lessThan(1));
+      // 半程：淡入已在时程约 43% 处完成，不再磨到末帧
+      await tester.pump(const Duration(milliseconds: ms ~/ 4));
+      expect(_cancelFade(tester), 1);
 
       // 收尾：一切就位
-      await tester.pump(Duration(milliseconds: ms));
+      await tester.pump(const Duration(milliseconds: ms));
       expect(
         tester.getRect(find.byType(MiSearchBar)).width,
         moreOrLessEquals(_w -
@@ -276,6 +276,21 @@ void main() {
       expect(find.byType(MiSearchCancelButton), findsNothing);
       final bar = tester.getRect(find.byType(MiSearchBar));
       expect(bar.right, moreOrLessEquals(_w - MiTopBarMetrics.headerInset));
+    });
+
+    testWidgets('退出走独立曲线：1/4 时程即恢复过半（不是反向播进入曲线）',
+        (tester) async {
+      final host = await _pump(tester);
+      host.openSearch();
+      await tester.pumpAndSettle();
+      host.closeSearch();
+      await tester.pump();
+      await tester.pump(
+          const Duration(milliseconds: MiTopBarMetrics.searchExitMs ~/ 4));
+      final pills = tester.widget<MiPillTabBar>(find.byType(MiPillTabBar));
+      expect(pills.fade, greaterThan(0.5),
+          reason: '退出前 1/4 时程应已回退过半；反向播 searchMotion 这里约 1%');
+      await tester.pumpAndSettle();
     });
   });
 

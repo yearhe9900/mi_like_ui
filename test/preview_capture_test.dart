@@ -629,27 +629,29 @@ void main() {
       await tester.pump();
     }
 
-    // 转场中（时程 0.30：300ms 档取 90ms，与旧 400ms 档的 120ms 同一进度 ——
-    // 截图与既有预览图逐像素一致）：新页带着 61.2 圆角压进来，首页左移
-    // 0.25 × 页宽并压暗 —— 两张图各截一帧浅/深。
+    // 转场中（时程 0.30）：按 durationMs 换算绝对毫秒，让截图始终落在
+    // **同一动画进度**上 —— 压缩时长后预览图仍与既有图逐像素一致
+    //（旧 400ms 档 120ms / 300ms 档 90ms / 220ms 档 66ms）。新页带着
+    // 61.2 圆角压进来，首页左移 0.25 × 页宽并压暗 —— 两张图各截一帧浅/深。
+    final midMs = (MiCardPageRouteMetrics.durationMs * 0.30).round();
     await openSearch(light: true);
-    await tester.pump(const Duration(milliseconds: 90));
+    await tester.pump(Duration(milliseconds: midMs));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/push_transition_light.png'),
     );
 
     await openSearch(light: false);
-    await tester.pump(const Duration(milliseconds: 90));
+    await tester.pump(Duration(milliseconds: midMs));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/push_transition_dark.png'),
     );
 
     // 落定后的搜索页（头部：返回圆钮 + 输入框 + 搜索钮）。
-    // ⚠️ 累计时长保持 90 + 430 = 520ms：输入光标 500/500ms 闪烁，截图必须落在
-    // 同一相位上（改 pump 分配会让这张图 0.01% 差）。
-    await tester.pump(const Duration(milliseconds: 430));
+    // ⚠️ 累计时长恒为 520ms（midMs + 补足）：输入光标 500/500ms 闪烁，截图
+    // 必须落在同一相位上（改累计时长会让这张图 0.01% 差）。
+    await tester.pump(Duration(milliseconds: 520 - midMs));
     await expectLater(
       find.byType(DemoApp),
       matchesGoldenFile('../doc/preview/search_page_dark.png'),

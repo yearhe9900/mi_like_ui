@@ -159,8 +159,9 @@ import 'top_bar_metrics.dart';
 ///  * 胶囊标签行淡出并退出排版（不计入 [occupiedHeight]）；
 ///  * 材质盒高度收到「仅搜索栏」档。
 ///
-/// 转场 220ms（起手静止 22ms + 位移 `easeOutQuint` 198ms），参数见
-/// [MiTopBarMetrics.searchTransitionMs] / [MiTopBarMetrics.searchMotion]。
+/// 转场进入 180ms（起手静止 9ms + `easeOutQuint` 位移）、退出 150ms 且走
+/// 独立的 [MiTopBarMetrics.searchExitMotion] —— 退出不复用进入曲线反向播，
+/// 避免「点返回没反应、然后突然弹回」。参数见 [MiTopBarMetrics]。
 ///
 /// ## 转场期的绘制成本
 ///
@@ -667,16 +668,21 @@ class MiTopBar extends StatefulWidget {
   @override
   State<MiTopBar> createState() => _MiTopBarState();
 
-  /// 顶栏的完整构建，[progress] = 搜索态转场的**线性**进度（0 = 常规态，1 = 搜索态）。
+  /// 顶栏的完整构建。
   ///
-  /// 常规态 `progress = 0`，此时函数体里的每一处插值都退化成原值 —— 搜索态
-  /// 是**叠加**上来的一层状态，不是另一套布局，非搜索页逐像素不变。
+  /// [t] = 几何位移进度（缓动后），[progress] = **搜索态可见度**（淡出类用），
+  /// 两者都由 [_MiTopBarState] 按方向算好后传入：进入走
+  /// [MiTopBarMetrics.searchMotion] / [MiTopBarMetrics.searchFadeInterval]，
+  /// 退出走 [MiTopBarMetrics.searchExitMotion]。度量里位移与透明度本来就不是
+  /// 一条曲线（取消钮淡入落在中段，与位移不同步）。
   ///
-  /// 两个进度分开用：几何走 [MiTopBarMetrics.searchMotion]（前 10% 静止 +
-  /// easeOutQuint），透明度类走线性 [progress] —— 度量里它们本来就不是一条
-  /// 曲线（取消钮的淡入落在中段，与位移进度并不同步）。
-  Widget _buildBar(BuildContext context, double progress) {
-    final t = MiTopBarMetrics.searchMotion.transform(progress).clamp(0.0, 1.0);
+  /// 常规态两者都是 0，此时函数体里的每一处插值都退化成原值 —— 搜索态是
+  /// **叠加**上来的一层状态，不是另一套布局，非搜索页逐像素不变。
+  Widget _buildBar(
+    BuildContext context, {
+    required double t,
+    required double progress,
+  }) {
     final mode = MiTheme.modeOf(context, explicit: themeMode);
     final palette = this.palette ?? MiTopBarPalette.of(mode);
     final title = this.title;
@@ -980,7 +986,7 @@ class MiTopBar extends StatefulWidget {
   /// 这个状态之前逐像素一致；转场中搜索栏右缘左移让出取消钮的位置
   /// （度量：让位目标 = 间隙 10.0 + 直径 44.1，右缘贴屏 `searchCancelInset` = 0）。
   ///
-  /// [t] 是**缓动之后**的位移进度（0…1），[progress] 是线性时间进度；
+  /// [t] 是**缓动之后**的位移进度（0…1），[progress] 是搜索态可见度；
   /// 取消钮的淡入区间落在后者上（度量它与位移不同步）。
   ///
   /// ## 宽屏路径（给了 [searchBarMaxWidth] 或 [actions] 时）
@@ -1105,6 +1111,10 @@ class _MiTopBarState extends State<MiTopBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
+  /// 是否正在**退出**搜索态。方向决定用哪条曲线：把进入曲线直接反向播会
+  /// 把「快起慢停」翻成「慢起快停」，退出必须单独插值。
+  bool _exiting = false;
+
   @override
   void initState() {
     super.initState();
@@ -1115,6 +1125,8 @@ class _MiTopBarState extends State<MiTopBar>
       vsync: this,
       duration:
           const Duration(milliseconds: MiTopBarMetrics.searchTransitionMs),
+      reverseDuration:
+          const Duration(milliseconds: MiTopBarMetrics.searchExitMs),
       value: widget.isSearchMode ? 1 : 0,
     );
   }
@@ -1123,8 +1135,7 @@ class _MiTopBarState extends State<MiTopBar>
   void didUpdateWidget(covariant MiTopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isSearchMode != oldWidget.isSearchMode) {
-      // 时长对正反两向相同（度量只覆盖了进入方向；退出方向按同一时长反向
-      // 播放，参考实现未单独录到）。
+      _exiting = !widget.isSearchMode;
       if (widget.isSearchMode) {
         _controller.forward();
       } else {
@@ -1143,8 +1154,27 @@ class _MiTopBarState extends State<MiTopBar>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (context, _) =>
-          widget._buildBar(context, _controller.value.clamp(0.0, 1.0)),
+      builder: (context, _) {
+        final p = _controller.value.clamp(0.0, 1.0);
+        final double t;
+        final double visible;
+        if (_exiting) {
+          // 退出已过时间 e = 1 - p：用 easeOutCubic 驱动「回退量」，位置与
+          // 可见度同取 1 - e —— 退出也是快起慢停，前 1/4 时程即回退过半。
+          final e = MiTopBarMetrics.searchExitMotion
+              .transform(1 - p)
+              .clamp(0.0, 1.0);
+          t = 1 - e;
+          visible = 1 - e;
+        } else {
+          t = MiTopBarMetrics.searchMotion.transform(p).clamp(0.0, 1.0);
+          // 淡出类收进前 70% 时间，与位移同步收尾，不磨到末帧。
+          visible = MiTopBarMetrics.searchFadeInterval
+              .transform(p)
+              .clamp(0.0, 1.0);
+        }
+        return widget._buildBar(context, t: t, progress: visible);
+      },
     );
   }
 }
