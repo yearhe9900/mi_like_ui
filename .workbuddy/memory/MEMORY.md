@@ -30,6 +30,15 @@
 - `MiCheckbox` 勾号 = 三点折线 `PathMetric` trim；`MiSwitch` 支持水平拖拽（`travel` 归一 + 0.5 阈值）、按压钮体放大 1.127、RTL 镜像。
 - 三者（+下拉刷新等源自 flutter_miuix 的补件）几何/动效标「参考实现值、本库无素材」。
 
+## 动效：进入 / 退出必须分方向（2026-11-05）
+- **进入曲线禁止直接 `reverse()` 播退出**：`easeOutQuint` / `easeOutCubic` 反向播把「快起慢停」翻成「慢起快停」（旧值：原地态退出半程只回退 5%、整页路由前 120ms 只回退 7%）→「点返回没反应、然后突然弹回」。退出按「退出已过时间」插值 `1 - easeOut(1 - progress)`，位置 / 淡出 / 视差 / 压暗共用同一进度。
+- 退出时长单独给：`AnimationController.reverseDuration` / `PageRoute.reverseTransitionDuration`（默认等于进入时长，必须覆写）。现档：原地 180/150ms、整页 220/180ms（手感推导值；曲线形状仍是素材拟合）。
+- 线性淡出类（标题 / 胶囊行 / 透明度）收进 `Interval(0, 0.7)`，别按整段时间磨到末帧；取消钮淡入区间作用在「搜索态可见度」而非原始时间。
+- 宽屏转场视觉进度铺满整段（`wideVisualFraction = 1`）：压进前 73% 会留 80ms 空转，pop 时前 80ms 画面完全不动。
+- 键盘：进页首帧 `requestFocus` 与转场**并行**（推迟到落定反而更慢）；返回前先 `unfocus()` 再 pop，否则键盘收起串在转场之后。
+- **转场中途截图（preview golden）按动画进度换算 pump 毫秒**（`durationMs * 0.30`），别写死绝对毫秒；累计时长保持不变以固定光标闪烁相位 → 压缩时长后 golden 仍逐像素一致，不必 `--update-goldens`。
+- 已知边界：退出进度由 `animation.value` 直接解出，push 动画中途被打断会不连续（要归一化须另记打断起点）；本库搜索页在落定前不接受返回。
+
 ## 性能：每帧模糊预算
 - 口径 = 一次 build 的**层数 + 面积 dp²**，钉在 `test/perf_budget_test.dart`（阈值 78k / 122k / 175k）。深色实测：手机 2 层/75.7k、平板 2/117.8k、桌面 2/~170k。
 - 优化：深色顶栏跳过不透明段、胶囊行多 filter 合一（`_CapsuleStripClipper`）、`ImageFilter` 按 σ 缓存 + 跳过 σ<0.5。滚动降 σ（`sigmaScale` 0.6，停 120ms 恢复）。
