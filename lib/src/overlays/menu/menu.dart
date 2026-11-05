@@ -568,28 +568,52 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
                 ? MiMenuMetrics.minHeight
                 : maxHeight,
           ),
-          // 宽度按内容取（下限 200 / 上限 288）；行少时面板就是内容宽，
-          // 长文案单行省略 —— 与参考实现的「按前 8 项最宽者定宽」同效。
-          child: IntrinsicWidth(
-            // 切换层级：整层（含各自的滚动体）做 0.95→1 + 淡入淡出，两层
-            // 由 Stack 顶对齐叠放 —— 与参考实现同为「就地换内容」，不做
-            // 高度插值。滚动体必须**在切换子树之内**（每层各一个），否则
-            // 两层共用一条滚动轴，旧层的偏移会带到新层。
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: MiMenuMetrics.submenuMs),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(
-                    begin: MiMenuMetrics.submenuScale,
-                    end: 1,
-                  ).animate(animation),
-                  child: child,
+          // 面板尺寸跟着层级内容走：3 行 → 4 行这类切换不再「先跳到最大
+          // 再落定」，宽度与高度按 `submenuMs` 一起过渡（与 Compose 原版
+          // AnimatedContent 的 SizeTransform 同义；Flutter 移植版直接用
+          // AnimatedSwitcher，是不管尺寸的）。顶对齐：面板吊在锚点那侧，
+          // 长高 / 收短都该从固定边推出去。
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: MiMenuMetrics.submenuMs),
+            curve: Curves.easeOut,
+            alignment: AlignmentDirectional.topCenter,
+            // 宽度按内容取（下限 200 / 上限 288）；行少时面板就是内容宽，
+            // 长文案单行省略 —— 与参考实现的「按前 8 项最宽者定宽」同效。
+            child: IntrinsicWidth(
+              // 切换层级：整层（含各自的滚动体）做 0.95→1 + 淡入淡出，两层
+              // 在同一个顶对齐 Stack 里就地换 —— 与参考实现的口径一致。
+              // 滚动体必须**在切换子树之内**（每层各一个），否则两层共用
+              // 一条滚动轴，旧层的偏移会带到新层。
+              child: AnimatedSwitcher(
+                duration: const Duration(
+                  milliseconds: MiMenuMetrics.submenuMs,
                 ),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                // 退出层不参与定尺寸：默认 `layoutBuilder` 取两层最大值，
+                // 面板会先长到两层之和再缩回。这里按**当前层**定尺寸，
+                // 退出层顶对齐溢出、由外层的 AnimatedSize / squircle 裁掉；
+                // 退出层同样拿当前层的宽（tight width），两层按行对齐。
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: AlignmentDirectional.topStart,
+                  children: <Widget>[
+                    for (final child in previousChildren)
+                      Positioned(top: 0, left: 0, right: 0, child: child),
+                    if (currentChild != null) currentChild,
+                  ],
+                ),
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: MiMenuMetrics.submenuScale,
+                      end: 1,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                ),
+                child: _levelView(mode, palette),
               ),
-              child: _levelView(mode, palette),
             ),
           ),
         ),

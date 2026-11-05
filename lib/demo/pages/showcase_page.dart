@@ -1141,6 +1141,12 @@ class _MenuShowcaseState extends State<_MenuShowcase> {
         ),
         _demoNote(
           context,
+          '进二级：整层 0.95→1 + 淡换，返回行照抄父项整行（含副文）好让两层'
+              '按行对齐；两层行数不同时面板宽 / 高按同一 200ms 跟随内容过渡'
+              '（Compose 原版 SizeTransform 的语义），不会先跳到最大再落定。',
+        ),
+        _demoNote(
+          context,
           '配色不新造：面板 = 弹框表面（暗 #242424 / 亮 #FFFFFF）、选中 = '
               '品牌强调色、副文 = 设置行同一档 55%、遮罩取参考实现的窗口压暗'
               '（亮 0.30 / 暗 0.60）。几何与动效为「参考实现值」（本库无菜单'

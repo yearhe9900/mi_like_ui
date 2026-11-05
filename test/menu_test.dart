@@ -13,7 +13,7 @@ void main() {
   const anchorKey = Key('menu-test-anchor');
 
   /// 单组三级选项：A 选中、C 禁用、B 带子菜单。
-  List<MiMenuGroup> groups() => const [
+  List<MiMenuGroup> defaultGroups() => const [
         MiMenuGroup([
           MiMenuItem(label: '选项 A', selected: true, value: 'a'),
           MiMenuItem(
@@ -36,6 +36,7 @@ void main() {
     bool collapseOnSelect = true,
     ValueChanged<MiMenuSelection>? onSelected,
     VoidCallback? onDismissed,
+    List<MiMenuGroup> Function()? groups,
   }) {
     return MaterialApp(
       theme: ThemeData.dark(useMaterial3: true),
@@ -47,7 +48,7 @@ void main() {
               padding: const EdgeInsets.all(100),
               child: MiMenu(
                 controller: controller,
-                groups: groups(),
+                groups: (groups ?? defaultGroups)(),
                 enableScrim: enableScrim,
                 collapseOnSelect: collapseOnSelect,
                 onSelected: onSelected,
@@ -188,6 +189,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('子项 1'), findsNothing);
     expect(find.text('选项 A'), findsOneWidget);
+  });
+
+  testWidgets('级联：两层行数不同时面板尺寸按 submenuMs 过渡，不瞬跳', (tester) async {
+    final controller = MiMenuController();
+    addTearDown(controller.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 856);
+    addTearDown(tester.view.reset);
+
+    // 一级 2 行、二级 4 行（返回行 + 3 个子项）：尺寸必须变化的场景。
+    await tester.pumpWidget(
+      page(
+        controller: controller,
+        groups: () => const [
+          MiMenuGroup([
+            MiMenuItem(
+              label: '展开',
+              children: [
+                MiMenuItem(label: '子一'),
+                MiMenuItem(label: '子二'),
+                MiMenuItem(label: '子三'),
+              ],
+            ),
+            MiMenuItem(label: '叶子'),
+          ]),
+        ],
+      ),
+    );
+    await open(tester, controller);
+
+    final one = tester.getSize(find.byKey(MiMenu.panelKey)).height;
+    await tester.tap(find.text('展开'));
+    await tester.pump();
+    // 过渡中段：应该已经在变，但还没到位。
+    await tester.pump(const Duration(milliseconds: 100));
+    final mid = tester.getSize(find.byKey(MiMenu.panelKey)).height;
+    await tester.pumpAndSettle();
+    final two = tester.getSize(find.byKey(MiMenu.panelKey)).height;
+
+    expect(two, greaterThan(one));
+    expect(mid, greaterThan(one), reason: '过渡中段应已长高');
+    expect(mid, lessThan(two), reason: '过渡中段不应直接跳到终值');
   });
 
   testWidgets('禁用项不响应；整组禁用同理', (tester) async {
