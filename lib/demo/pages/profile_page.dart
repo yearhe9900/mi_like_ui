@@ -97,7 +97,8 @@ class MockPage extends StatelessWidget {
     this.index, {
     super.key,
     this.themeMode = MiThemeMode.dark,
-    this.onThemeModeChanged,
+    this.appearance,
+    this.onAppearanceChanged,
     this.onSearchActiveChanged,
     this.onShowDialog,
     this.onShowListDialog,
@@ -105,7 +106,12 @@ class MockPage extends StatelessWidget {
 
   final int index;
   final MiThemeMode themeMode;
-  final ValueChanged<MiThemeMode>? onThemeModeChanged;
+
+  /// 外观偏好（浅色 / 深色 / 跟随系统）；null = 不显示外观模式入口。
+  final DemoAppearance? appearance;
+
+  /// 外观偏好变更回调（配套 [appearance]）。
+  final ValueChanged<DemoAppearance>? onAppearanceChanged;
 
   /// 搜索态开关（true = 页面进入搜索）。外壳据此收起浮动底栏 ——
   /// 参考素材里搜索页是整屏的，没有 App 级导航。
@@ -159,26 +165,15 @@ class MockPage extends StatelessWidget {
               frosted: false,
             ),
             const SizedBox(height: 16),
-            // 外观模式（demo 功能行：右侧开关，无 chevron）
-            if (onThemeModeChanged != null) ...[
+            // 外观模式（demo 功能行）：三档单选，值文显示当前偏好，
+            // 菜单里勾选的是**偏好**而不是解析后的明暗 —— 「跟随系统」
+            // 在系统是深色时与「深色」看起来一样，只有偏好本身能区分。
+            if (appearance != null && onAppearanceChanged != null) ...[
               MiSettingsCard(children: [
-                MiSettingsRow(
-                  label: '外观模式',
-                  value: themeMode == MiThemeMode.light ? '浅色' : '深色',
-                  leading: const MiSettingsTile(Icons.light_mode_outlined, Color(0xFF7A5CFA)),
-                  chevron: false,
-                  trailing: MiSwitch(
-                    value: themeMode != MiThemeMode.light,
-                    themeMode: themeMode,
-                    onChanged: (v) => onThemeModeChanged!(
-                      v ? MiThemeMode.dark : MiThemeMode.light,
-                    ),
-                  ),
-                  onTap: () => onThemeModeChanged!(
-                    themeMode == MiThemeMode.light
-                        ? MiThemeMode.dark
-                        : MiThemeMode.light,
-                  ),
+                _AppearanceRow(
+                  themeMode: themeMode,
+                  appearance: appearance!,
+                  onChanged: onAppearanceChanged!,
                 ),
               ]),
               const SizedBox(height: 14),
@@ -298,6 +293,74 @@ class _SettingsAvatar extends StatelessWidget {
       child: CustomPaint(
         painter: SmileyBeretIconPainter(Colors.white),
         size: const Size.square(24),
+      ),
+    );
+  }
+}
+
+
+/// 外观模式设置行（示例层）：三档单选菜单 —— 浅色 / 深色 / 跟随系统。
+///
+/// 用 [MiMenu] 的「偏好行」形态（锚点 = 行自身、行的点按照常响应、菜单只
+/// 借用行的位置）：三档选项塞不进一个尾部开关，而菜单是设置页表达「多选
+/// 一」的惯例。行只负责选偏好，**不动画面**；明暗换算在 [DemoApp]（偏好
+/// → [MiThemeMode]），所以本行拿到的是已解析的 [themeMode] 用于配色。
+class _AppearanceRow extends StatefulWidget {
+  const _AppearanceRow({
+    required this.themeMode,
+    required this.appearance,
+    required this.onChanged,
+  });
+
+  final MiThemeMode themeMode;
+  final DemoAppearance appearance;
+  final ValueChanged<DemoAppearance> onChanged;
+
+  @override
+  State<_AppearanceRow> createState() => _AppearanceRowState();
+}
+
+
+class _AppearanceRowState extends State<_AppearanceRow> {
+  final MiMenuController _menu = MiMenuController();
+
+  @override
+  void dispose() {
+    _menu.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = widget.themeMode;
+    return MiMenu(
+      controller: _menu,
+      themeMode: mode,
+      groups: [
+        MiMenuGroup([
+          for (final option in DemoAppearance.values)
+            MiMenuItem(
+              label: option.label,
+              // 勾选 = 偏好本身（不是解析结果）。
+              selected: option == widget.appearance,
+              value: option,
+            ),
+        ]),
+      ],
+      onSelected: (selection) =>
+          widget.onChanged(selection.item.value! as DemoAppearance),
+      child: MiSettingsRow(
+        themeMode: mode,
+        label: '外观模式',
+        value: widget.appearance.label,
+        leading: const MiSettingsTile(
+          Icons.light_mode_outlined,
+          Color(0xFF7A5CFA),
+        ),
+        // 菜单触发器：行自己不留 chevron（会让右缘出现两个箭头），
+        // 用菜单专用的下拉箭头替代。
+        trailing: MiMenuArrow(color: MiSettingsPalette.secondaryFor(mode)),
+        onTap: _menu.toggle,
       ),
     );
   }

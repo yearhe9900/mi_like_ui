@@ -20,6 +20,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
+import 'appearance.dart';
+
 part 'pages/profile_page.dart';
 part 'pages/home_page.dart';
 part 'pages/showcase_page.dart';

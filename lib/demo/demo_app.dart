@@ -4,15 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 
+import 'appearance.dart';
 import 'host_device.dart';
 import 'mock_pages.dart';
 
+export 'appearance.dart' show DemoAppearance;
 export 'host_device.dart' show DemoDevice, demoHostDevice;
 
 /// 演示应用（示例层，不属于框架公共 API）。
 ///
-/// 深/浅色模式切换入口放在「我的」页顶部；模式驱动手机框、mock 页、
-/// 导航栏玻璃配方与墨色整体切换。
+/// 「外观模式」（浅色 / 深色 / 跟随系统）入口放在「我的」页顶部；解析出的
+/// 明暗驱动手机框、mock 页、导航栏玻璃配方与墨色整体切换。
 class DemoApp extends StatefulWidget {
   const DemoApp({super.key, this.device});
 
@@ -24,16 +26,52 @@ class DemoApp extends StatefulWidget {
   State<DemoApp> createState() => _DemoAppState();
 }
 
-class _DemoAppState extends State<DemoApp> {
-  MiThemeMode _mode = MiThemeMode.dark;
+class _DemoAppState extends State<DemoApp> with WidgetsBindingObserver {
+  /// 外观偏好（默认深色：参考素材的观感，也是本示例的「原貌」）。
+  ///
+  /// 只有 `system` 档需要跟着系统翻面，其余两档是显式选择 —— 系统亮暗变化时
+  /// 不必重建（[didChangePlatformBrightness] 里判档）。
+  DemoAppearance _appearance = DemoAppearance.dark;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// 系统亮暗翻转：只有「跟随系统」档要跟。
+  ///
+  /// 这里必须重建 MaterialApp 一层（而不是等 MediaQuery 顺带更新某个叶
+  /// 节点）：画面的明暗是**显式参数**一路带下去的（`themeMode` 传给每个
+  /// 组件），参数换新值只能由持有它的这一层 `setState` 发起。
+  @override
+  void didChangePlatformBrightness() {
+    if (_appearance == DemoAppearance.system) setState(() {});
+  }
+
+  /// 系统当前亮暗。
+  ///
+  /// 本 State 在 `MaterialApp` **之上**，那里还没有 `MediaQuery`，所以直接读
+  /// 平台调度器；`跟随系统` 档在每次路线重建时用它换算明暗。
+  Brightness get _platformBrightness =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness;
 
   @override
   Widget build(BuildContext context) {
-    final light = _mode == MiThemeMode.light;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Glass Jelly Bottom Nav Demo',
-      theme: light ? ThemeData.light(useMaterial3: true) : ThemeData.dark(useMaterial3: true),
+      // 明暗两套 Material 主题都挂着，交给 `themeMode` 选 —— 这样系统翻面时
+      // Material 自家组件（SnackBar / 滚动条 / 输入光标）与组件库同步。
+      theme: ThemeData.light(useMaterial3: true),
+      darkTheme: ThemeData.dark(useMaterial3: true),
+      themeMode: _appearance.materialThemeMode,
       // 首页**也走 [MiCardPageRoute]**：推入转场的「下层页左移视差」需要下层
       // 路由同样支持 `secondaryAnimation`，平台自带路由没有这个钩子（而且
       // Android 默认的 Zoom 转场会自己缩放退出页，与视差叠加）。
@@ -45,9 +83,12 @@ class _DemoAppState extends State<DemoApp> {
         // 子树重建、滚动位置归零）。
         builder: (_) => MiPopupHost(
           child: DemoHome(
-            themeMode: _mode,
+            // 偏好 → 明暗的换算放在**这里**（每次构建现算）：`_appearance`
+            // 是字段，读到的永远是最新值；`system` 档读平台亮度。
+            themeMode: _appearance.resolve(_platformBrightness),
+            appearance: _appearance,
             device: widget.device,
-            onThemeModeChanged: (m) => setState(() => _mode = m),
+            onAppearanceChanged: (a) => setState(() => _appearance = a),
           ),
         ),
       ),
@@ -236,12 +277,19 @@ class DemoHome extends StatefulWidget {
   const DemoHome({
     super.key,
     required this.themeMode,
-    required this.onThemeModeChanged,
+    required this.appearance,
+    required this.onAppearanceChanged,
     this.device,
   });
 
+  /// 已解析的明暗（由 [DemoAppearance.resolve] 从偏好 + 系统亮度算出）。
   final MiThemeMode themeMode;
-  final ValueChanged<MiThemeMode> onThemeModeChanged;
+
+  /// 用户选的外观偏好（三档）：「我的」页那一行显示它、菜单勾选它。
+  final DemoAppearance appearance;
+
+  /// 偏好变更回调（菜单选中时触发，由 [DemoApp] 持有并重新解算明暗）。
+  final ValueChanged<DemoAppearance> onAppearanceChanged;
 
   /// 设备语境（透传给 [DemoStage]，null = 自动探测）。
   final DemoDevice? device;
@@ -491,7 +539,8 @@ class _DemoHomeState extends State<DemoHome> with SingleTickerProviderStateMixin
                           _index,
                           key: ValueKey(_index),
                           themeMode: widget.themeMode,
-                          onThemeModeChanged: widget.onThemeModeChanged,
+                          appearance: widget.appearance,
+                          onAppearanceChanged: widget.onAppearanceChanged,
                           onSearchActiveChanged: _setSearchActive,
                           onShowDialog: (position) =>
                               setState(() => _dialogPosition = position),
