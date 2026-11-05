@@ -571,28 +571,41 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
           // 宽度按内容取（下限 200 / 上限 288）；行少时面板就是内容宽，
           // 长文案单行省略 —— 与参考实现的「按前 8 项最宽者定宽」同效。
           child: IntrinsicWidth(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: MiMenuMetrics.submenuMs),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(
-                    scale: Tween<double>(
-                      begin: MiMenuMetrics.submenuScale,
-                      end: 1,
-                    ).animate(animation),
-                    child: child,
-                  ),
+            // 切换层级：整层（含各自的滚动体）做 0.95→1 + 淡入淡出，两层
+            // 由 Stack 顶对齐叠放 —— 与参考实现同为「就地换内容」，不做
+            // 高度插值。滚动体必须**在切换子树之内**（每层各一个），否则
+            // 两层共用一条滚动轴，旧层的偏移会带到新层。
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: MiMenuMetrics.submenuMs),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(
+                    begin: MiMenuMetrics.submenuScale,
+                    end: 1,
+                  ).animate(animation),
+                  child: child,
                 ),
-                child: _content(mode, palette),
               ),
+              child: _levelView(mode, palette),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// 当前层级的滚动体（键随层级变化，`AnimatedSwitcher` 才会换内容）。
+  Widget _levelView(MiThemeMode mode, MiMenuPalette palette) {
+    final level = _path.length;
+    return SingleChildScrollView(
+      key: ValueKey<String>(
+        'mi-menu-level-$level-${level == 0 ? '' : _path.last.label}',
+      ),
+      physics: const ClampingScrollPhysics(),
+      child: _content(mode, palette),
     );
   }
 
@@ -630,10 +643,16 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
     } else {
       final parent = _path.last;
       final children = parent.children;
-      // 子列表首行 = 返回上级（同名行 + 右向箭头，参考实现的级联导航）。
+      // 子列表首行 = 返回上级（同名行 + 左向箭头，参考实现的级联导航）。
+      // 副文照抄父项：参考实现同样整行复用父项，两层的首行等高才能让切换
+      // 时上下两层按行对齐（少写副文会让整列上移，看起来是「两页错位叠」）。
       columns.add(
         _row(
-          item: MiMenuItem(label: parent.label, leading: parent.leading),
+          item: MiMenuItem(
+            label: parent.label,
+            subtitle: parent.subtitle,
+            leading: parent.leading,
+          ),
           mode: mode,
           palette: palette,
           isFirst: true,
@@ -670,9 +689,6 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
       }
     }
     return Column(
-      key: ValueKey<String>(
-        'mi-menu-level-$level-${level == 0 ? '' : _path.last.label}',
-      ),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: columns,
