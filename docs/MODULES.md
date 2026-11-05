@@ -119,7 +119,8 @@
 
 | 模块 | 关键接口 | 用途 |
 |---|---|---|
-| 演示外壳 | `DemoApp` / `DemoHome` / `DemoStage` / `DemoStageSize` / `DemoShellScope`（`demo/demo_app.dart`） | 明暗切换、设备语境（PC 套壳 / 移动铺满）、导航形态切换 |
-| 页面入口 | `MockPage(index, {themeMode, onThemeModeChanged, onSearchActiveChanged, onShowDialog, onShowListDialog})` | 三个 tab 页的路由入口 |
+| 演示外壳 | `DemoApp` / `DemoHome` / `DemoStage` / `DemoStageSize` / `DemoShellScope`（`demo/demo_app.dart`） | 外观模式偏好、设备语境（PC 套壳 / 移动铺满）、导航形态切换 |
+| 外观偏好 | `DemoAppearance`（`demo/appearance.dart`） | 浅色 / 深色 / 跟随系统三档；`resolve(platformBrightness)` 换算成 `MiThemeMode` |
+| 页面入口 | `MockPage(index, {themeMode, appearance, onAppearanceChanged, onSearchActiveChanged, onShowDialog, onShowListDialog})` | 三个 tab 页的路由入口 |
 | 搜索页 | `DemoSearchPage({…})`、`MiSearchShortcuts` | 推入式搜索页与首页头部快捷入口 |
 | 页面零件 | `pages/profile_page.dart` / `home_page.dart` / `showcase_page.dart` / `search_page.dart` | 按页面拆分的 `part`，共享 `mock_pages.dart` 的 library 作用域 |
