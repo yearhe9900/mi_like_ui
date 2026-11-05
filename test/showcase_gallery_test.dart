@@ -220,6 +220,48 @@ void main() {
       // 顶栏之外：本组的响应式网格（手机档 4 列）。
       expect(find.byType(MiResponsiveGrid), findsOneWidget);
     });
+
+    testWidgets('菜单：偏好行展开 → 选中项回填值文', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '组件展示');
+      await revealRow(tester, find.text('排序方式'));
+
+      // 行自身仍是触发器（菜单不劫持点按）：点行开菜单。
+      await tester.tap(find.text('排序方式'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(MiMenu.panelKey), findsOneWidget);
+      expect(find.text('修改时间'), findsOneWidget);
+
+      await tester.tap(find.text('默认'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(MiMenu.panelKey), findsNothing);
+      // 值文回填成「默认」（此时页面上只剩这一处）。
+      expect(find.text('默认'), findsOneWidget);
+    });
+
+    testWidgets('菜单：级联二级选择回填值文', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '组件展示');
+      // 「分享」在同页另有悬浮工具栏按钮同名，按设置行收窄到菜单触发行。
+      final shareRow = find.descendant(
+        of: find.byType(MiSettingsRow),
+        matching: find.text('分享'),
+      );
+      await revealRow(tester, shareRow);
+
+      await tester.tap(shareRow);
+      await tester.pumpAndSettle();
+      expect(find.text('分享到'), findsOneWidget);
+
+      await tester.tap(find.text('分享到'));
+      await tester.pumpAndSettle();
+      expect(find.text('微信'), findsOneWidget);
+
+      await tester.tap(find.text('微信'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(MiMenu.panelKey), findsNothing);
+      expect(find.text('微信'), findsOneWidget);
+    });
   });
 
   group('「弹层与效果」组', () {

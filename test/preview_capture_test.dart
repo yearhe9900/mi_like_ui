@@ -1077,6 +1077,194 @@ void main() {
       matchesGoldenFile('../doc/preview/panel_light.png'),
     );
   });
+
+  testWidgets('README preview: anchored menu (light & dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 400 * 2);
+    addTearDown(tester.view.reset);
+    await _loadPreviewFonts(tester);
+
+    // 面板经弹层宿主渲染（z 序 = 注册序）：宿主必须**在截图子树内**，
+    // 否则面板落在 KeyedSubtree 之外，只截到被压暗的页面。
+    final menus = [MiMenuController(), MiMenuController()];
+    addTearDown(() {
+      for (final c in menus) {
+        c.dispose();
+      }
+    });
+
+    Widget frame(MiThemeMode mode) {
+      final light = mode == MiThemeMode.light;
+      final sub = MiSettingsPalette.secondaryFor(mode);
+      return MaterialApp(
+        theme: light
+            ? ThemeData.light(useMaterial3: true)
+            : ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor:
+              light ? const Color(0xFFF3F3F3) : const Color(0xFF000000),
+          body: KeyedSubtree(
+            key: const ValueKey('menuPreview'),
+            child: MiPopupHost(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(11.9, 16, 11.9, 0),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: MiSettingsCard(
+                    themeMode: mode,
+                    children: [
+                      // 单选菜单：首行即锚点行（行自己就是触发器）
+                      MiMenu(
+                        controller: menus[0],
+                        themeMode: mode,
+                        groups: const [
+                          MiMenuGroup([
+                            MiMenuItem(label: '默认'),
+                            MiMenuItem(label: '名称'),
+                            MiMenuItem(label: '修改时间', selected: true),
+                            MiMenuItem(label: '大小'),
+                          ]),
+                        ],
+                        child: MiSettingsRow(
+                          themeMode: mode,
+                          label: '排序方式',
+                          subtitle: '单选菜单：选中项带勾号，选完自动收起',
+                          value: '修改时间',
+                          trailing: MiMenuArrow(color: sub),
+                          onTap: menus[0].toggle,
+                        ),
+                      ),
+                      // 级联菜单：第二行留作被压暗的页面内容（遮罩可量）
+                      MiMenu(
+                        controller: menus[1],
+                        themeMode: mode,
+                        groups: const [
+                          MiMenuGroup([
+                            MiMenuItem(
+                              label: '分享到',
+                              subtitle: '级联子菜单（微信 / 邮件 / 二维码）',
+                              children: [
+                                MiMenuItem(label: '微信'),
+                                MiMenuItem(label: '邮件'),
+                                MiMenuItem(label: '二维码', enabled: false),
+                              ],
+                            ),
+                            MiMenuItem(label: '复制链接'),
+                            MiMenuItem(label: '保存到相册'),
+                          ]),
+                        ],
+                        child: MiSettingsRow(
+                          themeMode: mode,
+                          label: '分享',
+                          subtitle: '带子菜单：点开第二级，箭头行返回上级',
+                          value: '未选择',
+                          trailing: MiMenuArrow(color: sub),
+                          onTap: menus[1].toggle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final preview = find.byKey(const ValueKey('menuPreview'));
+
+    Future<void> capture(MiThemeMode mode, String file) async {
+      await tester.pumpWidget(frame(mode));
+      await tester.pumpAndSettle();
+      menus[0].open();
+      // 注册发生在弹层宿主的帧末通知里，pump 两帧才落到面板几何。
+      await tester.pump();
+      await tester.pumpAndSettle();
+      await expectLater(preview, matchesGoldenFile(file));
+    }
+
+    await capture(MiThemeMode.light, '../doc/preview/menu_light.png');
+    // 关掉再切深色：控制器复位免得上一张的展开态串到下一张。
+    menus[0].close();
+    await tester.pumpAndSettle();
+    await capture(MiThemeMode.dark, '../doc/preview/menu_dark.png');
+  });
+
+  testWidgets('README preview: menu cascade level (dark)', (tester) async {
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(393 * 2, 400 * 2);
+    addTearDown(tester.view.reset);
+    await _loadPreviewFonts(tester);
+
+    final share = MiMenuController();
+    addTearDown(share.dispose);
+    const mode = MiThemeMode.dark;
+    final sub = MiSettingsPalette.secondaryFor(mode);
+
+    // 第二级（子列表）形态：首行是同名返回行 + 左向箭头，禁用项降档。
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(useMaterial3: true),
+        home: Scaffold(
+          backgroundColor: const Color(0xFF000000),
+          body: KeyedSubtree(
+            key: const ValueKey('menuCascadePreview'),
+            child: MiPopupHost(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(11.9, 16, 11.9, 0),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: MiSettingsCard(
+                    themeMode: mode,
+                    children: [
+                      MiMenu(
+                        controller: share,
+                        themeMode: mode,
+                        groups: const [
+                          MiMenuGroup([
+                            MiMenuItem(
+                              label: '分享到',
+                              subtitle: '级联子菜单（微信 / 邮件 / 二维码）',
+                              children: [
+                                MiMenuItem(label: '微信'),
+                                MiMenuItem(label: '邮件'),
+                                MiMenuItem(label: '二维码', enabled: false),
+                              ],
+                            ),
+                            MiMenuItem(label: '复制链接'),
+                            MiMenuItem(label: '保存到相册'),
+                          ]),
+                        ],
+                        child: MiSettingsRow(
+                          themeMode: mode,
+                          label: '分享',
+                          subtitle: '带子菜单：点开第二级，箭头行返回上级',
+                          value: '未选择',
+                          trailing: MiMenuArrow(color: sub),
+                          onTap: share.toggle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    share.open();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('分享到'));
+    await tester.pumpAndSettle();
+    await expectLater(
+      find.byKey(const ValueKey('menuCascadePreview')),
+      matchesGoldenFile('../doc/preview/menu_cascade_dark.png'),
+    );
+  });
 }
 
 /// 弹出面板预览内容：标题 + 3×2 快捷操作网格（与 demo 同构）。
