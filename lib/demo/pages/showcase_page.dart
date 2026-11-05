@@ -1079,6 +1079,10 @@ class _MenuShowcaseState extends State<_MenuShowcase> {
                   ),
                   MiMenuItem(label: '复制链接', value: '复制链接'),
                   MiMenuItem(label: '保存到相册', value: '相册'),
+                  // 四个叶子行 + 二级也是四行：两层等高，切换时面板尺寸不变，
+                  // 只做内容就地淡换（与参考示例的陈列口径一致 —— 行数不同
+                  // 的层级切换会连带面板长高，那是内容差异不是动效差异）。
+                  MiMenuItem(label: '添加到收藏', value: '收藏'),
                 ]),
               ],
               onSelected: (s) =>
