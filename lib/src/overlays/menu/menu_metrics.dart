@@ -67,9 +67,15 @@ class MiMenuMetrics {
   static const double trailingGap = 12;
 
   /// 勾号墨盒边长。
+  ///
+  /// 只决定槽宽：墨盒高于正文行盒（15.9dp），若参与行高会把选中行撑高
+  /// 4.1dp，故装饰槽钉成 0 高、按行中线居中溢出绘制（见 `menu.dart`
+  /// 的 `_MiMenuPanelState._trailing`）。
   static const double checkSide = 20;
 
   /// 尾部箭头墨盒（宽×高）。
+  ///
+  /// 同 [checkSide]：只占宽度，不参与行高。
   static const Size arrowSize = Size(10, 16);
 
   /// 主 / 副文案行距（参考实现是紧凑堆叠，没有独立间距档）。

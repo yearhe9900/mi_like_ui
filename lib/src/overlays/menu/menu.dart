@@ -682,14 +682,12 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
           isFirst: true,
           isLast: children.isEmpty,
           enabled: true,
-          trailing: SizedBox(
+          trailing: _trailing(
             width: MiMenuMetrics.arrowSize.width,
             height: MiMenuMetrics.arrowSize.height,
-            child: CustomPaint(
-              // 左向箭头 = 「回到上一级」的语义（参考实现复用右向箭头，
-              // 见 MiMenuChevronPainter.back 的说明）。
-              painter: MiMenuChevronPainter(palette.secondary, back: true),
-            ),
+            // 左向箭头 = 「回到上一级」的语义（参考实现复用右向箭头，
+            // 见 MiMenuChevronPainter.back 的说明）。
+            painter: MiMenuChevronPainter(palette.secondary, back: true),
           ),
           onTap: () => setState(() => _path.removeLast()),
         ),
@@ -722,19 +720,45 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
   /// 行尾装饰：选中的勾号优先，其次级联箭头；都不是则无。
   Widget? _trailingFor(MiMenuItem item, MiMenuPalette palette) {
     if (item.selected) {
-      return SizedBox(
+      return _trailing(
         width: MiMenuMetrics.checkSide,
         height: MiMenuMetrics.checkSide,
-        child: CustomPaint(
-          painter: MiMenuCheckPainter(palette.selectedLabel),
-        ),
+        painter: MiMenuCheckPainter(palette.selectedLabel),
       );
     }
     if (!item.hasChildren) return null;
-    return SizedBox(
+    return _trailing(
       width: MiMenuMetrics.arrowSize.width,
       height: MiMenuMetrics.arrowSize.height,
-      child: CustomPaint(painter: MiMenuChevronPainter(palette.secondary)),
+      painter: MiMenuChevronPainter(palette.secondary),
+    );
+  }
+
+  /// 行尾装饰槽：**只吃宽度、不吃高度**，装饰按行垂直中线居中溢出绘制。
+  ///
+  /// 勾号墨盒 20dp 高于正文行盒（`MiTypography.dialogAction` 15.9dp，
+  /// `height: 1.0`），若让槽参与行高计算，选中行就比普通行高 4.1dp —— 上下
+  /// 两个相邻中心距各 +2dp，读起来是「选中项上下更松」。这里把槽钉成 0 高、
+  /// 用 [OverflowBox] 让墨盒以行的中线为心画到槽外（溢出 2.05dp 落在 12dp
+  /// 行内边距里，不碰相邻行），行高于是只由文案块决定。参考实现同样让勾号
+  /// 参与行高，差别在它的正文行盒 ≈18.7dp（差值仅 1.3dp，看不出来）。
+  Widget _trailing({
+    required double width,
+    required double height,
+    required CustomPainter painter,
+  }) {
+    return SizedBox(
+      width: width,
+      height: 0,
+      child: OverflowBox(
+        maxWidth: width,
+        maxHeight: height,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: CustomPaint(painter: painter),
+        ),
+      ),
     );
   }
 

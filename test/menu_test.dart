@@ -331,4 +331,64 @@ void main() {
     expect(find.text('上层动作'), findsOneWidget);
     expect(find.text('危险动作'), findsOneWidget);
   });
+
+  testWidgets('行高：勾号不参与行高，选中行与普通行等高（相邻中心距一致）', (tester) async {
+    final controller = MiMenuController();
+    addTearDown(controller.dispose);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 856);
+    addTearDown(tester.view.reset);
+
+    // 5 行：首 / 末行走 20dp 边距，中间三行都是 12dp —— 比较「选中」与
+    // 「未选中」的中间行高度即可判断勾号有没有把行撑高。
+    await tester.pumpWidget(
+      page(
+        controller: controller,
+        groups: () => const [
+          MiMenuGroup([
+            MiMenuItem(label: '第一项'),
+            MiMenuItem(label: '第二项', selected: true),
+            MiMenuItem(label: '第三项'),
+            MiMenuItem(label: '第四项'),
+            MiMenuItem(label: '第五项'),
+          ]),
+        ],
+      ),
+    );
+    await open(tester, controller);
+
+    double rowHeight(String label) => tester
+        .getSize(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(MiPressable))
+              .first,
+        )
+        .height;
+
+    final selected = rowHeight('第二项');
+    final plain = rowHeight('第三项');
+    expect(
+      selected,
+      closeTo(plain, 0.01),
+      reason: '选中行的勾号 20dp 不应撑高行盒（正文行盒 15.9dp）',
+    );
+    // 行高 = 上下各 12 的行内边距 + 正文行盒（15.9 → 引擎取整成 16.0）。
+    expect(
+      selected,
+      closeTo(MiMenuMetrics.rowPadY * 2 + 15.9, 0.2),
+      reason: '行高应由正文行盒决定',
+    );
+
+    // 相邻中心距：选中行上下两侧都不该比别人多 2dp。
+    final centers = [
+      for (final l in ['第一项', '第二项', '第三项', '第四项', '第五项'])
+        tester.getCenter(find.text(l)).dy,
+    ];
+    // centers[1]→[2] 跨「选中行」，centers[2]→[3] 全为普通行，两者须相等。
+    expect(
+      centers[2] - centers[1],
+      closeTo(centers[3] - centers[2], 0.01),
+      reason: '选中行两侧中心距应与普通行一致',
+    );
+  });
 }
