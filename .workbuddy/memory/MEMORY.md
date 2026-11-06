@@ -26,7 +26,7 @@
 
 ## 浮层与补件（`src/overlays/`、`inputs/checkbox`、`inputs/switch_control`）
 - `MiBottomSheet` 必须经 `MiPopup` 渲染；滑入用 `FractionalTranslation(0, 1-p)`；遮罩 = `dialogScrimProgressFor` 随进度（不是 Opacity）；只圆上两角 `MiSquircleBorder(topOnly: true)`。
-- `MiMenu`：**行高只由文案块决定**，行尾装饰（勾号 20 / 箭头 16）只占宽度 —— 槽钉 `height: 0` + `OverflowBox` 居中溢出绘制，溢出 2.05dp 落在 12dp 行内边距里。让 20dp 墨盒参与行高，正文 `dialogAction` 15.9dp/`height:1.0` 会把选中行顶高 4.1dp（相邻中心距各 +2dp）。首/末行 20dp 边距是参考实现刻意更松，**不是缺陷**。
+- `MiMenu`：**行高只由文案块决定**，行尾装饰（勾号 20 / 箭头 16）只占宽度 —— 槽钉 `height: 0` + `OverflowBox` 居中溢出绘制，溢出 2.05dp 落在 20dp 行内边距里。让 20dp 墨盒参与行高，正文 `dialogAction` 15.9dp/`height:1.0` 会把选中行顶高 4.1dp（相邻中心距各 +2dp）。**行上下内边距全行统一 20dp**（`rowPadY` 20，无 `rowEdgePadY`，`MiMenuItemRow` 无 `isFirst`/`isLast`）—— 参考实现的首末 20 / 中间 12 两档会让整列上疏下紧，是用户明确否掉的观感，属本库设计决定；行高恒 55.9dp。
 - `MiFloatingToolbar` 投影必须走 `MiSquircleShadowPainter`（`BoxShadow` 是矩形、圆角漏影）。
 - `MiCheckbox` 勾号 = 三点折线 `PathMetric` trim；`MiSwitch` 支持水平拖拽（`travel` 归一 + 0.5 阈值）、按压钮体放大 1.127、RTL 镜像。
 - 三者（+下拉刷新等源自 flutter_miuix 的补件）几何/动效标「参考实现值、本库无素材」。
