@@ -114,6 +114,7 @@ export 'src/overlays/snackbar/snackbar_metrics.dart';
 export 'src/overlays/floating_toolbar/floating_toolbar.dart';
 export 'src/overlays/floating_toolbar/floating_toolbar_metrics.dart';
 export 'src/overlays/menu/menu.dart';
+export 'src/overlays/menu/menu_item_row.dart';
 export 'src/overlays/menu/menu_metrics.dart';
 
 // ── 图标 ──────────────────────────────────────────────────────────────────
