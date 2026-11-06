@@ -26,6 +26,7 @@
 
 ## 浮层与补件（`src/overlays/`、`inputs/checkbox`、`inputs/switch_control`）
 - `MiBottomSheet` 必须经 `MiPopup` 渲染；滑入用 `FractionalTranslation(0, 1-p)`；遮罩 = `dialogScrimProgressFor` 随进度（不是 Opacity）；只圆上两角 `MiSquircleBorder(topOnly: true)`。
+- `MiMenu`：**行高只由文案块决定**，行尾装饰（勾号 20 / 箭头 16）只占宽度 —— 槽钉 `height: 0` + `OverflowBox` 居中溢出绘制，溢出 2.05dp 落在 12dp 行内边距里。让 20dp 墨盒参与行高，正文 `dialogAction` 15.9dp/`height:1.0` 会把选中行顶高 4.1dp（相邻中心距各 +2dp）。首/末行 20dp 边距是参考实现刻意更松，**不是缺陷**。
 - `MiFloatingToolbar` 投影必须走 `MiSquircleShadowPainter`（`BoxShadow` 是矩形、圆角漏影）。
 - `MiCheckbox` 勾号 = 三点折线 `PathMetric` trim；`MiSwitch` 支持水平拖拽（`travel` 归一 + 0.5 阈值）、按压钮体放大 1.127、RTL 镜像。
 - 三者（+下拉刷新等源自 flutter_miuix 的补件）几何/动效标「参考实现值、本库无素材」。
@@ -70,5 +71,6 @@
 - 换皮/改样式后先跑失败 → 读 `test/failures/*_testImage.png` 与 master 做 numpy 差值、确认 bbox 只在预期矩形内，才 `--update-goldens`。
 
 ## 工具
+- **issue / PR 走 GitHub CLI `gh`**：仓库 `yearhe9900/mi_like_ui`，**默认分支 `main`**（不是 master，`git push origin master` 会报 refspec 不存在）。取正文必须带 `--json`（`gh issue view <n> -R owner/repo --json title,body,state,labels,comments`），纯 `--comments` 会输出空。
 - 像素脚本 `.workbuddy/measure_*.py / extract_*.py / fit_*.py`（非交付物，已 gitignore）；venv `C:\Users\zmt\.workbuddy\binaries\python\envs\default\Scripts\python.exe`。
 - 快速出图：临时测试 `.workbuddy/scratch_*_test.dart` + `--update-goldens`（跑完删除）。
