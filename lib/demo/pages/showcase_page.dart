@@ -1666,12 +1666,14 @@ class _GradientBlurDemoState extends State<_GradientBlurDemo> {
               ),
             ),
             Expanded(
-              child: Slider(
+              child: MiSlider(
                 value: _sigmaScale,
                 min: 0.4,
                 max: 1.0,
-                divisions: 12,
-                label: _sigmaScale.toStringAsFixed(2),
+                // 档数含两端：13 档 = 步长 0.6/12 = 0.05，与原 Material
+                // Slider 的 `divisions: 12`（12 段）同一步长。
+                divisions: 13,
+                themeMode: widget.themeMode,
                 onChanged: (v) => setState(() => _sigmaScale = v),
               ),
             ),

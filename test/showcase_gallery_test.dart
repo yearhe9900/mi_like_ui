@@ -377,13 +377,13 @@ void main() {
     testWidgets('渐进模糊：σ 缩放滑杆改 MiGradientBlur.sigmaScale', (tester) async {
       await pumpShowcase(tester);
       await switchTab(tester, '弹层与效果');
-      await reveal(tester, find.byType(Slider));
+      await reveal(tester, find.byType(MiSlider));
 
       final blur = find.byType(MiGradientBlur);
       expect(blur, findsOneWidget);
       expect(tester.widget<MiGradientBlur>(blur).sigmaScale, 1.0);
 
-      final slider = tester.widget<Slider>(find.byType(Slider));
+      final slider = tester.widget<MiSlider>(find.byType(MiSlider));
       expect(slider.onChanged, isNotNull);
       slider.onChanged!(0.6);
       await tester.pumpAndSettle();
