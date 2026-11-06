@@ -30,3 +30,6 @@ __pycache__/
 
 # 本地 agent 工具的符号链接（指向 .claude/skills）
 .agents/
+
+# 根目录临时裁剪图（像素分析用，随时可再生）
+/tmp/
