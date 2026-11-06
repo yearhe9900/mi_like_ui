@@ -877,18 +877,15 @@ void main() {
       expect(tester.takeException(), isNull);
 
       final rail = find.byType(MiGlassSideNavBar);
-      // 圆钮 = 侧栏子树里唯一的圆形 Container（绿色底，与底部栏同色 token）
+      // 圆钮 = 侧栏子树里 MiFloatingActionButton 的填充层（绿色底，
+      // 与底部栏同色 token）；导航栏槽位就用这枚组件渲染。
       final fabCircle = find.descendant(
         of: rail,
-        matching: find.byWidgetPredicate(
-          (w) =>
-              w is Container &&
-              w.decoration is BoxDecoration &&
-              (w.decoration! as BoxDecoration).shape == BoxShape.circle,
-        ),
+        matching: find.byKey(MiFloatingActionButton.fillKey),
       );
       expect(fabCircle, findsOneWidget);
-      final deco = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      final deco =
+          tester.widget<DecoratedBox>(fabCircle).decoration as ShapeDecoration;
       expect(deco.color, MiColors.fabGreenFor(MiThemeMode.dark));
 
       // 点按唤起弹出面板（与底部栏形态同一份 fab 声明），圆钮同步变深
@@ -898,7 +895,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MiPullUpPanel), findsOneWidget);
       expect(find.text('快捷操作'), findsOneWidget);
-      final opened = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      final opened =
+          tester.widget<DecoratedBox>(fabCircle).decoration as ShapeDecoration;
       expect(opened.color, const Color(0xFF131313));
 
       // 切到「分类」→ 面板随切走收起、圆钮也收起（缩放到 0 + IgnorePointer）
@@ -915,7 +913,8 @@ void main() {
       await tester.tap(find.descendant(of: rail, matching: find.text('首页')));
       await tester.pumpAndSettle();
       expect(find.byType(MiPullUpPanel), findsNothing);
-      final closed = tester.widget<Container>(fabCircle).decoration! as BoxDecoration;
+      final closed =
+          tester.widget<DecoratedBox>(fabCircle).decoration as ShapeDecoration;
       expect(closed.color, MiColors.fabGreenFor(MiThemeMode.dark));
       final shown = tester.widget<Opacity>(
         find

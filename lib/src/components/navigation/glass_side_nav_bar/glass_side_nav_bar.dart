@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../buttons/floating_action_button/floating_action_button.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
 import '../../../theme/mi_theme.dart';
@@ -563,27 +564,24 @@ class _MiGlassSideNavBarState extends State<MiGlassSideNavBar>
               builder: (context, _) {
                 // 显示：缩放+淡入（easeOutCubic）；收起：同曲线 reverse
                 // 时间镜像 —— 与底部栏圆钮逐帧同源。
-                // IgnorePointer 必须**包在 GestureDetector 外面**：
-                // GestureDetector 自身 opaque，若它留在命中测试里，
+                // IgnorePointer 必须**包住手势层**：
+                // 手势层（MiFloatingActionButton 内的 MiPressable）是 opaque，
                 // 收起后这块不可见区域仍会吞掉点击。
                 final t = Curves.easeOutCubic.transform(_fabCtrl.value);
                 return IgnorePointer(
                   ignoring: t == 0,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: fab.onTap,
-                    child: Opacity(
-                      opacity: t,
-                      child: Transform.scale(
-                        scale: t,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: fab.color ?? MiColors.fabGreenFor(mode),
-                            shape: BoxShape.circle,
-                          ),
-                          alignment: Alignment.center,
-                          child: fab.child,
-                        ),
+                  child: Opacity(
+                    opacity: t,
+                    child: Transform.scale(
+                      scale: t,
+                      child: MiFloatingActionButton(
+                        onPressed: fab.onTap,
+                        color: fab.color,
+                        // 圆钮是玻璃栏体的一部分（素材实测无投影）；独立使用
+                        // 本组件时才默认带投影。
+                        showShadow: false,
+                        themeMode: mode,
+                        child: fab.child,
                       ),
                     ),
                   ),

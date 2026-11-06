@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../buttons/floating_action_button/floating_action_button.dart';
 import '../../../theme/colors.dart';
 import '../../../theme/glass_tokens.dart';
 import '../../../theme/mi_theme.dart';
@@ -30,6 +31,11 @@ class MiGlassNavItem {
 /// 仅当 [MiGlassNavBar.items] ≤ 3 个时支持（超出会在构造期断言）。
 /// 选中 [tabIndex] 对应 tab 时按钮以缩放 + 淡入弹出、栏体平移让出空位；
 /// 切换到其它 tab 时镜像收起、栏体回中。
+///
+/// **圆钮本体是 `MiFloatingActionButton`**：本类只是一份「哪个 tab 显示 /
+/// 回调 / 配色」的声明，几何（正圆、槽位直径 = 栏高度量）与按压 / 悬停 /
+/// 焦点三态都由那枚组件出 —— 栏位里显式 `showShadow: false`（素材实测：
+/// 圆钮是玻璃栏体的一部分，不叠投影），独立使用组件时才默认带投影。
 class MiGlassNavFab {
   const MiGlassNavFab({
     required this.tabIndex,
@@ -546,28 +552,24 @@ class _MiGlassNavBarState extends State<MiGlassNavBar> with TickerProviderStateM
                     builder: (context, _) {
                       // 显示：缩放+淡入（easeOutCubic）；收起：同曲线
                       // reverse 时间镜像，与视频度量剖面一致。
-                      // IgnorePointer 必须**包在 GestureDetector 外面**：
-                      // GestureDetector 自身 opaque，若它留在命中测试里，
+                      // IgnorePointer 必须**包住手势层**：
+                      // 手势层（MiFloatingActionButton 内的 MiPressable）是 opaque，
                       // 收起后这块不可见区域仍会吞掉点击（侧栏同款隐患一并修复）。
                       final t = Curves.easeOutCubic.transform(_fabCtrl.value);
                       return IgnorePointer(
                         ignoring: t == 0,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: fab.onTap,
-                          child: Opacity(
-                            opacity: t,
-                            child: Transform.scale(
-                              scale: t,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: fab.color ??
-                                      MiColors.fabGreenFor(mode),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: fab.child,
-                              ),
+                        child: Opacity(
+                          opacity: t,
+                          child: Transform.scale(
+                            scale: t,
+                            child: MiFloatingActionButton(
+                              onPressed: fab.onTap,
+                              color: fab.color,
+                              // 圆钮是玻璃栏体的一部分（素材实测无投影）；独立使用
+                              // 本组件时才默认带投影。
+                              showShadow: false,
+                              themeMode: mode,
+                              child: fab.child,
                             ),
                           ),
                         ),
