@@ -42,6 +42,15 @@ class MiTypography {
     fontWeight: FontWeight.w500,
   );
 
+  /// 大号按钮标签：15.0dp（**推导值**，非度量 —— 参考素材只有 28.3 高
+  /// 的小档按钮）。取 [buttonLabel] 13 与弹框正文 15.9 之间：按钮高 40 时
+  /// 13dp 显得空、16 又和正文同号失去「按钮」的层级。
+  static const TextStyle buttonLabelLarge = TextStyle(
+    fontSize: 15,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+  );
+
   /// 搜索栏占位文字：亮/暗完整素材度量 CJK 字面 advance 37px → 16.5dp
   /// （两图交叉一致，栏内垂心居中）。墨色偏灰属次级信息，字重未见
   /// 字重无度量依据，取常规 Regular。占位色随明暗由 `theme/search_bar_tokens.dart`

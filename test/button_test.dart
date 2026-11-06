@@ -118,6 +118,137 @@ void main() {
     expect(taps, 1);
   });
 
+  testWidgets('图标：定尺 16dp、图文间距 6dp，宽度含图标', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 200);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      wrap(const MiButton(
+        label: '关注',
+        icon: Icon(Icons.add),
+        themeMode: MiThemeMode.dark,
+        onPressed: _noop,
+      )),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      tester.getSize(find.byType(Icon)),
+      const Size(MiButtonMetrics.iconSize, MiButtonMetrics.iconSize),
+    );
+    expect(
+      tester.getSize(find.byType(MiButton)).width,
+      closeTo(
+        MiButtonMetrics.iconSize +
+            MiButtonMetrics.iconGap +
+            tester.getSize(find.text('关注')).width +
+            2 * MiButtonMetrics.horizontalPadding,
+        0.01,
+      ),
+    );
+  });
+
+  testWidgets('enabled = false：禁用配方且不触发回调', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 200);
+    addTearDown(tester.view.reset);
+
+    const light = MiButtonPalette.light;
+    var taps = 0;
+    await tester.pumpWidget(
+      wrap(MiButton(
+        label: '关注',
+        enabled: false,
+        themeMode: MiThemeMode.light,
+        onPressed: () => taps++,
+      )),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fillOf(tester, '关注'), light.disabledFill);
+    expect(
+      tester.widget<Text>(find.text('关注')).style!.color,
+      light.disabledLabel,
+    );
+    await tester.tap(find.text('关注'));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(taps, 0);
+  });
+
+  testWidgets('minWidth：宽度抬到调用方给的下限', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 200);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      wrap(const MiButton(
+        label: '确定',
+        minWidth: 120,
+        themeMode: MiThemeMode.dark,
+        onPressed: _noop,
+      )),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.getSize(find.byType(MiButton)).width, closeTo(120, 0.01));
+    // 高度不因最小宽而变。
+    expect(
+      tester.getSize(find.byType(MiButton)).height,
+      closeTo(MiButtonMetrics.height, 0.01),
+    );
+  });
+
+  testWidgets('text 形态：无填充 + 强调色标签', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 200);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      wrap(const MiButton(
+        label: '取消',
+        variant: MiButtonVariant.text,
+        themeMode: MiThemeMode.light,
+        onPressed: _noop,
+      )),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(fillOf(tester, '取消'), MiTransparencyTokens.clear);
+    expect(tester.widget<Text>(find.text('取消')).style!.color, MiColors.accent);
+  });
+
+  testWidgets('large 档：高 40、内边距 20、标签 15dp', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(393, 200);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      wrap(const MiButton(
+        label: '开始',
+        size: MiButtonSize.large,
+        themeMode: MiThemeMode.dark,
+        onPressed: _noop,
+      )),
+    );
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final size = tester.getSize(find.byType(MiButton));
+    expect(size.height, closeTo(MiButtonMetrics.largeHeight, 0.01));
+    expect(
+      size.width,
+      closeTo(
+        tester.getSize(find.text('开始')).width +
+            2 * MiButtonMetrics.largeHorizontalPadding,
+        0.01,
+      ),
+    );
+    expect(
+      tester.widget<Text>(find.text('开始')).style!.fontSize,
+      MiTypography.buttonLabelLarge.fontSize,
+    );
+  });
+
   test('const construction stays available', () {
     const button = MiButton(label: '关注', onPressed: _noop);
     expect(button.label, '关注');
