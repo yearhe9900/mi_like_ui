@@ -462,11 +462,52 @@ class _ButtonShowcaseState extends State<_ButtonShowcase> {
             onPressed: null,
           ),
         ),
+        _specRow(
+          context,
+          caption: '大号档 · 高 40（参考实现值）',
+          button: MiButton(
+            label: '开始',
+            size: MiButtonSize.large,
+            themeMode: widget.themeMode,
+            onPressed: () {},
+          ),
+        ),
+        _specRow(
+          context,
+          caption: '前置图标 · 16dp 定尺',
+          button: MiButton(
+            label: '下载',
+            icon: const Icon(Icons.download_rounded),
+            themeMode: widget.themeMode,
+            onPressed: () {},
+          ),
+        ),
+        _specRow(
+          context,
+          caption: '文本形态 · 无填充 + 强调色标签',
+          button: MiButton(
+            label: '取消',
+            variant: MiButtonVariant.text,
+            themeMode: widget.themeMode,
+            onPressed: () {},
+          ),
+        ),
+        _specRow(
+          context,
+          caption: '最小宽 120 · minWidth',
+          button: MiButton(
+            label: '确定',
+            minWidth: 120,
+            themeMode: widget.themeMode,
+            onPressed: () {},
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
             '规格（设计度量 1220×2656 素材）：59.9×28.3dp stadium · '
-            '填充 #4980F7 明暗同色 · 标签 13dp/500 · 左右内边距 17dp',
+            '填充 #4980F7 明暗同色 · 标签 13dp/500 · 左右内边距 17dp；'
+            '大号 / 图标 / 最小宽为参考实现值或推导值',
             style: _subStyle(context, 11),
           ),
         ),
@@ -554,13 +595,14 @@ class _DemoSurface extends StatelessWidget {
 
 /// 「组件展示」分组（示例层）：库组件的**可交互**陈列。
 ///
-/// 八小节各演示一处 API 面：
+/// 九小节各演示一处 API 面：
 ///  * 搜索栏 —— 静态展示态（`onTap`）与输入态（`editable: true`）同列，
 ///    取消钮随输入态以 `fade` 0 → 1 淡入（alpha 乘进填充与叉号墨色，
 ///    **不套 Opacity**：圆钮内含 backdrop 磨砂，saveLayer 会让它变空）；
 ///  * 设置行 —— 值文 + chevron / 开关尾部 / 副标题三种尾部形态；
 ///  * 开关 —— 开 / 关 / 禁用三态（点按或左右拖拽切换）；
 ///  * 复选框 —— 开 / 关 / 半选 / 禁用四态；
+///  * 滑条 —— 连续 + 关键点 / 分档刻度 / 反向 / 禁用四态（[MiSlider]）；
 ///  * 悬浮工具栏 —— 胶囊托盘容器（投影按形状绘制）；
 ///  * 桌面三态反馈 —— 按压 / 悬停 / 键盘焦点环（触屏素材没有样张，
 ///    按桌面惯例推导的那层）；
@@ -599,6 +641,11 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
   bool _checkOn = true;
   bool _checkOff = false;
   bool? _checkMixed;
+
+  /// 滑条演示态：连续 / 分档（0…4 五档）/ 反向。
+  double _sliderValue = 0.35;
+  double _sliderStepped = 2;
+  double _sliderReversed = 0.5;
 
   /// 按压计数（三态反馈演示的点按反馈）。
   int _presses = 0;
@@ -853,6 +900,57 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
           'MiCheckbox：三态（开 / 关 / 半选 —— 半选点一下即全选）；勾号'
               '先淡入再沿路径划开，半选是同一套路径点收拢成横杠；按压叠色'
               '与弹框按钮同配方，禁用整件降透明。',
+        ),
+        const SizedBox(height: 14),
+        // ── 滑条 ───────────────────────────────────────────────
+        const _SectionTitle('滑条'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: '连续 · 关键点 0.25 / 0.5 / 0.75（越过的点换选中色，'
+              '阈值内磁吸）',
+          child: MiSlider(
+            value: _sliderValue,
+            keyPoints: const [0.25, 0.5, 0.75],
+            themeMode: mode,
+            onChanged: (v) => setState(() => _sliderValue = v),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _DemoSurface(
+          themeMode: mode,
+          caption: '分档 · 0…4 五档 + 等分刻度（拖拽 / 点按 / ← → 都按档吸附）',
+          child: MiSlider(
+            value: _sliderStepped,
+            min: 0,
+            max: 4,
+            divisions: 5,
+            showKeyPoints: true,
+            themeMode: mode,
+            onChanged: (v) => setState(() => _sliderStepped = v),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _DemoSurface(
+          themeMode: mode,
+          caption: '反向 · reverseDirection（右小左大；RTL 下自动再镜像）',
+          child: MiSlider(
+            value: _sliderReversed,
+            reverseDirection: true,
+            themeMode: mode,
+            onChanged: (v) => setState(() => _sliderReversed = v),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _DemoSurface(
+          themeMode: mode,
+          caption: '禁用态 · onChanged = null',
+          child: const MiSlider(value: 0.6, onChanged: null),
+        ),
+        _demoNote(
+          context,
+          'MiSlider：拖拽跟手、点按落到点击处并以弹簧收敛；拇指在按下 / '
+              '拖拽 / 悬停时放大 1.127，松手回原尺寸；关键点给出即陈列，'
+              '分档与磁性吸附共用一套取值量化；禁用整件降透明。',
         ),
         const SizedBox(height: 14),
         // ── 悬浮工具栏 ──────────────────────────────────────────
