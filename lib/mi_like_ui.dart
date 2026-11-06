@@ -41,6 +41,7 @@ export 'src/theme/bottom_sheet_tokens.dart';
 export 'src/theme/floating_toolbar_tokens.dart';
 export 'src/theme/settings_tokens.dart';
 export 'src/theme/switch_tokens.dart';
+export 'src/theme/slider_tokens.dart';
 export 'src/theme/checkbox_tokens.dart';
 export 'src/theme/menu_tokens.dart';
 
