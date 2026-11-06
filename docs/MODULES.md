@@ -20,7 +20,7 @@
 | 动效 | `MiMotionTokens`（`pressMs` / `pressCurve` / `pressFadeInMs` / `panelExpand` / `panelCollapse`）、`miSpring(damping:, response:)` | 跨组件动效单一来源；Folme 口径弹簧换算 |
 | 透明 / 磨砂 | `MiTransparencyTokens`（`blurSigma` / `dialogScrimFor` / `surfaceFillFor` / `glassMembraneFor` / `controlOffFillFor` / `switchTrackOffFor` / `sheetHandleFor` / …） | alpha、σ、叠色、遮罩的**唯一**来源 |
 | 列表行几何 | `MiRowMetrics`（`paddingY` / `iconSize` / `mainLinePitch` / `heightFor(hasSubtitle:)`） | 设置行 / 偏好行 / 弹框列表共用的行高 47.2 / 68.2 |
-| 组件配色 | `MiGlassTokens` / `MiGlassPalette` / `MiPillTabPalette` / `MiButtonPalette` / `MiSearchBarPalette` / `MiTopBarPalette` / `MiDialogPalette` / `MiMenuPalette` / `MiBottomSheetPalette` / `MiPullUpPanelPalette` / `MiSnackbarPalette` / `MiFloatingToolbarPalette` / `MiSettingsPalette` / `MiSwitchPalette` / `MiCheckboxPalette` | 各组件明暗双配方，均给 `of(mode)` 入口 |
+| 组件配色 | `MiGlassTokens` / `MiGlassPalette` / `MiPillTabPalette` / `MiButtonPalette` / `MiSearchBarPalette` / `MiTopBarPalette` / `MiDialogPalette` / `MiMenuPalette` / `MiBottomSheetPalette` / `MiPullUpPanelPalette` / `MiSnackbarPalette` / `MiFloatingToolbarPalette` / `MiSettingsPalette` / `MiSwitchPalette` / `MiSliderPalette` / `MiCheckboxPalette` | 各组件明暗双配方，均给 `of(mode)` 入口 |
 | 模糊曲线 | `MiTopBarBlurBand` / `MiGradientBlurProfile` / `MiHeaderBlurProfile` | 渐进模糊的 σ 分档与拉伸规则 |
 
 ## 2. 视觉与交互基元（`src/foundations/`）
@@ -62,7 +62,7 @@
 
 | 模块 | 关键接口 | 用途 |
 |---|---|---|
-| 胶囊按钮 | `MiButton({label, onPressed, variant, …})`、`MiButtonVariant`、`MiButtonMetrics` | 主 / 次 / 危险形态；按压换填充 |
+| 胶囊按钮 | `MiButton({label \| child, icon, onPressed, enabled, variant, size, minWidth, themeMode})`、`MiButtonVariant`（`filled` / `tonal` / `text`）、`MiButtonSize`（`regular` / `large`）、`MiButtonMetrics` | 主 / 次级 / 文本三形态，常规 28.3 / 大号 40 两档；`label` 与 `child` 二选一；按压换填充 |
 | 动作条目 | `MiActionEntry({icon, label, onTap, highlighted, …})`、`MiActionEntryRow`、`MiActionEntryMetrics` | 图标在上文字在下的底部菜单格；`Row` 版本等分横排 |
 
 ### 输入 `inputs/`
@@ -73,7 +73,7 @@
 | 搜索取消钮 | `MiSearchCancelButton({fade, onTap, …})`、`MiSearchCancelMetrics` | `fade` 0→1 淡入（alpha 乘进填充与叉号，不套 `Opacity`） |
 | 开关 | `MiSwitch({value, onChanged, themeMode})`、`MiSwitchMetrics`、`MiSwitch.knobKey` | 点按 / 拖拽切换；钮体按压放大 1.127；RTL 镜像 |
 | 复选框 | `MiCheckbox({value, onChanged, themeMode})`、`MiCheckboxMetrics`、`MiCheckbox.painterKey` | 三态（`true` / `false` / `null` 半选）；勾号按路径 trim 划出 |
-| 滑条 | `MiSlider({value, onChanged, divisions, …})`、`MiSliderMetrics` | 坐标换算取值（不用 delta 累加）；键盘 ←/→ 走一格 |
+| 滑条 | `MiSlider({value, onChanged, onChangeEnd, min, max, divisions, keyPoints, showKeyPoints, magnetThreshold, reverseDirection, themeMode, focusNode})`、`MiSliderMetrics`、`MiSlider.thumbKey` / `keyPointKey(i)` | 坐标换算取值（不用 delta 累加）；拖拽跟手、点按弹簧收敛；关键点 / 分档 / 磁吸 / 反向；拇指按压放大 1.127；键盘 ←/→ 走一格 |
 
 ### 行与卡片 `lists/` `cards/`
 

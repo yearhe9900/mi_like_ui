@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+### Added（组件：按钮 / 滑条）
+
+- **`MiButton` 补齐形态与内容插槽**：新增 `text` 形态（无填充 + 强调色标签）、
+  `large` 尺寸档（高 40 / 内边距 20 / 标签 15dp，对齐 flutter_miuix
+  `MiuixButtonDefaults` 的参考实现值）、`icon` 前置图标（16dp 定尺、间距 6dp）、
+  `child` 任意内容与 `minWidth` 最小宽；`enabled` 与 `onPressed` 解耦，临时禁用
+  不必丢回调。常规档几何、配色与结构未动。
+- **`MiSlider` 从「能拖」补成完整交互**：点按跳到落点并由 `settle` 弹簧收敛
+  （宿主不接受则在帧末弹回）、拇指在按下 / 拖拽 / 悬停于拇指上时放大 1.127、
+  `keyPoints` / `showKeyPoints` 关键点（越过的点换选中色）、`magnetThreshold`
+  磁吸、`reverseDirection` 反向（RTL 下自动再镜像）、`onChangeEnd` 交互结束
+  回调、无障碍 `slider` 语义（含整步增 / 减）。拇指改为贴边行程 —— 取值 0 / 1
+  时圆心内切轨道两端，不再探出控件。新增 `theme/slider_tokens.dart`
+  （`MiSliderPalette`）承接钮体与关键点配色，主色仍取自既有 token。
+- **示例层**：「组件展示」新增「滑条」一节（连续 + 关键点 / 分档刻度 / 反向 /
+  禁用），「按钮展示」补大号、前置图标、文本形态与最小宽四行。
+
 ### Fixed（组件：菜单）
 
 - **`MiMenu` 行距不再被选中勾号撑开**：勾号墨盒 20dp 比正文行盒（`dialogAction`

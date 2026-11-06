@@ -19,7 +19,7 @@
 
 - **成套组件**：玻璃悬浮底部 / 侧边导航栏、胶囊标签行、胶囊按钮、搜索栏、
   大标题折叠顶栏、渐进模糊、主题卡片、弹框、锚定菜单、底部弹窗、悬浮工具栏、
-  复选框
+  复选框、开关、滑条
 - **连续圆角**：全库圆角为 Squircle（G2 连续曲率，HyperOS / iOS 标志性
   角形，边缘高光不打折），半径语义与度量值不变
 - **明暗双模式**：全部组件提供深 / 浅两套配方，`MiThemeMode` 统一切换
@@ -72,8 +72,8 @@ MiGlassNavBar(
 |---|---|
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
-| 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用） |
-| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用） |
+| 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 大号 / 前置图标 / 文本形态 / 最小宽 |
+| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、滑条四态（连续 + 关键点 / 分档刻度 / 反向 / 禁用）、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用） |
 | 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、外观模式（浅色 / 深色 / 跟随系统，单选菜单）、弹框入口 |
 | 首页点搜索栏 | `MiCardPageRoute` 推入搜索页（下层页左移视差 + 压暗） |
@@ -85,7 +85,7 @@ MiGlassNavBar(
 | `MiGlassNavBar` | 玻璃悬浮底部导航栏（果冻胶囊选中动效、可挂 FAB） |
 | `MiGlassSideNavBar` | 玻璃悬浮侧边导航栏（宽屏 / 桌面形态，与底部栏同语义同配方） |
 | `MiPillTabBar` | 胶囊分类标签行（选中胶囊磨砂透镜、出血滚动） |
-| `MiButton` | 胶囊按钮（主 / 次级 / 禁用三态） |
+| `MiButton` | 胶囊按钮（主 / 次级 / 文本三形态 × 常规 / 大号两档，可带前置图标与最小宽；禁用态与 `onPressed` 解耦） |
 | `MiActionEntry` / `MiActionEntryRow` | 纵向动作条目（图标在上文字在下的菜单格：按压淡出 / 高亮态 / 禁用降透明，三态走 `MiPressable`；行 = 等分横排） |
 | `MiSearchBar` | 搜索栏（静态展示 / 可输入两态，磨砂与导航栏同源） |
 | `MiSearchCancelButton` | 搜索取消按钮（搜索态配套） |
@@ -100,7 +100,7 @@ MiGlassNavBar(
 | `MiCheckbox` | 复选框（三态：开 / 关 / 半选，勾号淡入 + trim 划开；未选档与开关同源） |
 | `MiBottomSheet` | 底部弹窗（只圆上两角、弹簧滑入滑出、手柄下拉关闭、遮罩；宽屏限宽居中） |
 | `MiFloatingToolbar` | 悬浮工具栏（胶囊容器 + 固定几何投影 + 可选描边，只做容器） |
-| `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何与交互全推导：弹簧吸附 + 拖拽切换 / 坐标换算取值 / 设置行） |
+| `MiSwitch` / `MiSlider` / `MiPreferenceTile` | 表单控件三件（几何推导：弹簧吸附 + 拖拽切换 / 拖拽跟手 + 点按弹簧收敛 + 关键点 / 设置行） |
 | `MiCardPageRoute` | 页面推入转场（右侧滑入 + 前缘圆角、下层页视差与压暗） |
 | `MiScaledCanvas` / `MiResponsiveGrid` / `MiViewport` / `MiBreakpoints` | 断点判定、等比缩放画布、响应式网格（列数 / 单元宽上限） |
 | `MiContentColumn` / `MiHoverFeedback` | 宽屏内容列限宽、指针悬停反馈（桌面语义） |
@@ -187,11 +187,21 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
 
 ### 胶囊按钮（MiButton）
 
-胶囊形按钮，主 / 次级 / 禁用三态；宽度随内容自适应。
+胶囊形按钮，三种形态（主 / 次级 / 文本）、两档尺寸（常规 / 大号）；宽度随
+内容自适应。
 
-**规格**（详见 `MiButtonMetrics`）：高 28.3dp stadium、左右内边距 17dp、
-标签 13dp Medium；主按钮填充 `MiColors.accent`（#4980F7，明暗同色）。
-`onPressed` 为 `null` 时进入禁用态。
+**规格**（详见 `MiButtonMetrics`）：常规档高 28.3dp stadium、左右内边距
+17dp、标签 13dp Medium；主按钮填充 `MiColors.accent`（#4980F7，明暗同色）。
+`onPressed` 为 `null` 或 `enabled: false` 时进入禁用态（两者解耦：临时禁用
+不必丢回调）。
+
+- **内容**：`label`（纯文案）与 `child`（任意内容，文字继承标签样式）二选一；
+  `icon` 给前置图标，按 16dp 定尺、与文案间隔 6dp。`minWidth` 只在调用方
+  显式给出时施加 —— 本库按钮默认完全随内容收缩。
+- **形态**：`filled` 强调填充 + 白字；`tonal` 表面灰填充（推导）；
+  `text` 无填充 + 强调色标签。禁用时文本形态保持透明、只降墨色。
+- **大号档**：高 40dp、内边距 20dp、标签 15dp —— **参考实现值**（对齐
+  flutter_miuix `MiuixButtonDefaults.minHeight`），本库无对应素材。
 
 <img src="doc/preview/button_light.png" width="360" alt="浅色胶囊按钮三态" /> <img src="doc/preview/button_dark.png" width="360" alt="深色胶囊按钮三态" />
 
@@ -654,9 +664,10 @@ MiCheckbox(
 
 ### 表单控件（推导档：MiSwitch / MiSlider / MiPreferenceTile）
 
-触屏素材无开关 / 滑条 / 设置行样张 —— 三件的几何与交互**全为推导**
-（`*_metrics.dart` 注明每项口径：Material 3 同档尺寸 + Folme 弹簧 +
-本库 token 配色），素材到位后复核：
+触屏素材无开关 / 滑条 / 设置行样张 —— 几何与交互以**推导**为主
+（`*_metrics.dart` 逐项标注：Material 3 同档尺寸 + Folme 弹簧 + 本库 token
+配色），其中放大倍数、磁吸阈值、收敛弹簧取**参考实现值**（对齐 flutter_miuix
+上游），素材到位后复核：
 
 - **`MiSwitch`**：52×32 轨道 + ⌀26 白钮，切换 = 临界阻尼吸附弹簧
   （`miSpring(1.0, 0.35)`，无过冲）；`onChanged(null)` = 禁用（降 0.38 透明）。
@@ -666,10 +677,17 @@ MiCheckbox(
   触屏点按没有悬停叠色，这是它的按压视觉），松开回原尺寸。RTL 下钮体
   从右端起算、拖拽方向镜像。触感（`HapticFeedback`）不代发 —— 需要时
   在 `onChanged` 里自行触发（与 `MiPullUpPanel` / `MiCheckbox` 同口径）。
-- **`MiSlider`**：4dp 轨道 + ⌀20 拇指，受控 `value/onChanged`；拖拽用
-  **`globalToLocal` 坐标换算**取值（不用 `details.delta` 累加 —— 拖出
-  边界会漂，flutter_miuix 同款回归教训）；键盘 ← / → 一格（全程 / 20），
-  `divisions` 分档吸附。
+- **`MiSlider`**：4dp 轨道 + ⌀20 拇指，受控 `value/onChanged`。
+  **拖拽跟手**（`globalToLocal` 坐标换算取值，不用 `details.delta` 累加 ——
+  拖出边界会漂，flutter_miuix 同款回归教训）、**点按跳到落点**并由
+  `settle` 弹簧（阻尼 0.96 / response 0.35s，参考实现值）收敛；宿主不接受
+  该值时下一帧弹回宿主值。取舍量化两条：`divisions`（档数，含两端）按档
+  吸附、`keyPoints` 在 `magnetThreshold`（全程 2%，参考实现值）内磁吸；
+  关键点给出即画在轨道上，越过的点换选中色；`reverseDirection` 反转方向，
+  RTL 下自动再镜像。拇指在**按下 / 拖拽 / 悬停于拇指上时放大 1.127**
+  （参考实现值，与 `MiSwitch` 同档），松手回原尺寸；`onChangeEnd` 只在
+  「一次取值交互结束」时回调（拖拽松手 / 点按落点），触感同样不代发。
+  键盘 ← / → 一格（全程 / 20，分档时按档步长）。
 - **`MiPreferenceTile`**：设置行 = 前导图标 + 标题 / 副标题 + 尾随控件
   （放 `MiSwitch` / 箭头），行高与弹框列表行同源、按压同弹框 state layer。
 
@@ -1088,7 +1106,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiGlassNavBar` — 玻璃悬浮底部导航栏
 - [x] `MiGlassSideNavBar` — 玻璃悬浮侧边导航栏
 - [x] `MiPillTabBar` — 胶囊分类标签行
-- [x] `MiButton` — 胶囊按钮
+- [x] `MiButton` — 胶囊按钮（三形态 × 两档尺寸，可带前置图标 / 最小宽）
 - [x] `MiSearchBar` / `MiSearchCancelButton` — 搜索栏与取消钮
 - [x] `MiTopBar` — 大标题折叠顶部导航栏（材质 / 头部区 / 搜索态）
 - [x] `MiGradientBlur` — 顶部渐进模糊
@@ -1099,7 +1117,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiBottomSheet` — 底部弹窗（弹簧滑入 / 手柄下拉 / 只圆上两角）
 - [x] `MiFloatingToolbar` — 悬浮工具栏（胶囊托盘 + 按形状投影）
 - [x] `MiCheckbox` — 复选框（三态 / 勾号 trim 动效）
-- [x] `MiSwitch` / `MiSlider` — 开关（点按 / 拖拽 / 放大）与滑条
+- [x] `MiSwitch` / `MiSlider` — 开关（点按 / 拖拽 / 放大）与滑条（点按跳转 / 关键点 / 磁吸 / 反向）
 - [x] `MiPreferenceTile` — 与列表行同族的通用设置行
 - [x] `MiCardPageRoute` — 页面推入转场
 - [x] `MiSettingsCard` / `MiSettingsRow` / `MiSettingsTile` — 设置分组卡片与行

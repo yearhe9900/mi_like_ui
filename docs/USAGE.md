@@ -81,7 +81,36 @@ MiTheme(
 - 换肤粒度止于「模式 + 品牌色 + 页底色」。更细的维度（如阅读器日间 /
   羊皮纸）请在应用层自己做，不要往 token 里灌主题概念。
 
-## 4. 浮层
+## 4. 表单控件与按钮
+
+四个控件都是**受控**的：值由调用方持有，组件只上抛变更。
+
+```dart
+MiButton(
+  label: '下载',                    // 或 child: 任意内容（二选一）
+  icon: const Icon(Icons.download), // 前置图标：16dp 定尺、间距 6dp
+  variant: MiButtonVariant.filled,  // filled / tonal / text
+  size: MiButtonSize.regular,       // regular 28.3 / large 40
+  minWidth: 120,                    // 省略 = 完全随内容收缩
+  onPressed: _save,
+)
+```
+
+| 控件 | 关键参数 | 说明 |
+|---|---|---|
+| `MiButton` | `label` / `child`、`icon`、`variant`、`size`、`enabled`、`minWidth` | `onPressed == null` 或 `enabled: false` 都进禁用态；`text` 形态无填充、标签走强调色 |
+| `MiSlider` | `value`、`min` / `max`、`divisions`、`keyPoints` / `showKeyPoints`、`magnetThreshold`、`reverseDirection`、`onChangeEnd` | 拖拽跟手、点按跳到落点（弹簧收敛）；分档与磁吸共用一套量化 |
+| `MiSwitch` | `value`、`onChanged` | 点按 / 水平拖拽切换，拖过行程中点即吸附 |
+| `MiCheckbox` | `value`（`bool?`）、`onChanged` | `null` = 半选；点一下全选 |
+
+滑条的两个易错点：
+
+- **`divisions` 是「档数」（含两端）**，`5` = 0 / 0.25 / 0.5 / 0.75 / 1。若你手里是
+  上游 flutter_miuix 的 `steps`（中间台阶数），换算为 `divisions = steps + 2`。
+- **触感不代发**：需要「过档 / 到端点」的震动时，自己包一层
+  `onChanged: (v) { HapticFeedback.selectionClick(); setState(…); }`，库层不猜时机。
+
+## 5. 浮层
 
 | 需求 | 做法 |
 |---|---|
@@ -94,7 +123,7 @@ MiTheme(
 注意：`MiPopupHost` 应放在**你希望浮层出现的那一层**（整窗最外层，或机身壳
 内部 —— 演示应用选了后者，PC 套壳时弹框不会盖住整个窗口）。
 
-## 5. 响应式
+## 6. 响应式
 
 三处断点各管一件事，**别混用**：
 
@@ -116,7 +145,7 @@ MiContentColumn(                       // 宽屏内容限宽居中（纵向撑�
 `MiScaledCanvas(designSize: Size(393, 856))` 用于**等比缩放**（演示应用的手机
 壳内画面）：只缩不放，`scale == 1` 时走零变换路径。
 
-## 6. 桌面语义
+## 7. 桌面语义
 
 - **悬停**：`MiHoverFeedback` 自动接入所有 `MiPressable` 包裹的组件（叠色
   白/黑 @5.6% + 手型光标）。
@@ -125,7 +154,7 @@ MiContentColumn(                       // 宽屏内容限宽居中（纵向撑�
 - **⌘K / Ctrl+K 搜索**：库层不接管全局快捷键，示例层用
   `CallbackShortcuts`（`demo/pages/profile_page.dart`）演示绑定方式。
 
-## 7. 自定义与扩展
+## 8. 自定义与扩展
 
 **改一个已经存在的度量**：先看它是否在 `*_metrics.dart` → 改数值 → 跑
 `flutter test`（黄金图会告诉你哪些地方动了）→ 若确属预期，更新基线。
@@ -138,7 +167,7 @@ MiContentColumn(                       // 宽屏内容限宽居中（纵向撑�
 `typography` / `motion_tokens` / `transparency_tokens` / `row_tokens`）、组件
 配色（`theme/<组件>_tokens.dart`）、组件几何（`*_metrics.dart`）。
 
-## 8. 演示应用
+## 9. 演示应用
 
 ```bash
 flutter run                     # 桌面 / 移动
@@ -150,7 +179,7 @@ flutter build web               # 发布产物
 + 投影），移动端铺满全屏并启用 edge-to-edge（`main.dart` 里
 `SystemUiMode.edgeToEdge` + `AnnotatedRegion<SystemUiOverlayStyle>`）。
 
-## 9. 测试
+## 10. 测试
 
 ```bash
 flutter analyze                                    # 静态分析
@@ -163,7 +192,7 @@ flutter test --update-goldens test/preview_capture_test.dart   # 刷新 README �
 `--exclude-tags preview` 排除。守门测试清单见
 [ARCHITECTURE.md §8](ARCHITECTURE.md)。
 
-## 10. 常见坑
+## 11. 常见坑
 
 | 现象 | 原因 / 解法 |
 |---|---|
