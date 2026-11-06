@@ -23,6 +23,17 @@
 - **示例层**：「组件展示」新增「滑条」一节（连续 + 关键点 / 分档刻度 / 反向 /
   禁用），「按钮展示」补大号、前置图标、文本形态与最小宽四行。
 
+### Added（组件：浮动操作按钮）
+
+- **`MiFloatingActionButton` —— 通用浮动操作按钮**：60dp 正圆 + 可选投影，
+  几何与投影标注为参考实现值（上游 `shadowElevation = 4` → blur 4 / 下偏 2）；
+  填充默认取素材度量的预留空位绿，投影色复用 `panelShadow`（不为新件另开
+  alpha）。按压换填充（预合成压色，不引 saveLayer），三态反馈走 `MiPressable`，
+  投影走 `MiSquircleShadowPainter`（形状投影，不进 `BackdropFilter` 页面的
+  预算）。**底栏 / 侧栏的槽位圆钮改由本组件渲染**（`MiGlassNavFab` 退成
+  「哪个 tab 显示 / 回调 / 配色」的声明），栏位内显式 `showShadow: false` ——
+  黄金图与预览图基线未变，圆钮像素零差异。
+
 ### Added（组件：菜单行）
 
 - **`MiMenuItemRow` —— 菜单行的公开形态**：`MiMenu` 面板里那一行（前导 +

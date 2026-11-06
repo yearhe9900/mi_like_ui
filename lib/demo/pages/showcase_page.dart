@@ -511,6 +511,42 @@ class _ButtonShowcaseState extends State<_ButtonShowcase> {
             style: _subStyle(context, 11),
           ),
         ),
+        const SizedBox(height: 4),
+        // ── 浮动操作按钮 ────────────────────────────────────────
+        _DemoSurface(
+          themeMode: widget.themeMode,
+          caption: 'MiFloatingActionButton：默认 60dp 正圆 + 投影（左）；'
+              'showShadow: false（中，导航栏槽位那一档）；禁用（右）',
+          child: Row(
+            children: [
+              MiFloatingActionButton(
+                themeMode: widget.themeMode,
+                onPressed: () {},
+                child: const Icon(Icons.add),
+              ),
+              const SizedBox(width: 16),
+              MiFloatingActionButton(
+                themeMode: widget.themeMode,
+                showShadow: false,
+                onPressed: () {},
+                child: const Icon(Icons.edit),
+              ),
+              const SizedBox(width: 16),
+              MiFloatingActionButton(
+                themeMode: widget.themeMode,
+                onPressed: null,
+                child: const Icon(Icons.add),
+              ),
+            ],
+          ),
+        ),
+        _demoNote(
+          context,
+          'MiFloatingActionButton：填充即按压视觉（换压色，不引 saveLayer）、'
+              '三态反馈走 MiPressable；默认填充取素材度量的预留空位绿，投影为'
+              '参考实现值（上游 shadowElevation 4）。底栏 / 侧栏的槽位圆钮'
+              '（MiGlassNavFab）就是这枚组件，栏位里关掉投影。',
+        ),
       ],
     );
   }

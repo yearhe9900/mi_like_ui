@@ -72,7 +72,7 @@ MiGlassNavBar(
 |---|---|
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
-| 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 大号 / 前置图标 / 文本形态 / 最小宽 |
+| 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 大号 / 前置图标 / 文本形态 / 最小宽；`MiFloatingActionButton`（带投影 / 无投影 / 禁用） |
 | 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、滑条四态（连续 + 关键点 / 分档刻度 / 反向 / 禁用）、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用）、菜单行独立陈列 |
 | 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、外观模式（浅色 / 深色 / 跟随系统，单选菜单）、弹框入口 |
@@ -86,6 +86,7 @@ MiGlassNavBar(
 | `MiGlassSideNavBar` | 玻璃悬浮侧边导航栏（宽屏 / 桌面形态，与底部栏同语义同配方） |
 | `MiPillTabBar` | 胶囊分类标签行（选中胶囊磨砂透镜、出血滚动） |
 | `MiButton` | 胶囊按钮（主 / 次级 / 文本三形态 × 常规 / 大号两档，可带前置图标与最小宽；禁用态与 `onPressed` 解耦） |
+| `MiFloatingActionButton` | 浮动操作按钮（60dp 正圆 + 可选投影；填充即按压视觉、三态反馈走 `MiPressable`；底栏 / 侧栏的槽位圆钮就是它） |
 | `MiActionEntry` / `MiActionEntryRow` | 纵向动作条目（图标在上文字在下的菜单格：按压淡出 / 高亮态 / 禁用降透明，三态走 `MiPressable`；行 = 等分横排） |
 | `MiSearchBar` | 搜索栏（静态展示 / 可输入两态，磨砂与导航栏同源） |
 | `MiSearchCancelButton` | 搜索取消按钮（搜索态配套） |
@@ -205,6 +206,33 @@ FAB 挂于栏尾下方、栏体不为其让位。侧栏几何为底部栏规格�
   flutter_miuix `MiuixButtonDefaults.minHeight`），本库无对应素材。
 
 <img src="doc/preview/button_light.png" width="360" alt="浅色胶囊按钮三态" /> <img src="doc/preview/button_dark.png" width="360" alt="深色胶囊按钮三态" />
+
+### 浮动操作按钮（MiFloatingActionButton）
+
+悬浮在内容之上的**正圆主行动按钮**（新建 / 发起 / 快捷动作）。几何与投影为
+**参考实现值**（`MiFloatingActionButtonMetrics`：最小边长 60dp、投影
+blur 4 / 下偏 2，对齐上游 `MiuixFloatingActionButtonDefaults.shadowElevation`）；
+填充默认取素材度量的预留空位绿（`MiColors.fabGreenFor`，暗 #25BF43 /
+浅 #66CB61），可传 `color` 覆盖。
+
+```dart
+MiFloatingActionButton(
+  onPressed: _compose,
+  child: const Icon(Icons.add),
+)
+```
+
+* **填充即按压视觉**：按压换 `dialogPressedFill` 预合成压色（与弹框按钮同一
+  配方 —— 叠色只压填充、不碰内容，不引 saveLayer）；悬停叠色 / Tab 焦点环 /
+  Enter-Space 由 `MiPressable` 一次给齐；`onPressed == null` 或
+  `enabled: false` 即禁用。
+* **投影走 `MiSquircleShadowPainter`**（形状投影，不是 `BoxShadow` 的
+  elevation 语义）：放进含磨砂的页面不影响下层 `BackdropFilter`；投影色复用
+  `MiTransparencyTokens.panelShadow`（黑 @0.12，与悬浮工具栏同一档），不为
+  新件另开 alpha。`showShadow: false` 可关。
+* **边长由父级约束决定**：更紧的父级约束优先，否则至少 60dp —— 底栏 / 侧栏的
+  槽位圆钮（`MiGlassNavFab`）就是这枚组件，直径取栏高度量 55.4dp、
+  `showShadow: false`（素材实测：圆钮是玻璃栏体的一部分，不叠投影）。
 
 ### 纵向动作条目（MiActionEntry / MiActionEntryRow）
 
@@ -1129,6 +1157,7 @@ flutter test     # 全量测试（含视觉回归）
 - [x] `MiGlassSideNavBar` — 玻璃悬浮侧边导航栏
 - [x] `MiPillTabBar` — 胶囊分类标签行
 - [x] `MiButton` — 胶囊按钮（三形态 × 两档尺寸，可带前置图标 / 最小宽）
+- [x] `MiFloatingActionButton` — 浮动操作按钮（导航栏槽位圆钮复用同一件）
 - [x] `MiSearchBar` / `MiSearchCancelButton` — 搜索栏与取消钮
 - [x] `MiTopBar` — 大标题折叠顶部导航栏（材质 / 头部区 / 搜索态）
 - [x] `MiGradientBlur` — 顶部渐进模糊

@@ -63,6 +63,7 @@
 | 模块 | 关键接口 | 用途 |
 |---|---|---|
 | 胶囊按钮 | `MiButton({label \| child, icon, onPressed, enabled, variant, size, minWidth, themeMode})`、`MiButtonVariant`（`filled` / `tonal` / `text`）、`MiButtonSize`（`regular` / `large`）、`MiButtonMetrics` | 主 / 次级 / 文本三形态，常规 28.3 / 大号 40 两档；`label` 与 `child` 二选一；按压换填充 |
+| 浮动操作按钮 | `MiFloatingActionButton({child, onPressed, enabled, color, size, showShadow, themeMode, focusNode})`、`MiFloatingActionButtonMetrics`、`MiFloatingActionButton.fillKey` | 正圆主行动按钮：填充即按压视觉、三态反馈走 `MiPressable`、投影走 `MiSquircleShadowPainter`；导航栏槽位圆钮（`MiGlassNavFab`）即本组件（栏位内 `showShadow: false`） |
 | 动作条目 | `MiActionEntry({icon, label, onTap, highlighted, …})`、`MiActionEntryRow`、`MiActionEntryMetrics` | 图标在上文字在下的底部菜单格；`Row` 版本等分横排 |
 
 ### 输入 `inputs/`
