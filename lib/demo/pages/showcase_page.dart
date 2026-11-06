@@ -608,7 +608,8 @@ class _DemoSurface extends StatelessWidget {
 ///    按桌面惯例推导的那层）；
 ///  * 响应式网格 —— 列数随容器宽 4 / 6 / 8 切换；
 ///  * 菜单 —— `MiMenu` 三种锚点形态：单选偏好行、级联子菜单、图标触发的
-///    多分组动作菜单（[_MenuShowcase]）。
+///    多分组动作菜单（[_MenuShowcase]）；外加 `MiMenuItemRow` 的独立陈列
+///    （一行选项不带锚定 / 遮罩也能单用）。
 ///
 /// 全部是真实组件，不再是「示例组件N」渐变占位。
 class _ComponentShowcase extends StatefulWidget {
@@ -1084,7 +1085,8 @@ class _ComponentShowcaseState extends State<_ComponentShowcase> {
 
 
 /// 「菜单」小节（示例层）：`MiMenu` 的三种锚点形态 —— 偏好行下拉、级联
-/// 子菜单、图标触发的多分组动作菜单。
+/// 子菜单、图标触发的多分组动作菜单 —— 以及 `MiMenuItemRow` 的独立陈列
+/// （面板内部的行就是它，拿出来单用不必搬整套锚定 / 遮罩）。
 ///
 /// 三处都**不劫持触发器**：行 / 图标的点按走 `MiMenuController.toggle()`，
 /// 菜单只借触发器的盒子当锚点（右缘对齐、优先下方）。几何上的口径全在库里
@@ -1249,6 +1251,50 @@ class _MenuShowcaseState extends State<_MenuShowcase> {
               '品牌强调色、副文 = 设置行同一档 55%、遮罩取参考实现的窗口压暗'
               '（亮 0.30 / 暗 0.60）。几何与动效为「参考实现值」（本库无菜单'
               '素材），见 MiMenuMetrics 的对照表。',
+        ),
+        const SizedBox(height: 14),
+        // ── 菜单行（可独立用） ──────────────────────────────────
+        const _SectionTitle('菜单行'),
+        _DemoSurface(
+          themeMode: mode,
+          caption: 'MiMenuItemRow：一行选项不带锚定 / 遮罩也能单用'
+              '（选项列表、对话框行、级联回退行都能直接铺）',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 文案刻意与菜单项不重名：陈列测试按文本定位，重名会撞车。
+              MiMenuItemRow(
+                label: '最近使用',
+                subtitle: '按名称排序',
+                themeMode: mode,
+                onTap: () {},
+              ),
+              MiMenuItemRow(
+                label: '网格视图',
+                selected: true,
+                themeMode: mode,
+                onTap: () {},
+              ),
+              MiMenuItemRow(
+                label: '更多操作',
+                hasChildren: true,
+                themeMode: mode,
+                onTap: () {},
+              ),
+              MiMenuItemRow(
+                label: '归档',
+                enabled: false,
+                themeMode: mode,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+        _demoNote(
+          context,
+          'MiMenuItemRow：行尾装饰由状态推导（勾号 > 回退左箭头 > 级联右箭头）；'
+              '首 / 末行上下内边距取更松的一档；装饰不参与行高 —— 20dp 的勾号'
+              '若参与会把 15.9dp 的文案行撑高 4.1dp。MiMenu 的面板内部就用它渲染。',
         ),
       ],
     );

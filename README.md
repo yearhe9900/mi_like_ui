@@ -73,7 +73,7 @@ MiGlassNavBar(
 | 首页 | 头部区顶栏（搜索栏 + 胶囊标签）压高频横幅、主题卡网格、弹出面板（右下圆钮） |
 | 分类 → Logo 展示 | `nav_icons.dart` 全量 logo |
 | 分类 → 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 大号 / 前置图标 / 文本形态 / 最小宽 |
-| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、滑条四态（连续 + 关键点 / 分档刻度 / 反向 / 禁用）、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用） |
+| 分类 → 组件展示 | 搜索栏两态 + 取消钮 `fade`、设置行（值文 / 开关 / 副标题）、开关三态（点按 / 拖拽）、复选框三态、滑条四态（连续 + 关键点 / 分档刻度 / 反向 / 禁用）、悬浮工具栏、桌面三态反馈（`MiPressable` / `MiHoverFeedback` / `MiFocusRing`）、响应式网格、菜单（单选 / 级联 / 多分组禁用）、菜单行独立陈列 |
 | 分类 → 弹层与效果 | 弹框三位置与操作列表（声明式，壳内挂浮层）、命令式 `showMiDialog`（`await` 拿下标）、弹出面板（从触发行弹起）、底部弹窗（手柄下拉 / 遮罩收起）、渐进模糊 `MiGradientBlur`（含 σ 缩放滑杆） |
 | 我的 | 大标题折叠顶栏、设置分组卡与行、外观模式（浅色 / 深色 / 跟随系统，单选菜单）、弹框入口 |
 | 首页点搜索栏 | `MiCardPageRoute` 推入搜索页（下层页左移视差 + 压暗） |
@@ -96,6 +96,7 @@ MiGlassNavBar(
 | `MiDialog` | 弹框（遮罩 + 卡片、三档位置、两种形态：横排按钮 / 纵向操作列表、按压动效、高度上限 clamp）；命令式 `showMiDialog` 返回被点下标 |
 | `MiPullUpPanel` | 弹出面板（从触发按钮弹起长高、弹簧动效、自定义高度与内容、无压暗） |
 | `MiMenu` | 锚定菜单（贴着触发件弹出、右缘对齐 + 空间不足自动翻转；单选勾号 / 级联二级 / 多分组与整组禁用；弹簧缩放 + 单向揭示） |
+| `MiMenuItemRow` | 菜单行：一行选项的公开形态（前导 + 主 / 副文案 + 行尾装饰），`MiMenu` 面板内部即用它渲染，也可单独铺在选项列表 / 对话框里 |
 | `MiSnackbar` | 轻量消息条（自动收起、同类替换、可带动作钮；几何全推导） |
 | `MiCheckbox` | 复选框（三态：开 / 关 / 半选，勾号淡入 + trim 划开；未选档与开关同源） |
 | `MiBottomSheet` | 底部弹窗（只圆上两角、弹簧滑入滑出、手柄下拉关闭、遮罩；宽屏限宽居中） |
@@ -553,6 +554,27 @@ MiMenu(
   ),
 );
 ```
+
+**菜单行可以单用**：面板里那一行是公开的 `MiMenuItemRow`（前导 + 主 / 副文案 +
+行尾装饰），不带锚定 / 遮罩也能铺进自己的选项列表或对话框：
+
+```dart
+Column(
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    MiMenuItemRow(label: '名称', subtitle: '按名称排序', onTap: () {}),
+    MiMenuItemRow(label: '大小', selected: true, onTap: () {}),
+    MiMenuItemRow(label: '分享到', hasChildren: true, onTap: () {}),
+    MiMenuItemRow(label: '删除', enabled: false),
+  ],
+);
+```
+
+行尾装饰由状态推导，优先级 `selected`（勾号）> `showBackArrow`（左箭头，
+级联回退）> `hasChildren`（右箭头，级联触发器）；首 / 末行上下内边距取更松的
+一档（20dp），中间行 12dp；装饰**不参与行高** —— 20dp 的勾号若参与会把
+15.9dp 的文案行撑高 4.1dp（就是菜单行距那条 issue）。`MiDropdownImpl` 是它与
+参考实现 `MiuixDropdownImpl` 同位名的别名，新代码请用 `MiMenuItemRow`。
 
 **动效**：0.15 → 1 缩放（原点钉在锚点那一侧的角上，视觉上从行边「长出来」）
 + 高度单向揭示（`MiMenuRevealClipper`，同时裁出 squircle 圆角）+ 200ms 淡入；
