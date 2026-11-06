@@ -11,7 +11,7 @@ import 'package:mi_like_ui/mi_like_ui.dart';
 /// 判据约定：
 ///  * 行尾装饰由状态推导（勾号 > 回退左箭头 > 级联右箭头），且**不参与行高**
 ///    —— 20dp 的勾号撑高 15.9dp 文案行是 issue #6 的回归点；
-///  * 首 / 末行上下内边距取更松的一档（参考实现口径）；
+///  * 首 / 末行与中间行**同一档**内边距（本库统一 20dp，不跟参考的两档）；
 ///  * 禁用 = 墨色降档 + 不响应，语义仍标 button；
 ///  * 按压高亮走 `MiPressable` 的 `pressBuilder`（实色，不引 saveLayer）。
 void main() {
@@ -49,8 +49,8 @@ void main() {
           box.decoration is BoxDecoration &&
           (box.decoration as BoxDecoration).color == MiMenuPalette.dark.pressed);
 
-  /// 参考口径：中间行 = 上下 12 + 主文案行盒 15.9（引擎取整，容差 0.2）。
-  double middleHeight() => MiMenuMetrics.rowPadY * 2 + 15.9;
+  /// 行高口径：上下各 20 的行内边距 + 主文案行盒 15.9（引擎取整，容差 0.2）。
+  double plainHeight() => MiMenuMetrics.rowPadY * 2 + 15.9;
 
   testWidgets('默认行：无行尾装饰，文案取主 / 次级墨色，行高只由文案块决定',
       (tester) async {
@@ -69,7 +69,7 @@ void main() {
     expect(find.byKey(MiMenuItemRow.chevronKey), findsNothing);
     expect(find.byKey(MiMenuItemRow.backChevronKey), findsNothing);
     expect(labelColor(tester, '名称'), MiMenuPalette.dark.label);
-    expect(rowHeight(tester), closeTo(middleHeight(), 0.2));
+    expect(rowHeight(tester), closeTo(plainHeight(), 0.2));
   });
 
   testWidgets('副文案：次级墨色，且不影响主文案墨色', (tester) async {
@@ -107,7 +107,7 @@ void main() {
     expect(find.byKey(MiMenuItemRow.chevronKey), findsNothing);
     expect(labelColor(tester, '名称'), MiMenuPalette.dark.selectedLabel);
     // 回归（issue #6）：勾号墨盒不参与行高。
-    expect(rowHeight(tester), closeTo(middleHeight(), 0.2));
+    expect(rowHeight(tester), closeTo(plainHeight(), 0.2));
     expect(
       tester.getSemantics(find.text('名称')).flagsCollection.isSelected,
       Tristate.isTrue,
@@ -163,7 +163,7 @@ void main() {
     expect(find.byKey(MiMenuItemRow.checkKey), findsNothing);
   });
 
-  testWidgets('首 / 末行上下内边距更松（比中间行高 16dp）', (tester) async {
+  testWidgets('上下内边距统一 20dp（不再分首末 / 中间两档）', (tester) async {
     setWindow(tester, const Size(400, 300));
 
     await tester.pumpWidget(
@@ -171,24 +171,15 @@ void main() {
         const MiMenuItemRow(label: '名称', themeMode: MiThemeMode.dark),
       ),
     );
-    final middle = rowHeight(tester);
+    final plain = rowHeight(tester);
 
-    await tester.pumpWidget(
-      harness(
-        const MiMenuItemRow(
-          label: '名称',
-          isFirst: true,
-          themeMode: MiThemeMode.dark,
-        ),
-      ),
-    );
-    final edge = rowHeight(tester);
-
-    expect(edge - middle, closeTo(16, 0.2));
     expect(
-      edge,
-      closeTo(MiMenuMetrics.rowEdgePadY * 2 + 15.9, 0.2),
+      plain,
+      closeTo(MiMenuMetrics.rowPadY * 2 + 15.9, 0.2),
+      reason: '行高 = 上下各 20 的行内边距 + 正文行盒 15.9',
     );
+    // 行内边距只有一档：菜单里首行与中间行由同一个常量出数。
+    expect(MiMenuMetrics.rowPadY, 20);
   });
 
   testWidgets('禁用：不响应点按，语义仍是按钮', (tester) async {

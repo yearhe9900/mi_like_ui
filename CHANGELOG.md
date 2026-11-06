@@ -34,14 +34,22 @@
   「哪个 tab 显示 / 回调 / 配色」的声明），栏位内显式 `showShadow: false` ——
   黄金图与预览图基线未变，圆钮像素零差异。
 
+### Changed（组件：菜单）
+
+- **菜单行上下内边距全行统一 20dp**：原先首 / 末行 20dp、中间行 12dp 两档
+  （照搬参考实现 `firstLastVerticalPadding` / `middleVerticalPadding`），真机上
+  整列读作「上疏、中紧、下疏」。统一到更松的一档后行高恒为 55.9dp、相邻行
+  中心距处处相等。`MiMenuItemRow` 的 `isFirst` / `isLast` 与
+  `MiMenuMetrics.rowEdgePadY` 一并移除（两者只为这两档服务）。
+
 ### Added（组件：菜单行）
 
 - **`MiMenuItemRow` —— 菜单行的公开形态**：`MiMenu` 面板里那一行（前导 +
   主 / 副文案 + 行尾装饰）提成独立组件，可直接铺进选项列表 / 对话框行，
   不必搬整套锚定与遮罩；`MiMenu` 内部改由它渲染，行几何与按压语言只剩一处
-  定义。行尾装饰按状态推导（勾号 > 回退左箭头 > 级联右箭头），首 / 末行取更松
-  的内边距，装饰不参与行高（issue #6 的口径原样保留）；`MiDropdownImpl` 作为与
-  参考实现 `MiuixDropdownImpl` 同位名的别名一并导出。
+  定义。行尾装饰按状态推导（勾号 > 回退左箭头 > 级联右箭头），上下内边距全行
+  统一（见下条 Changed），装饰不参与行高（issue #6 的口径原样保留）；
+  `MiDropdownImpl` 作为与参考实现 `MiuixDropdownImpl` 同位名的别名一并导出。
 
 ### Fixed（组件：菜单）
 

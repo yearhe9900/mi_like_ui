@@ -17,7 +17,7 @@ import 'package:flutter/animation.dart';
 /// | [minHeight] | `MiuixListPopupDefaults.minPopupHeight` | 50 |
 /// | [margin] | `dropdownPositionProvider(verticalMargin:)` | 8 |
 /// | [rowInsetX] | `insideHorizontalPadding` | 20 |
-/// | [rowPadY] / [rowEdgePadY] | `middle…` / `firstLastVerticalPadding` | 12 / 20 |
+/// | [rowPadY] | `firstLastVerticalPadding`（统一档，见该常量说明） | 20 |
 /// | [iconCell] / [iconGap] | `iconMinSize` / `iconEndPadding` | 26 / 12 |
 /// | [checkSide] / [trailingGap] | `checkIconSize` / `checkIconStartPadding` | 20 / 12 |
 /// | [arrowSize] | `chevronSize` | 10×16 |
@@ -51,11 +51,13 @@ class MiMenuMetrics {
   /// 行左右内边距。
   static const double rowInsetX = 20;
 
-  /// 中间行上下内边距。
-  static const double rowPadY = 12;
-
-  /// 首 / 末行上下内边距（整张菜单的上下两行，参考实现刻意给得更松）。
-  static const double rowEdgePadY = 20;
+  /// 行上下内边距（**所有行统一**）。
+  ///
+  /// 本库取 20dp：参考实现是两档（`middleVerticalPadding` 12 /
+  /// `firstLastVerticalPadding` 20），但首末与中间不等高会让整列间距读作
+  /// 「上疏、中紧、下疏」，视觉上是缺陷 —— 统一到更松的一档，行高恒为
+  /// 2 × 20 + 正文行盒 15.9 = 55.9dp，相邻中心距恒 55.9dp。
+  static const double rowPadY = 20;
 
   /// 前导图标单元格最小边长。
   static const double iconCell = 26;

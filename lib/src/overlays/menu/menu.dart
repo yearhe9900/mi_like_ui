@@ -636,10 +636,6 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
     final level = _path.length;
     final columns = <Widget>[];
     if (level == 0) {
-      final total = widget.groups
-          .where((g) => g.items.isNotEmpty)
-          .fold<int>(0, (sum, g) => sum + g.items.length);
-      var row = 0;
       var groups = 0;
       for (final group in widget.groups) {
         if (group.items.isEmpty) continue;
@@ -652,8 +648,6 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
               leading: item.leading,
               selected: item.selected,
               hasChildren: item.hasChildren,
-              isFirst: row == 0,
-              isLast: row == total - 1,
               enabled: group.enabled && item.enabled,
               onTap: item.hasChildren
                   ? () => setState(() => _path.add(item))
@@ -661,7 +655,6 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
               themeMode: mode,
             ),
           );
-          row++;
         }
         groups++;
       }
@@ -677,15 +670,12 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
           subtitle: parent.subtitle,
           leading: parent.leading,
           showBackArrow: true,
-          isFirst: true,
-          isLast: children.isEmpty,
           enabled: true,
           onTap: () => setState(() => _path.removeLast()),
           themeMode: mode,
         ),
       );
-      for (var i = 0; i < children.length; i++) {
-        final item = children[i];
+      for (final item in children) {
         columns.add(
           MiMenuItemRow(
             label: item.label,
@@ -693,7 +683,6 @@ class _MiMenuPanelState extends State<_MiMenuPanel>
             leading: item.leading,
             selected: item.selected,
             hasChildren: item.hasChildren,
-            isLast: i == children.length - 1,
             enabled: item.enabled,
             onTap: item.hasChildren
                 ? () => setState(() => _path.add(item))

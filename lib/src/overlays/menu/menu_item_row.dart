@@ -27,9 +27,8 @@ import 'menu_painter.dart';
 ///    时整行禁用（墨色降档、不响应）；
 ///  * **行尾装饰**由状态推导，优先级 [selected]（勾号）> [showBackArrow]
 ///    （左向箭头，级联回退）> [hasChildren]（右向箭头，级联触发器）；
-///  * **首 / 末行**（[isFirst] / [isLast]）上下内边距取更松的
-///    [MiMenuMetrics.rowEdgePadY]（参考实现刻意给得更松），中间行取
-///    [MiMenuMetrics.rowPadY]；
+///  * **行上下内边距**恒取 [MiMenuMetrics.rowPadY]（20dp，所有行统一 ——
+///    参考实现的首末 / 中间两档会让整列间距上疏下紧，本库不跟）；
 ///  * 行尾装饰**不参与行高**：槽钉 0 高、墨盒按行中线居中溢出绘制，否则
 ///    20dp 的勾号会把 15.9dp 文案的行撑高 4.1dp（见 [MiMenuMetrics.checkSide]）。
 ///
@@ -44,8 +43,6 @@ class MiMenuItemRow extends StatelessWidget {
     this.enabled = true,
     this.hasChildren = false,
     this.showBackArrow = false,
-    this.isFirst = false,
-    this.isLast = false,
     this.onTap,
     this.themeMode,
   });
@@ -76,12 +73,6 @@ class MiMenuItemRow extends StatelessWidget {
   /// 是否是级联回退行（尾部画左向箭头，语义「回到上一级」）。
   final bool showBackArrow;
 
-  /// 是否是整张菜单的首行（上下内边距取更松的一档）。
-  final bool isFirst;
-
-  /// 是否是整张菜单的末行（同 [isFirst]）。
-  final bool isLast;
-
   /// 点按回调；null = 该行不可点。
   final VoidCallback? onTap;
 
@@ -92,9 +83,6 @@ class MiMenuItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final mode = MiTheme.modeOf(context, explicit: themeMode);
     final palette = MiMenuPalette.of(mode);
-    final padY = isFirst || isLast
-        ? MiMenuMetrics.rowEdgePadY
-        : MiMenuMetrics.rowPadY;
     final labelColor = !enabled
         ? palette.disabled
         : (selected ? palette.selectedLabel : palette.label);
@@ -115,9 +103,9 @@ class MiMenuItemRow extends StatelessWidget {
           child: child,
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: MiMenuMetrics.rowInsetX,
-            vertical: padY,
+            vertical: MiMenuMetrics.rowPadY,
           ),
           child: Row(
             children: [
@@ -210,7 +198,7 @@ class MiMenuItemRow extends StatelessWidget {
   /// 勾号墨盒 20dp 高于正文行盒（`MiTypography.dialogAction` 15.9dp，
   /// `height: 1.0`），若让槽参与行高计算，选中行就比普通行高 4.1dp —— 上下
   /// 两个相邻中心距各 +2dp，读起来是「选中项上下更松」。这里把槽钉成 0 高、
-  /// 用 [OverflowBox] 让墨盒以行的中线为心画到槽外（溢出 2.05dp 落在 12dp
+  /// 用 [OverflowBox] 让墨盒以行的中线为心画到槽外（溢出 2.05dp 落在 20dp
   /// 行内边距里，不碰相邻行），行高于是只由文案块决定。参考实现同样让勾号
   /// 参与行高，差别在它的正文行盒 ≈18.7dp（差值仅 1.3dp，看不出来）。
   Widget _slot({

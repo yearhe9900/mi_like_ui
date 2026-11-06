@@ -1271,7 +1271,7 @@ class _MenuShowcaseState extends State<_MenuShowcase> {
           context,
           'MiMenu：锚点量自子级盒子（右缘对齐、下方优先，放不下翻上方并夹紧'
               '在宿主内）→ 0.15→1 缩放 + 单向揭示 + 淡入（弹簧 ζ 0.82）→ '
-              '面板圆角 16 / 宽 200–288 / 行内距 20、首末行 20 中间 12。'
+              '面板圆角 16 / 宽 200–288 / 行内距 20、上下留白全行统一 20。'
               '经 MiPopup 注册到宿主，z 序 = 注册序；点遮罩 / 系统返回收起，'
               '收口后才回调 onDismissed。',
         ),
@@ -1329,7 +1329,7 @@ class _MenuShowcaseState extends State<_MenuShowcase> {
         _demoNote(
           context,
           'MiMenuItemRow：行尾装饰由状态推导（勾号 > 回退左箭头 > 级联右箭头）；'
-              '首 / 末行上下内边距取更松的一档；装饰不参与行高 —— 20dp 的勾号'
+              '上下内边距全行统一 20dp；装饰不参与行高 —— 20dp 的勾号'
               '若参与会把 15.9dp 的文案行撑高 4.1dp。MiMenu 的面板内部就用它渲染。',
         ),
       ],

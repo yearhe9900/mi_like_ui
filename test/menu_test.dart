@@ -332,15 +332,15 @@ void main() {
     expect(find.text('危险动作'), findsOneWidget);
   });
 
-  testWidgets('行高：勾号不参与行高，选中行与普通行等高（相邻中心距一致）', (tester) async {
+  testWidgets('行高：全列等高（首末与中间同档），勾号不撑行（相邻中心距一致）', (tester) async {
     final controller = MiMenuController();
     addTearDown(controller.dispose);
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(393, 856);
     addTearDown(tester.view.reset);
 
-    // 5 行：首 / 末行走 20dp 边距，中间三行都是 12dp —— 比较「选中」与
-    // 「未选中」的中间行高度即可判断勾号有没有把行撑高。
+    // 5 行：首末与中间现在同一档内边距 —— 全列行高必须一致（issue 要求
+    // 所有行同高），选中行还要额外不被勾号撑开。
     await tester.pumpWidget(
       page(
         controller: controller,
@@ -372,11 +372,22 @@ void main() {
       closeTo(plain, 0.01),
       reason: '选中行的勾号 20dp 不应撑高行盒（正文行盒 15.9dp）',
     );
-    // 行高 = 上下各 12 的行内边距 + 正文行盒（15.9 → 引擎取整成 16.0）。
+    // 行高 = 上下各 20 的行内边距 + 正文行盒（15.9 → 引擎取整成 16.0）。
     expect(
       selected,
       closeTo(MiMenuMetrics.rowPadY * 2 + 15.9, 0.2),
       reason: '行高应由正文行盒决定',
+    );
+    // 首 / 末行与中间行同档：不再有 20 / 12 两档内边距。
+    expect(
+      rowHeight('第一项'),
+      closeTo(selected, 0.01),
+      reason: '首行与中间行等高',
+    );
+    expect(
+      rowHeight('第五项'),
+      closeTo(selected, 0.01),
+      reason: '末行与中间行等高',
     );
 
     // 相邻中心距：选中行上下两侧都不该比别人多 2dp。
@@ -384,11 +395,21 @@ void main() {
       for (final l in ['第一项', '第二项', '第三项', '第四项', '第五项'])
         tester.getCenter(find.text(l)).dy,
     ];
-    // centers[1]→[2] 跨「选中行」，centers[2]→[3] 全为普通行，两者须相等。
+    // 所有相邻中心距相等 =全列等高（首 / 末行不再单独松一档）。
+    final gaps = [
+      for (var i = 1; i < centers.length; i++) centers[i] - centers[i - 1],
+    ];
+    for (var i = 1; i < gaps.length; i++) {
+      expect(
+        gaps[i],
+        closeTo(gaps[0], 0.01),
+        reason: '相邻行中心距应处处一致（第 $i 段 = 第 0 段）',
+      );
+    }
     expect(
-      centers[2] - centers[1],
-      closeTo(centers[3] - centers[2], 0.01),
-      reason: '选中行两侧中心距应与普通行一致',
+      gaps[0],
+      closeTo(MiMenuMetrics.rowPadY * 2 + 15.9, 0.2),
+      reason: '中心距 = 行高 = 2×20 + 正文行盒',
     );
   });
 }
