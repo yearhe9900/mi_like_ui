@@ -17,12 +17,13 @@ part of '../mock_pages.dart';
 /// | 组 | 内容 |
 /// |----|------|
 /// | Logo 展示 | `nav_icons.dart` 全量 logo + 占位展示位（补可滚长度） |
-/// | 按钮展示 | `MiButton` 三态（关注 / 已关注 / 禁用）+ 占位展示位 |
+/// | 按钮展示 | `MiButton` 形态 / 尺寸陈列 + `MiFloatingActionButton` 三态 |
 /// | 组件展示 | 搜索栏两态 + 取消钮、设置行、开关、复选框、悬浮工具栏、桌面三态反馈、响应式网格、菜单 |
 /// | 弹层与效果 | 弹框（声明式 + 命令式 `showMiDialog`）、弹出面板、底部弹窗、渐进模糊 |
 ///
-/// 占位展示位只出现在前两组（它们要靠网格长度演示「滚动内容从吸顶胶囊
-/// 后方经过」）；后两组内容本身足够长。
+/// 占位展示位只出现在「Logo 展示」组（它要靠网格长度演示「滚动内容从吸顶
+/// 胶囊后方经过」）；其余三组内容本身足够长 —— 「按钮展示」原先也铺占位
+/// 网格，与按钮本体无关，已去掉。
 ///
 /// 吸顶展示：网格上滚时从胶囊后方经过，借胶囊的半透明磨砂直观展示
 /// 透明/透射效果。
@@ -50,7 +51,7 @@ class _ShowcasePage extends StatefulWidget {
 
 class _ShowcasePageState extends State<_ShowcasePage> {
   /// 分类胶囊标签（对应参考截图 推荐 / 背屏 / 小部件 / 主题 的位置）：
-  /// 四组都是真实组件陈列（前两组另有占位展示位补可滚长度）。
+  /// 四组都是真实组件陈列（只有「Logo 展示」另有占位展示位补可滚长度）。
   static const List<String> _tabs = [
     'Logo 展示',
     '按钮展示',
@@ -58,10 +59,10 @@ class _ShowcasePageState extends State<_ShowcasePage> {
     '弹层与效果',
   ];
 
-  /// 前两组占位展示位数量（示例内容）：取足够行数使网格溢出可滚，
-  /// 以便演示「滚动内容从吸顶胶囊后方经过」的透明 / 磨砂透射。
-  /// 后两组（组件展示 / 弹层与效果）内容本身可滚，不用占位。
-  static const List<int> _counts = [32, 32, 0, 0];
+  /// 各组占位展示位数量（示例内容）：只有「Logo 展示」需要 —— 取足够行数
+  /// 使网格溢出可滚，演示「滚动内容从吸顶胶囊后方经过」的透明 / 磨砂透射。
+  /// 其余三组内容本身可滚（或本就够长），不用占位。
+  static const List<int> _counts = [32, 0, 0, 0];
 
   /// 「Logo 展示」组的 logo 名称（与 [_logos] 顺序一致；`nav_icons.dart`
   /// 全量，含顶栏返回箭头与竖点「更多」）。
@@ -151,8 +152,9 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   }
 
   /// 展示位：「Logo 展示」组前 [_logoNames.length] 位给真实 logo 全量展示位
-  /// （= `nav_icons.dart` 全部 logo），其余铺占位展示位（补足可滚长度）；
-  /// 其余分组全给占位展示位。
+  /// （= `nav_icons.dart` 全部 logo），其余铺占位展示位（补足可滚长度）。
+  /// 网格现在只在「Logo 展示」组挂载，[logoMode] 恒为 true，保留参数只为
+  /// 不把「真实 logo vs 占位」的分支判断塞进调用点。
   Widget _tileAt(int i, bool logoMode, List<CustomPainter> logos) {
     if (logoMode && i < _logoNames.length) {
       return _ShowcaseTile(
@@ -176,8 +178,8 @@ class _ShowcasePageState extends State<_ShowcasePage> {
 
   /// 分组内容（四组均为真实组件陈列，见类文档的分组表）。
   ///
-  /// 前两组带占位展示位网格（补可滚长度，吸顶磨砂要有内容从后方经过）；
-  /// 后两组内容本身可滚。
+  /// 只有「Logo 展示」带占位展示位网格（补可滚长度，吸顶磨砂要有内容从
+  /// 后方经过）；其余三组内容本身可滚或本就够长。
   List<Widget> _tabBody({
     required bool logoMode,
     required List<CustomPainter> logos,
@@ -193,8 +195,6 @@ class _ShowcasePageState extends State<_ShowcasePage> {
       case 1:
         return [
           _ButtonShowcase(themeMode: widget.themeMode),
-          const _SectionTitle('展示位'),
-          _logoGrid(logoMode: logoMode, logos: logos, count: count),
           const SizedBox(height: 20),
         ];
       case 2:
@@ -226,7 +226,7 @@ class _ShowcasePageState extends State<_ShowcasePage> {
   double _listBottomInset(BuildContext context) =>
       MiViewport.of(context).isCompact ? 100 : 20;
 
-  /// 占位展示位网格（Logo 组 / 按钮组补可滚长度）：列数按容器宽断点
+  /// 占位展示位网格（「Logo 展示」组补可滚长度）：列数按容器宽断点
   /// 切换（4 / 6 / 8），行距 18 沿用原「每行 bottom: 18」的节奏。
   Widget _logoGrid({
     required bool logoMode,

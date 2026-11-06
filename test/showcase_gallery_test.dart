@@ -5,10 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mi_like_ui/mi_like_ui.dart';
 import 'package:mi_like_ui/demo/mock_pages.dart';
 
-/// 「分类」展示页的「组件展示 / 弹层与效果」两组：四组胶囊标签全部是
-/// **真实组件陈列**（不再有「示例三 / 示例四」占位组），这里锁定两组新
-/// 内容的可交互契约：
+/// 「分类」展示页的「按钮展示 / 组件展示 / 弹层与效果」三组：四组胶囊标签
+/// 全部是**真实组件陈列**（不再有「示例三 / 示例四」占位组），这里锁定各组
+/// 的可交互契约：
 ///
+///  * 按钮展示 —— 只有按钮本体（占位展示位网格已移除）、内容仍可滚；
 ///  * 组件展示 —— 搜索栏两态 + 取消钮 fade、设置行、三态反馈、响应式网格；
 ///  * 弹层与效果 —— 声明式弹框入口透传、命令式 `showMiDialog` 拿下标、
 ///    弹出面板唤起 / 收回、渐进模糊 σ 缩放。
@@ -383,9 +384,36 @@ void main() {
       expect(tester.widget<MiGradientBlur>(blur).sigmaScale, 1.0);
 
       final slider = tester.widget<Slider>(find.byType(Slider));
+      expect(slider.onChanged, isNotNull);
       slider.onChanged!(0.6);
       await tester.pumpAndSettle();
       expect(tester.widget<MiGradientBlur>(blur).sigmaScale, 0.6);
+    });
+  });
+
+  group('「按钮展示」组', () {
+    testWidgets('只有按钮本体，不铺占位展示位网格', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '按钮展示');
+
+      // 分组标题 + 按钮本体；占位展示位（渐变网格）与「展示位」小标题都不在。
+      expect(find.byType(MiResponsiveGrid), findsNothing);
+      expect(find.text('展示位'), findsNothing);
+      expect(find.byType(MiButton), findsWidgets);
+      expect(find.byType(MiFloatingActionButton), findsNWidgets(3));
+    });
+
+    testWidgets('内容本身可滚（占位网格去掉后不能滚成死页）', (tester) async {
+      await pumpShowcase(tester);
+      await switchTab(tester, '按钮展示');
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      final ctrl = list.controller!;
+      expect(ctrl.offset, 0);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(ctrl.offset, greaterThan(0), reason: '按钮组内容应仍可滚动');
     });
   });
 }
